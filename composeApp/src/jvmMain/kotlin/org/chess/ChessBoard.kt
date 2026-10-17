@@ -1,5 +1,19 @@
 package org.chess
 
+import game.core.Game
+import game.economy.GoldRules
+import game.terrain.MudCell
+import game.heroes.AbilityRequest
+import game.heroes.Ability
+import game.heroes.HeroType
+import game.moves.AvailableMoves
+import game.moves.MoveResult
+import game.moves.Promotion
+import game.scenarios.TrainingScenario
+import game.state.SquareColor
+import game.state.GameMode
+import game.state.PieceState
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
@@ -11,7 +25,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import game.*
 import kotlinx.coroutines.delay
 import model.FigureColor
 import model.Position
@@ -24,12 +37,17 @@ fun CoordinateText(text: String) {
 }
 
 @Composable
-fun ChessBoard(game: Game, onNewGame: () -> Unit = {}) {
+fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> Unit = {},
+               onSave: (() -> Unit)? = null, onLoad: (() -> Unit)? = null, fileMessage: String? = null,
+               onNewGame: () -> Unit = {}) {
     var snapshot by remember(game) { mutableStateOf(game.snapshot) }
     var selectedId by remember(game) { mutableStateOf<Long?>(null) }
     var selectedAbility by remember(game) { mutableStateOf<Ability?>(null) }
+    var selectedBorrowed by remember(game) { mutableStateOf(false) }
+    var displacementTargetId by remember(game) { mutableStateOf<Long?>(null) }
     var moveError by remember(game) { mutableStateOf<String?>(null) }
     var pendingPromotion by remember(game) { mutableStateOf<Pair<Position, Position>?>(null) }
+    var showDraft by remember(game) { mutableStateOf(false) }
     var claimWithMove by remember(game) { mutableStateOf(false) }
     val moba = snapshot.mode() == GameMode.MOBA
     val clock = snapshot.clock()
@@ -43,11 +61,15 @@ fun ChessBoard(game: Game, onNewGame: () -> Unit = {}) {
         if (selectedPos != null && selectedAbility == null) game.getLegalMoves(selectedPos)
         else AvailableMoves(emptyList(), emptyList())
     }
-    val abilityTargets = remember(snapshot.version(), selectedId, selectedAbility) {
-        if (selectedPos != null && selectedAbility != null) game.getAbilityTargets(selectedPos, selectedAbility) else emptyList()
+    val displaced = displacementTargetId?.let { snapshot.pieces()[it] }?.takeIf { it.position() != null }
+    val abilityTargets = remember(snapshot.version(), selectedId, selectedAbility, selectedBorrowed, displacementTargetId) {
+        if (selectedPos != null && selectedAbility != null) {
+            if (selectedAbility == Ability.DISPLACE && displaced != null) game.getDisplacementDestinations(selectedPos, displaced.position(), selectedBorrowed)
+            else game.getAbilityTargets(selectedPos, selectedAbility, selectedBorrowed)
+        } else emptyList()
     }
 
-    fun clearSelection() { selectedId = null; selectedAbility = null }
+    fun clearSelection() { selectedId = null; selectedAbility = null; selectedBorrowed = false; displacementTargetId = null }
     fun updateView(result: MoveResult) {
         moveError = if (result.isSuccess) null else result.message
         snapshot = game.snapshot
@@ -64,9 +86,11 @@ fun ChessBoard(game: Game, onNewGame: () -> Unit = {}) {
         }
         updateView(result)
     }
-    fun chooseAbility(ability: Ability) {
-        selectedAbility = if (selectedAbility == ability) null else ability
-        moveError = if (selectedAbility != null && game.getAbilityTargets(selectedPos, ability).isEmpty())
+    fun chooseAbility(ability: Ability, borrowed: Boolean = false) {
+        val same = selectedAbility == ability && selectedBorrowed == borrowed
+        selectedAbility = if (same) null else ability
+        selectedBorrowed = borrowed; displacementTargetId = null
+        moveError = if (selectedAbility != null && game.getAbilityTargets(selectedPos, ability, borrowed).isEmpty())
             "Нет допустимых целей. Выберите другую фигуру или завершите ход." else null
     }
 
@@ -88,11 +112,12 @@ fun ChessBoard(game: Game, onNewGame: () -> Unit = {}) {
         val seconds = (millis + 999L) / 1000L
         return "%02d:%02d".format(seconds / 60L, seconds % 60L)
     }
+    fun goldLabel(color: FigureColor) = if (snapshot.economy().enabled()) " • Золото: ${GoldRules.format(snapshot.economy().balanceHalves(color))}" else ""
     fun sideName(color: FigureColor) = if (color == FigureColor.WHITE) "Белые" else "Чёрные"
 
     Row(Modifier.fillMaxSize().padding(16.dp)) {
         Column {
-            Text("Чёрные: ${if (clock.isEnabled) formatTime(clock.blackMillis) else "без часов"}",
+            Text("Чёрные: ${if (clock.isEnabled) formatTime(clock.blackMillis) else "без часов"}${goldLabel(FigureColor.BLACK)}",
                 Modifier.padding(start = 60.dp), fontSize = 22.sp, fontWeight = FontWeight.Bold,
                 color = if (!outcome.isFinished && snapshot.active() == FigureColor.BLACK) Color.Red else Color.Black)
             Text(if (outcome.isFinished) "Партия завершена" else
@@ -116,19 +141,39 @@ fun ChessBoard(game: Game, onNewGame: () -> Unit = {}) {
                             val isCapture = legal.canAttack.contains(square)
                             val isAbilityTarget = abilityTargets.contains(square)
                             CellView(column, row, figure, square == selectedPos, isMove, isCapture,
-                                heroLabel = if (piece?.hero() == HeroType.PUDGE_ROOK) if (piece.storedPieceId() != null) "П●" else "П" else null,
+                                heroLabel = when (piece?.hero()) {
+                                    HeroType.PUDGE_ROOK -> if (piece.storedPieceId() != null) "П●" else "П"
+                                    HeroType.LUMESHARD_BISHOP -> "L"
+                                    HeroType.BOUNTY_CROW_PAWN -> "C"
+                                    HeroType.GINSENG_BISHOP -> if (piece.storedPieceId() != null) "G●" else "G"
+                                    HeroType.IZBA_ROOK -> "И"
+                                        HeroType.BABA_YAGA_PAWN -> "Я"
+                                        HeroType.BOLOTNIK_KNIGHT -> "Б"
+                                    else -> null
+                                },
+                                isBlinded = piece?.isBlinded == true,
+                                isMud = snapshot.terrain().cells().containsKey(square),
+                                isAmbush = snapshot.terrain().cells()[square]?.kind() == MudCell.Kind.AMBUSH,
+                                isBountyMarked = piece?.let { snapshot.economy().mark(it.id()) != null } == true,
                                 isAbilityTarget = isAbilityTarget,
                                 onClick = {
                                     if (outcome.isFinished || pendingPromotion != null) return@CellView
                                     if (selectedAbility != null && isAbilityTarget && selectedPos != null) {
-                                        val result = game.useAbility(currentPlayer, selectedPos, square, selectedAbility)
-                                        selectedAbility = null
-                                        updateView(result)
+                                        if (selectedAbility == Ability.DISPLACE && displaced == null) {
+                                            displacementTargetId = piece?.id(); moveError = null
+                                        } else {
+                                            val request = AbilityRequest(selectedPos, selectedAbility,
+                                                if (selectedAbility == Ability.DISPLACE) displaced!!.position() else square,
+                                                if (selectedAbility == Ability.DISPLACE) square else null, selectedBorrowed)
+                                            val result = game.useAbility(currentPlayer, request)
+                                            selectedAbility = null; selectedBorrowed = false; displacementTargetId = null
+                                            updateView(result)
+                                        }
                                     } else if (selectedAbility == null && selectedPos != null && (isMove || isCapture)) {
                                         submitMove(selectedPos, square)
                                     } else if (square == selectedPos) clearSelection()
                                     else if (own) {
-                                        selectedId = piece?.id(); selectedAbility = null; moveError = null
+                                        selectedId = piece?.id(); selectedAbility = null; selectedBorrowed = false; displacementTargetId = null; moveError = null
                                     } else clearSelection()
                                 })
                         }
@@ -141,13 +186,25 @@ fun ChessBoard(game: Game, onNewGame: () -> Unit = {}) {
                 ('a'..'h').forEach { CoordinateText(it.toString()) }
                 Spacer(Modifier.size(60.dp))
             }
-            Text("Белые: ${if (clock.isEnabled) formatTime(clock.whiteMillis) else "без часов"}",
+            Text("Белые: ${if (clock.isEnabled) formatTime(clock.whiteMillis) else "без часов"}${goldLabel(FigureColor.WHITE)}",
                 Modifier.padding(start = 60.dp, top = 8.dp), fontSize = 22.sp, fontWeight = FontWeight.Bold,
                 color = if (!outcome.isFinished && snapshot.active() == FigureColor.WHITE) Color(0xFF2E7D32) else Color.Black)
         }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
-            Text(if (moba) "Moba Chess • Пудж-Ладья" else "Обычные шахматы", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(if (moba) "Moba Chess" else "Обычные шахматы", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            snapshot.draft()?.let { Button(onClick = { showDraft = true }) { Text("Пики и баны") } }
+            scenario?.let {
+                Text(it.getTitle(), fontWeight = FontWeight.Bold, color = Color(0xFF6A5ACD))
+                Text(it.getInstructions(), fontSize = 13.sp)
+                Text("Без часов • ${it.getSettingsLabel()}",
+                    fontSize = 12.sp, color = Color.Gray)
+                Row {
+                    Button(onClick = onRestart) { Text("Заново") }
+                    Spacer(Modifier.width(8.dp))
+                    Button(onClick = onNewGame) { Text("К списку") }
+                }
+            }
             if (outcome.isFinished) {
                 Text(outcome.message, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 Button(onClick = onNewGame) { Text("Новая партия") }
@@ -186,21 +243,40 @@ fun ChessBoard(game: Game, onNewGame: () -> Unit = {}) {
                     Spacer(Modifier.height(8.dp))
                     Text(if (selected.hero() == HeroType.NONE) selected.type().simpleName else selected.hero().getName(),
                         fontWeight = FontWeight.Bold)
-                    if (selected.hero() == HeroType.PUDGE_ROOK) {
-                        val hookReady = game.getAbilityAvailability(selectedPos, Ability.HOOK)
-                        val ultReady = game.getAbilityAvailability(selectedPos, Ability.SWALLOW)
-                        Text("Хук: ${if (selected.cooldown() == 0) "готов" else "КД ${selected.cooldown()}"} • радиус 3", fontSize = 13.sp)
-                        Text("Ульта: ${selected.ultimateCharge()} / ${snapshot.pudgeRules().ultimateCaptures()} • радиус 1", fontSize = 13.sp)
+                    if (selected.isBlinded) Text("Ослепление: ${selected.blindTurns()} ход владельца. Взятия недоступны.", fontSize = 12.sp, color = Color(0xFFC65D00))
+                    if (selected.hero() == HeroType.BABA_YAGA_PAWN) {
+                        val origin = snapshot.summons().records()[selected.id()]!!
+                        val remaining = if (origin.bornTurn() == snapshot.turn().number() && selected.color() == snapshot.active())
+                            snapshot.heroRules().izba().lifetimeTurns().toLong()
+                            else ((origin.transformsAfterTurn() - snapshot.turn().number()) / 2 + 1).coerceAtLeast(1)
+                        Text("Станет Избой: осталось завершить своих ходов — $remaining", fontSize = 13.sp)
+                    }
+                    if (selected.hero() != HeroType.NONE && selected.hero() != HeroType.BABA_YAGA_PAWN && selected.hero() != HeroType.IZBA_ROOK && selected.hero() != HeroType.GINSENG_BISHOP) {
+                        val pudge = selected.hero() == HeroType.PUDGE_ROOK
+                        val lume = selected.hero() == HeroType.LUMESHARD_BISHOP
+                        val crow = selected.hero() == HeroType.BOUNTY_CROW_PAWN
+                        val skill = if (pudge) Ability.HOOK else if (lume) Ability.LASER else if (crow) Ability.BOUNTY else Ability.MUD
+                        val ult = if (pudge) Ability.SWALLOW else if (lume) Ability.TELEPORT else if (crow) Ability.STEAL else Ability.AMBUSH
+                        val skillName = if (pudge) "Хук" else if (lume) "Лазер" else if (crow) "Награда" else "Грязь"
+                        val ultName = if (pudge) "Проглотить" else if (lume) "Телепорт" else if (crow) "Украсть" else "Засада"
+                        val skillReady = game.getAbilityAvailability(selectedPos, skill)
+                        val ultReady = game.getAbilityAvailability(selectedPos, ult)
+                        val threshold = if (pudge) snapshot.pudgeRules().ultimateCaptures() else if (lume) snapshot.lumeshardRules().ultimateCaptures() else if (crow) snapshot.crowRules().ultimateCaptures() else snapshot.bolotnikRules().ultimateCaptures()
+                        Text("$skillName: ${if (selected.cooldown() == 0) "готов" else "КД ${selected.cooldown()}"} • ${if (pudge || lume) "радиус 3" else if (crow) "вся доска, +1,5 золота" else "радиус 4"}", fontSize = 13.sp)
+                        Text("Ульта: ${if (threshold == 0) "без заряда" else "${selected.ultimateCharge()} / $threshold"} • ${if (pudge) "радиус 1 вокруг" else if (lume) "свободная клетка своего цвета" else if (crow) "украсть до 2 золота" else "клетка и соседи слева/справа"}", fontSize = 13.sp)
+                        if (lume) Text("Исходный цвет: ${if (selected.startingColor() == SquareColor.DARK) "чёрный" else "белый"}", fontSize = 13.sp)
+                        if (crow) Text("Пассивка: +0,5 золота за собственное взятие", fontSize = 13.sp)
+                        if (!pudge && !lume && !crow) Text("Враг входит в болото — Bolotnik выходит и берёт его", fontSize = 12.sp)
                         selected.storedPieceId()?.let { passenger ->
                             Text("Внутри: ${snapshot.pieces()[passenger]?.type()?.simpleName}", color = Color(0xFF6A5ACD))
                         }
                         Row {
-                            Button(enabled = hookReady.isSuccess, onClick = { chooseAbility(Ability.HOOK) }) { Text("Хук") }
+                            Button(enabled = skillReady.isSuccess, onClick = { chooseAbility(skill) }) { Text(skillName) }
                             Spacer(Modifier.width(8.dp))
-                            Button(enabled = ultReady.isSuccess, onClick = { chooseAbility(Ability.SWALLOW) }) { Text("Проглотить") }
+                            Button(enabled = ultReady.isSuccess, onClick = { if (ult == Ability.STEAL || ult == Ability.AMBUSH) { selectedAbility = null; updateView(game.useAbility(currentPlayer, selectedPos, null, ult)) } else chooseAbility(ult) }) { Text(ultName) }
                         }
                         if (selectedAbility != null) Text("Выберите подсвеченную цель", color = Color(0xFF6A5ACD))
-                        if (!hookReady.isSuccess && hookReady != MoveResult.ABILITY_ALREADY_USED) Text(hookReady.message, fontSize = 12.sp, color = Color.Gray)
+                        if (!skillReady.isSuccess && skillReady != MoveResult.ABILITY_ALREADY_USED) Text(skillReady.message, fontSize = 12.sp, color = Color.Gray)
                         if (!ultReady.isSuccess && ultReady != MoveResult.ABILITY_ALREADY_USED) Text(ultReady.message, fontSize = 12.sp, color = Color.Gray)
                     }
                     Row {
@@ -211,7 +287,44 @@ fun ChessBoard(game: Game, onNewGame: () -> Unit = {}) {
                             }
                         }
                     }
-                } else if (moba) Text("Выберите свою фигуру. Пуджи отмечены буквой П.", fontSize = 13.sp, color = Color.Gray)
+                } else if (moba) Text("Выберите свою фигуру. Пудж — П, Lumeshard — L, Crow — C, Bolotnik — Б.", fontSize = 13.sp, color = Color.Gray)
+            }
+            val hidden = snapshot.pieces().values.filter { it.status() == PieceState.Status.HIDDEN_BOG }
+            if (hidden.isNotEmpty()) Text("В болоте: " + hidden.joinToString { if (it.color() == FigureColor.WHITE) if (it.hero() == HeroType.GINSENG_BISHOP) "белый Ginseng" else "белый Bolotnik" else if (it.hero() == HeroType.GINSENG_BISHOP) "чёрный Ginseng" else "чёрный Bolotnik" } + ". Выход только при срабатывании.", fontSize = 12.sp, color = Color(0xFF275D38))
+            if (moba && selected?.hero() == HeroType.IZBA_ROOK) {
+                Text("Пассивка: при взятии призовёт Бабу-ягу на свободную клетку рядом", fontSize = 13.sp)
+                Text("Ульта: ${selected.ultimateCharge()} / ${snapshot.heroRules().izba().ultimateCaptures()}", fontSize = 13.sp)
+                val ready=game.getAbilityAvailability(selectedPos,Ability.SUMMON_YAGA)
+                Button(enabled=ready.isSuccess,onClick={clearSelection();updateView(game.useAbility(currentPlayer,selectedPos,null,Ability.SUMMON_YAGA))}) { Text("Призвать Бабу-ягу") }
+                if(!ready.isSuccess)Text(ready.message,fontSize=12.sp,color=Color.Gray)
+            }
+            if (moba && selected?.hero() == HeroType.GINSENG_BISHOP) {
+                val normal = game.getAbilityAvailability(selectedPos, Ability.DISPLACE)
+                val ultimate = game.getAbilityAvailability(selectedPos, Ability.COPY_SPELL)
+                Text("Сдвиг: радиус 3 • КД ${selected.cooldown()} • новая клетка рядом с целью", fontSize = 13.sp)
+                Text("Ульта: ${selected.ultimateCharge()} / ${snapshot.heroRules().ginseng().ultimateCaptures()} • последняя активная способность цели", fontSize = 13.sp)
+                Row {
+                    Button(enabled = normal.isSuccess, onClick = { chooseAbility(Ability.DISPLACE) }) { Text("Переместить фигуру") }
+                    Spacer(Modifier.width(8.dp))
+                    Button(enabled = ultimate.isSuccess, onClick = { chooseAbility(Ability.COPY_SPELL) }) { Text("Копировать последнее") }
+                }
+                val copy = snapshot.spells().borrowed()[selected.id()]
+                if (copy != null) {
+                    val ready = game.getAbilityAvailability(selectedPos, copy.ability(), true)
+                    Text("Копия: ${copy.ability().displayName} • одно применение", fontSize = 13.sp)
+                    Button(enabled = ready.isSuccess, onClick = {
+                        if (copy.ability() in listOf(Ability.STEAL, Ability.AMBUSH, Ability.SUMMON_YAGA)) {
+                            val request = AbilityRequest(selectedPos, copy.ability(), null, null, true)
+                            clearSelection(); updateView(game.useAbility(currentPlayer, request))
+                        } else chooseAbility(copy.ability(), true)
+                    }) { Text("Использовать: ${copy.ability().displayName}") }
+                    if (!ready.isSuccess) Text(ready.message, fontSize = 12.sp, color = Color.Gray)
+                } else Text("Украденной способности нет", fontSize = 12.sp, color = Color.Gray)
+                if (selectedAbility == Ability.DISPLACE) {
+                    Text(if (displaced == null) "Выберите подсвеченную фигуру" else "Выберите свободную клетку рядом с выбранной фигурой", fontSize = 13.sp)
+                    if (displaced != null) Button(onClick = { displacementTargetId = null }) { Text("Выбрать другую цель") }
+                }
+                if (selectedAbility == Ability.COPY_SPELL) Text("Выберите героя: скопируется последняя успешно применённая им способность", fontSize = 13.sp)
             }
             moveError?.let { Text(it, color = Color.Red) }
             Spacer(Modifier.height(8.dp))
@@ -223,7 +336,25 @@ fun ChessBoard(game: Game, onNewGame: () -> Unit = {}) {
                 MoveHistoryColumn("Белые", whiteHistory)
                 MoveHistoryColumn("Чёрные", blackHistory)
             }
+            if (onSave != null && onLoad != null) {
+                Row {
+                    Button(enabled = pendingPromotion == null, onClick = onSave) { Text("Сохранить") }
+                    Spacer(Modifier.width(8.dp))
+                    Button(onClick = onLoad) { Text("Загрузить") }
+                }
+                fileMessage?.let { Text(it, fontSize = 12.sp) }
+            }
         }
+    }
+    if (showDraft) snapshot.draft()?.let { initial ->
+        AlertDialog(onDismissRequest = { showDraft = false }, title = { Text("Исходные пики и баны") },
+            text = { Column {
+                Text("Баны: " + initial.bans().joinToString { it.getName() })
+                for (side in listOf(FigureColor.WHITE, FigureColor.BLACK)) {
+                    Text(if (side == FigureColor.WHITE) "Белые" else "Чёрные", fontWeight = FontWeight.Bold)
+                    Text(initial.picksFor(side).joinToString { "${it.hero().getName()} — ${'a' + it.square().column}${it.square().row + 1}" }.ifEmpty { "Обычные фигуры" })
+                }
+            } }, confirmButton = { Button(onClick = { showDraft = false }) { Text("Закрыть") } })
     }
     pendingPromotion?.let { pending ->
         AlertDialog(onDismissRequest = { pendingPromotion = null; claimWithMove = false },

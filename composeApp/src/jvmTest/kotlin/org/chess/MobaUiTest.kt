@@ -1,5 +1,6 @@
 package org.chess
 
+
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,9 +10,9 @@ import androidx.compose.ui.use
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerButton
-import game.Game
-import game.PudgeRules
-import game.PieceState
+import game.core.Game
+import game.heroes.pudge.PudgeRules
+import game.state.PieceState
 import model.Position
 import model.FigureColor
 import org.junit.Assert.*

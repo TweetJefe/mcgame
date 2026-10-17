@@ -1,5 +1,5 @@
 package org.chess
 
 enum class ChessScreen {
-    MENU, GAME
+    MENU, DRAFT, SCENARIOS, LUMESHARD_SCENARIOS, CROW_SCENARIOS, BOLOTNIK_SCENARIOS, GAME
 }

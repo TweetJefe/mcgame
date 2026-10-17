@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<moba-chess abilityUsed="true" active="WHITE" drawOffer="NONE" formatVersion="1" halfmoveClock="0" mode="MOBA" moveUsed="false" stateVersion="1" turn="1">
+  <rules hookCooldown="0" hookDiagonals="true" swallowDiagonals="true" ultimateCaptures="0"/>
+  <castling blackKingSide="false" blackQueenSide="false" whiteKingSide="false" whiteQueenSide="false"/>
+  <clock active="WHITE" blackNanos="0" enabled="false" running="false" whiteNanos="0"/>
+  <outcome reason="IN_PROGRESS" winner="NONE"/>
+  <pieces>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="33" square="e1" status="BOARD" type="Rook" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="34" square="h1" status="BOARD" type="King" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="PUDGE_ROOK" id="35" square="b2" status="BOARD" type="Rook" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="36" square="c2" status="BOARD" type="Knight" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="37" square="e8" status="BOARD" type="King" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+  </pieces>
+  <repetitions>
+    <position count="1" key="....R..K.R..n...............................................k...|WHITE|CastlingRights[whiteKingSide=false, whiteQueenSide=false, blackKingSide=false, blackQueenSide=false]"/>
+  </repetitions>
+  <moves/>
+  <events>
+    <event actorId="35" color="WHITE" from="b2" kind="HOOK" message="Пудж: хук e2 → c2" sequence="1" targetId="36" to="e2" turn="1"/>
+  </events>
+  <whiteCaptures points="0"/>
+  <blackCaptures points="0"/>
+</moba-chess>

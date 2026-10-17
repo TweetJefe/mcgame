@@ -1,6 +1,11 @@
 package rules.standard;
 
-import game.*;
+import game.moves.AvailableMoves;
+import rules.moba.TerrainGeometry;
+import game.moves.MoveResult;
+import game.moves.Promotion;
+import game.state.CastlingRights;
+
 import model.Field;
 import model.Figure;
 import model.FigureColor;
@@ -11,6 +16,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /** All previews use a virtual map and detached figures, never live positions or move caches. */
 public final class MoveValidator {
@@ -18,6 +24,21 @@ public final class MoveValidator {
 
     public static MoveResult validate(Field field, FigureColor color, Position from, Position to,
                                       CastlingRights rights, Position enPassant, Promotion promotion) {
+        return validate(field, color, from, to, rights, enPassant, promotion, Set.of());
+    }
+    public static MoveResult validate(Field field, FigureColor color, Position from, Position to,
+                                      CastlingRights rights, Position enPassant, Promotion promotion, Set<Position> blinded) {
+        return validate(field, color, from, to, rights, enPassant, promotion, blinded, Set.of(), true);
+    }
+    /** Moba resolves captures/reactions before its final king-safety test. */
+    public static MoveResult validate(Field field, FigureColor color, Position from, Position to,
+                                      CastlingRights rights, Position enPassant, Promotion promotion,
+                                      Set<Position> blinded, Set<Position> mud, boolean finalKingSafety) {
+        return validate(field, color, from, to, rights, enPassant, promotion, blinded, mud, mud, finalKingSafety);
+    }
+    public static MoveResult validate(Field field, FigureColor color, Position from, Position to,
+                                      CastlingRights rights, Position enPassant, Promotion promotion,
+                                      Set<Position> blinded, Set<Position> mud, Set<Position> attackMud, boolean finalKingSafety) {
         if (!inside(field, from) || !inside(field, to)) return MoveResult.OUT_OF_BOUNDS;
         if (from.equals(to)) return MoveResult.SAME_SQUARE;
         Figure figure = field.getFigureByPosition(from);
@@ -32,22 +53,25 @@ public final class MoveValidator {
         if (!candidates.getCanMove().contains(to) && !candidates.getCanAttack().contains(to)) {
             return MoveResult.ILLEGAL_MOVEMENT;
         }
+        if (TerrainGeometry.blocks(from, to, figure.getClass(), mud)) return MoveResult.MUD_BLOCKED;
+        if (figure instanceof King && mud.contains(to)) return MoveResult.KING_IMMUNE;
+        if (isCastling(figure, from, to) && TerrainGeometry.blocksRay(rookSource(from, to), rookDestination(from, to), mud)) return MoveResult.MUD_BLOCKED;
         boolean promotes = isPromotion(figure, to, field.getSize());
         if (promotes && promotion == null) return MoveResult.PROMOTION_REQUIRED;
         if (!promotes && promotion != null) return MoveResult.INVALID_PROMOTION;
 
         if (isCastling(figure, from, to)) {
             Map<Position, Figure> board = field.getGameField();
-            MoveResult initialSafety = kingSafety(board, color);
+            MoveResult initialSafety = kingSafety(board, color, blinded, attackMud);
             if (!initialSafety.isSuccess()) return initialSafety;
             Position transit = new Position(from.getRow(), from.getColumn() + Integer.signum(to.getColumn() - from.getColumn()));
             Map<Position, Figure> through = new HashMap<>(board);
             through.remove(from);
             through.put(transit, figure);
-            MoveResult transitSafety = kingSafety(through, color);
+            MoveResult transitSafety = kingSafety(through, color, blinded, attackMud);
             if (!transitSafety.isSuccess()) return transitSafety;
         }
-        return kingSafety(afterMove(field, from, to, enPassant, promotion), color);
+        return finalKingSafety ? kingSafety(afterMove(field, from, to, enPassant, promotion), color, blinded, attackMud) : MoveResult.SUCCESS;
     }
 
     public static AvailableMoves candidates(Field field, Figure figure, CastlingRights rights, Position enPassant) {
@@ -152,7 +176,19 @@ public final class MoveValidator {
 
     public static boolean isInCheck(Map<Position, Figure> board, FigureColor color) { return kingSafety(board, color) == MoveResult.KING_IN_CHECK; }
 
+    public static boolean isInCheck(Map<Position, Figure> board, FigureColor color, Set<Position> blinded) {
+        return kingSafety(board, color, blinded) == MoveResult.KING_IN_CHECK;
+    }
+    public static boolean isInCheck(Map<Position, Figure> board, FigureColor color, Set<Position> blinded, Set<Position> mud) {
+        return kingSafety(board, color, blinded, mud) == MoveResult.KING_IN_CHECK;
+    }
     private static MoveResult kingSafety(Map<Position, Figure> board, FigureColor color) {
+        return kingSafety(board, color, Set.of());
+    }
+    private static MoveResult kingSafety(Map<Position, Figure> board, FigureColor color, Set<Position> blinded) {
+        return kingSafety(board, color, blinded, Set.of());
+    }
+    private static MoveResult kingSafety(Map<Position, Figure> board, FigureColor color, Set<Position> blinded, Set<Position> mud) {
         Position king = null;
         for (var entry : board.entrySet()) {
             if (entry.getValue() instanceof King && entry.getValue().getColor() == color) {
@@ -161,20 +197,21 @@ public final class MoveValidator {
             }
         }
         if (king == null) return MoveResult.INVALID_BOARD;
-        return isSquareAttacked(board, king, opposite(color)) ? MoveResult.KING_IN_CHECK : MoveResult.SUCCESS;
+        return isSquareAttacked(board, king, opposite(color), blinded, mud) ? MoveResult.KING_IN_CHECK : MoveResult.SUCCESS;
     }
 
     /** Empty pawn diagonals and attacks of pinned pieces are included. */
-    private static boolean isSquareAttacked(Map<Position, Figure> board, Position square, FigureColor attacker) {
+    private static boolean isSquareAttacked(Map<Position, Figure> board, Position square, FigureColor attacker, Set<Position> blinded, Set<Position> mud) {
         for (var entry : board.entrySet()) {
             Figure figure = entry.getValue();
-            if (figure.getColor() != attacker) continue;
+            if (figure.getColor() != attacker || blinded.contains(entry.getKey())) continue;
             Position source = entry.getKey();
             int rowDelta = square.getRow() - source.getRow();
             int columnDelta = square.getColumn() - source.getColumn();
             int rows = Math.abs(rowDelta);
             int columns = Math.abs(columnDelta);
             if (rows == 0 && columns == 0) continue;
+            if (TerrainGeometry.blocks(source, square, figure.getClass(), mud)) continue;
             if (figure instanceof Pawn) {
                 if (rowDelta == (attacker == FigureColor.WHITE ? 1 : -1) && columns == 1) return true;
             } else if (figure instanceof Knight) {

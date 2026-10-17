@@ -1,6 +1,7 @@
 package rules.standard;
 
-import game.CastlingRights;
+import game.state.CastlingRights;
+
 import model.*;
 import model.figures.*;
 import java.util.Map;
@@ -38,7 +39,7 @@ public final class PositionValidator {
         }
         for (int side = 0; side < 2; side++) {
             require(kings[side] == 1, "Each side must have exactly one king");
-            require(pawns[side] <= 8 && pieces[side] <= 16, "Too many pieces or pawns for one side");
+            require(!classic || (pawns[side] <= 8 && pieces[side] <= 16), "Too many pieces or pawns for one side");
             int promotions = Math.max(0, counts[side][0] - 1) + Math.max(0, counts[side][1] - 2)
                     + Math.max(0, counts[side][2] - 2) + Math.max(0, counts[side][3] - 1) + Math.max(0, counts[side][4] - 1);
             require(!classic || promotions <= 8 - pawns[side], "Extra pieces require missing pawns for promotion");
@@ -48,6 +49,12 @@ public final class PositionValidator {
     }
 
     public static void validateState(Field field, FigureColor turn, CastlingRights rights, Position ep, int halfmoveClock) {
+        validateState(field, turn, rights, ep, halfmoveClock, true);
+    }
+
+    /** Moba snapshots can be taken after giving check but before handing over the turn. */
+    public static void validateState(Field field, FigureColor turn, CastlingRights rights, Position ep, int halfmoveClock,
+                                     boolean validatePreviousMove) {
         require(field != null, "Field is required");
         require(turn == FigureColor.WHITE || turn == FigureColor.BLACK, "Side to move must be WHITE or BLACK");
         require(rights != null, "Castling rights are required");
@@ -61,7 +68,7 @@ public final class PositionValidator {
                         "Castling right requires a same-color home king and rook");
             }
         }
-        require(!MoveValidator.isInCheck(board, MoveValidator.opposite(turn)), "The side that just moved cannot be in check");
+        require(!validatePreviousMove || !MoveValidator.isInCheck(board, MoveValidator.opposite(turn)), "The side that just moved cannot be in check");
         if (ep != null) {
             int targetRow = turn == FigureColor.WHITE ? 5 : 2;
             require(inside(ep) && ep.getRow() == targetRow, "Invalid en passant target rank");
@@ -75,7 +82,7 @@ public final class PositionValidator {
             // Reconstruct the preceding board to ensure the double move did not start after a check against the other king.
             var before = new java.util.HashMap<>(board);
             before.put(origin, before.remove(pawnSquare));
-            require(!MoveValidator.isInCheck(before, turn), "En passant metadata implies an illegal preceding position");
+            require(!validatePreviousMove || !MoveValidator.isInCheck(before, turn), "En passant metadata implies an illegal preceding position");
         }
     }
 
