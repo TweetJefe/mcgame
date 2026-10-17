@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<moba-chess abilityUsed="false" active="BLACK" drawOffer="NONE" enPassant="e3" formatVersion="1" halfmoveClock="0" mode="CLASSIC" moveUsed="false" stateVersion="1" turn="2">
+  <rules hookCooldown="0" hookDiagonals="true" swallowDiagonals="false" ultimateCaptures="0"/>
+  <castling blackKingSide="true" blackQueenSide="true" whiteKingSide="true" whiteQueenSide="true"/>
+  <clock active="BLACK" blackNanos="0" enabled="false" running="false" whiteNanos="0"/>
+  <outcome reason="IN_PROGRESS" winner="NONE"/>
+  <pieces>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="1" square="a1" status="BOARD" type="Rook" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="2" square="b1" status="BOARD" type="Knight" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="3" square="c1" status="BOARD" type="Bishop" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="4" square="d1" status="BOARD" type="Queen" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="5" square="e1" status="BOARD" type="King" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="6" square="f1" status="BOARD" type="Bishop" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="7" square="g1" status="BOARD" type="Knight" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="8" square="h1" status="BOARD" type="Rook" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="9" square="a2" status="BOARD" type="Pawn" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="10" square="b2" status="BOARD" type="Pawn" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="11" square="c2" status="BOARD" type="Pawn" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="12" square="d2" status="BOARD" type="Pawn" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="13" square="e4" status="BOARD" type="Pawn" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="14" square="f2" status="BOARD" type="Pawn" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="15" square="g2" status="BOARD" type="Pawn" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="16" square="h2" status="BOARD" type="Pawn" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="17" square="a7" status="BOARD" type="Pawn" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="18" square="b7" status="BOARD" type="Pawn" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="19" square="c7" status="BOARD" type="Pawn" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="20" square="d7" status="BOARD" type="Pawn" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="21" square="e7" status="BOARD" type="Pawn" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="22" square="f7" status="BOARD" type="Pawn" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="23" square="g7" status="BOARD" type="Pawn" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="24" square="h7" status="BOARD" type="Pawn" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="25" square="a8" status="BOARD" type="Rook" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="26" square="b8" status="BOARD" type="Knight" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="27" square="c8" status="BOARD" type="Bishop" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="28" square="d8" status="BOARD" type="Queen" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="29" square="e8" status="BOARD" type="King" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="30" square="f8" status="BOARD" type="Bishop" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="31" square="g8" status="BOARD" type="Knight" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="32" square="h8" status="BOARD" type="Rook" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+  </pieces>
+  <repetitions>
+    <position count="1" key="RNBQKBNRPPPP.PPP............P...................pppppppprnbqkbnr|BLACK|CastlingRights[whiteKingSide=true, whiteQueenSide=true, blackKingSide=true, blackQueenSide=true]"/>
+    <position count="1" key="RNBQKBNRPPPPPPPP................................pppppppprnbqkbnr|WHITE|CastlingRights[whiteKingSide=true, whiteQueenSide=true, blackKingSide=true, blackQueenSide=true]"/>
+  </repetitions>
+  <moves>
+    <move color="WHITE" figure="Pawn" from="e2" kind="NORMAL" ply="1" to="e4">
+      <clock active="BLACK" blackNanos="0" enabled="false" running="false" whiteNanos="0"/>
+    </move>
+  </moves>
+  <events>
+    <event actorId="13" color="WHITE" from="e2" kind="MOVE" message="Pawn: (2, e) -&gt; (4, e)" sequence="1" to="e4" turn="1"/>
+  </events>
+  <whiteCaptures points="0"/>
+  <blackCaptures points="0"/>
+</moba-chess>

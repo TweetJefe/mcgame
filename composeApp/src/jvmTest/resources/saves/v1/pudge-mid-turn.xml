@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<moba-chess abilityUsed="true" active="WHITE" drawOffer="NONE" formatVersion="1" halfmoveClock="1" mode="MOBA" moveUsed="true" stateVersion="3" turn="1">
+  <rules hookCooldown="0" hookDiagonals="true" swallowDiagonals="true" ultimateCaptures="0"/>
+  <castling blackKingSide="false" blackQueenSide="false" whiteKingSide="false" whiteQueenSide="false"/>
+  <clock active="WHITE" blackNanos="60000000000" enabled="true" running="true" whiteNanos="59876543211"/>
+  <outcome reason="IN_PROGRESS" winner="NONE"/>
+  <pieces>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="33" square="a1" status="BOARD" type="King" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="PUDGE_ROOK" id="34" square="f2" status="BOARD" storedPieceId="35" type="Rook" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="35" status="SWALLOWED" type="Knight" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="36" square="f8" status="BOARD" type="Rook" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="37" square="h8" status="BOARD" type="King" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+  </pieces>
+  <repetitions>
+    <position count="1" key="K...........R......N.........................................r.k|WHITE|CastlingRights[whiteKingSide=false, whiteQueenSide=false, blackKingSide=false, blackQueenSide=false]"/>
+  </repetitions>
+  <moves>
+    <move color="WHITE" figure="Пудж-Ладья" from="e2" kind="NORMAL" ply="1" to="f2">
+      <clock active="WHITE" blackNanos="60000000000" enabled="true" running="true" whiteNanos="60000000000"/>
+    </move>
+  </moves>
+  <events>
+    <event actorId="34" color="WHITE" from="e2" kind="SWALLOW" message="Пудж: проглотил Knight на d3" sequence="1" targetId="35" to="d3" turn="1"/>
+    <event actorId="34" color="WHITE" from="e2" kind="MOVE" message="Пудж-Ладья: (2, e) -&gt; (2, f)" sequence="2" to="f2" turn="1"/>
+  </events>
+  <whiteCaptures points="0"/>
+  <blackCaptures points="0"/>
+</moba-chess>

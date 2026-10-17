@@ -31,7 +31,11 @@ fun CellView(
     isAttackTarget: Boolean,
     onClick: () -> Unit,
     heroLabel: String? = null,
-    isAbilityTarget: Boolean = false
+    isAbilityTarget: Boolean = false,
+    isBlinded: Boolean = false,
+    isBountyMarked: Boolean = false,
+    isMud: Boolean = false,
+    isAmbush: Boolean = false
 ) {
     val isDark = (x + y) % 2 == 0
     val baseColor = if (isDark) Color(0xFF769656) else Color(0xFFEEEED2)
@@ -53,6 +57,11 @@ fun CellView(
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
+        if (isMud) {
+            Box(Modifier.fillMaxSize().background(Color(0xFF275D38).copy(alpha = 0.65f)))
+            Text(if (isAmbush) "≈●" else "≈", fontSize = 15.sp, color = Color(0xFFD4E9A6),
+                modifier = Modifier.align(Alignment.BottomStart).padding(start = 3.dp))
+        }
         // Рисуем слой подсветки
         Box(Modifier.fillMaxSize().background(overlayColor))
 
@@ -72,6 +81,10 @@ fun CellView(
                 Text(label, color = Color.White, fontSize = 12.sp,
                     modifier = Modifier.align(Alignment.BottomEnd).background(Color(0xFF6A5ACD)).padding(horizontal = 3.dp))
             }
+            if (isBountyMarked) Text("+1,5", color = Color.Black, fontSize = 11.sp,
+                modifier = Modifier.align(Alignment.TopEnd).background(Color(0xFFFFD54F)).padding(horizontal = 2.dp))
+            if (isBlinded) Text("Осл", color = Color.White, fontSize = 11.sp,
+                modifier = Modifier.align(Alignment.TopStart).background(Color(0xFFC65D00)).padding(horizontal = 2.dp))
         } else if (isMoveTarget) {
             // Если клетка пустая, но туда можно сходить — рисуем маленькую точку
             Box(

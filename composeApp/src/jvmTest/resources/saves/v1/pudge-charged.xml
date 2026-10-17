@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<moba-chess abilityUsed="false" active="WHITE" drawOffer="NONE" formatVersion="1" halfmoveClock="0" mode="MOBA" moveUsed="true" stateVersion="5" turn="3">
+  <rules hookCooldown="0" hookDiagonals="true" swallowDiagonals="true" ultimateCaptures="2"/>
+  <castling blackKingSide="false" blackQueenSide="false" whiteKingSide="false" whiteQueenSide="false"/>
+  <clock active="WHITE" blackNanos="0" enabled="false" running="false" whiteNanos="0"/>
+  <outcome reason="IN_PROGRESS" winner="NONE"/>
+  <pieces>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="33" square="a1" status="BOARD" type="King" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="PUDGE_ROOK" id="34" square="f3" status="BOARD" type="Rook" ultimateCharge="2">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="35" status="CAPTURED" type="Pawn" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="36" status="CAPTURED" type="Pawn" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="WHITE" cooldown="0" hero="NONE" id="37" square="g4" status="BOARD" type="Knight" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+    <piece color="BLACK" cooldown="0" hero="NONE" id="38" square="g8" status="BOARD" type="King" ultimateCharge="0">
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+      <slot charges="0" cooldown="0"/>
+    </piece>
+  </pieces>
+  <repetitions>
+    <position count="1" key="K...................Rp........N................................k|BLACK|CastlingRights[whiteKingSide=false, whiteQueenSide=false, blackKingSide=false, blackQueenSide=false]"/>
+    <position count="1" key="K...................Rp........N...............................k.|WHITE|CastlingRights[whiteKingSide=false, whiteQueenSide=false, blackKingSide=false, blackQueenSide=false]"/>
+    <position count="1" key="K...........R.......pp........N................................k|WHITE|CastlingRights[whiteKingSide=false, whiteQueenSide=false, blackKingSide=false, blackQueenSide=false]"/>
+  </repetitions>
+  <moves>
+    <move captureSquare="e3" capturedFigure="Pawn" color="WHITE" figure="Пудж-Ладья" from="e2" kind="CAPTURE" ply="1" to="e3">
+      <clock active="WHITE" blackNanos="0" enabled="false" running="false" whiteNanos="0"/>
+    </move>
+    <move color="BLACK" figure="King" from="h8" kind="NORMAL" ply="2" to="g8">
+      <clock active="BLACK" blackNanos="0" enabled="false" running="false" whiteNanos="0"/>
+    </move>
+    <move captureSquare="f3" capturedFigure="Pawn" color="WHITE" figure="Пудж-Ладья" from="e3" kind="CAPTURE" ply="3" to="f3">
+      <clock active="WHITE" blackNanos="0" enabled="false" running="false" whiteNanos="0"/>
+    </move>
+  </moves>
+  <events>
+    <event actorId="34" color="WHITE" from="e2" kind="MOVE" message="Пудж-Ладья: (2, e) -&gt; (3, e)" sequence="1" targetId="35" to="e3" turn="1"/>
+    <event color="WHITE" kind="END_TURN" message="Ход завершён" sequence="2" turn="1"/>
+    <event actorId="38" color="BLACK" from="h8" kind="MOVE" message="King: (8, h) -&gt; (8, g)" sequence="3" to="g8" turn="2"/>
+    <event color="BLACK" kind="END_TURN" message="Ход завершён" sequence="4" turn="2"/>
+    <event actorId="34" color="WHITE" from="e3" kind="MOVE" message="Пудж-Ладья: (3, e) -&gt; (3, f)" sequence="5" targetId="36" to="f3" turn="3"/>
+  </events>
+  <whiteCaptures points="2">
+    <figure color="BLACK" square="e3" type="Pawn"/>
+    <figure color="BLACK" square="f3" type="Pawn"/>
+  </whiteCaptures>
+  <blackCaptures points="0"/>
+</moba-chess>
