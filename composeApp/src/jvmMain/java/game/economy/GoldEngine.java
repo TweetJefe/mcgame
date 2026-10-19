@@ -15,6 +15,7 @@ public final class GoldEngine {
         if (!economy.enabled()) return economy;
         var next = economy;
         for (Capture capture : captures) {
+            if(!capture.rewarded())continue;
             // A pawn can promote and be counter-captured within the same atomic action.
             PieceState victim = after.get(capture.victimId());
             PieceState actor = after.get(capture.actorId());

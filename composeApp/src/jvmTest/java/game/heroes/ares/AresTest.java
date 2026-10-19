@@ -112,7 +112,7 @@ public class AresTest {
     }
     @Test public void aresIsEighthDraftHeroAndCanReplaceEitherBishop()throws Exception {
         for(String square:List.of("c1","f1")){
-            Draft d=new Draft();assertEquals(5,d.getSnapshot().rules().catalogVersion());assertEquals(8,HeroCatalog.heroes().size());d.ban(WHITE,HeroType.PUDGE_ROOK);d.ban(BLACK,HeroType.IZBA_ROOK);assertEquals(DraftActionResult.SUCCESS,d.pick(WHITE,HeroType.ARES_BISHOP,pos(square)));d.finishPicks(BLACK);d.finishPicks(WHITE);Game g=Game.mobaFromDraft(d.getSnapshot(),HeroRules.prototype(),600,()->0L);assertEquals(HeroType.ARES_BISHOP,g.getPieceState(pos(square)).hero());roundtrip(g);
+            Draft d=new Draft();assertEquals(10,d.getSnapshot().rules().catalogVersion());assertEquals(13,HeroCatalog.heroes().size());d.ban(WHITE,HeroType.PUDGE_ROOK);d.ban(BLACK,HeroType.IZBA_ROOK);assertEquals(DraftActionResult.SUCCESS,d.pick(WHITE,HeroType.ARES_BISHOP,pos(square)));d.finishPicks(BLACK);d.finishPicks(WHITE);Game g=Game.mobaFromDraft(d.getSnapshot(),HeroRules.prototype(),600,()->0L);assertEquals(HeroType.ARES_BISHOP,g.getPieceState(pos(square)).hero());roundtrip(g);
         }
         Game sandbox=Game.mobaHeroesSandbox(600);assertEquals(HeroType.ARES_BISHOP,sandbox.getPieceState(pos("d2")).hero());assertEquals(HeroType.ARES_BISHOP,sandbox.getPieceState(pos("d7")).hero());roundtrip(sandbox);
     }

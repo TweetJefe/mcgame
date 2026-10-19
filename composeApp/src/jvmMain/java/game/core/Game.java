@@ -1,5 +1,8 @@
 package game.core;
 
+import game.heroes.clownganger.*;
+import game.heroes.zeus.*;
+import game.heroes.moleminer.*;
 import game.heroes.Ability;
 import game.heroes.AbilityRequest;
 import game.heroes.ginseng.*;
@@ -59,6 +62,9 @@ public final class Game {
     private SummonState summons=SummonState.empty();
     private SpellState spells=SpellState.empty();
     private FaunState faun=FaunState.empty();
+    private ClownState clown=ClownState.empty();
+    private MineState mines=MineState.empty();
+    private LightningState lightning=LightningState.empty();
     private Map<Long, PieceState> pieces = Map.of();
     private Field pieceStateField;
     private long nextPieceId = 1, version, turnNumber = 1;
@@ -150,7 +156,7 @@ public final class Game {
         Game game = new Game(8, saved.mode(), time, saved.heroRules());
         game.gameField = saved.mode() == GameMode.MOBA ? Field.fromMobaPosition(saved.field().getGameField())
                 : Field.fromPosition(saved.field().getGameField());
-        game.pieces = saved.pieces(); game.pieceStateField = game.gameField; game.economy = saved.economy(); game.terrain = saved.terrain(); game.draft = saved.draft(); game.summons=saved.summons(); game.spells=saved.spells(); game.faun=saved.faun();
+        game.pieces = saved.pieces(); game.pieceStateField = game.gameField; game.economy = saved.economy(); game.terrain = saved.terrain(); game.draft = saved.draft(); game.summons=saved.summons(); game.spells=saved.spells(); game.faun=saved.faun(); game.clown=saved.clown();game.mines=saved.mines();game.lightning=saved.lightning();
         game.nextPieceId = saved.pieces().keySet().stream().mapToLong(Long::longValue).max().orElse(0L) + 1;
         game.version = saved.version(); game.turnNumber = saved.turn().number();
         game.moveUsed = saved.turn().moveUsed(); game.abilityUsed = saved.turn().abilityUsed();
@@ -207,7 +213,7 @@ public final class Game {
     public synchronized MoveResult moveFigure(Player player, Position from, Position to, Promotion promotion) {
         MoveResult guard = commandGuard(player);
         if (!guard.isSuccess()) return guard;
-        if (mode == GameMode.MOBA && moveUsed) return MoveResult.MOVE_ALREADY_USED;
+        if (mode == GameMode.MOBA && moveUsed && (getPieceState(from)==null || !clown.canMove(getPieceState(from).id(),turnNumber,true,pieces))) return MoveResult.MOVE_ALREADY_USED;
         ensurePieces();
         ActionEngine.Context before = context();
         from = copy(from); to = copy(to);
@@ -225,7 +231,7 @@ public final class Game {
         if (moves.isEmpty() && events.isEmpty()) {
             repetitions.clear(); repetitions.put(getPositionKey(), 1);
         }
-        publish(preview);
+        publish(preview);if(mode==GameMode.CLASSIC)clown=clown.move(actor.id(),actingTurn);
         halfmoveClock = figure instanceof Pawn || !preview.captures().isEmpty() ? 0 : halfmoveClock + 1;
         if (drawOffer != null && drawOffer != player) drawOffer = null;
         if (mode == GameMode.CLASSIC) {
@@ -239,6 +245,8 @@ public final class Game {
                 moves.size() + 1, clock.snapshot());
         player.recordMove(made); moves.add(made);
         addEvent(GameEvent.Kind.MOVE, player.color(), actor.id(), firstCapture == null ? null : firstCapture.victimId(), from, to, made.toString(), actingTurn);
+        var illusion=before.at(to);
+        if(illusion!=null && illusion.hero()==HeroType.ILLUSION)addEvent(GameEvent.Kind.ILLUSION_HIT,player.color(),actor.id(),illusion.id(),from,to,"Попытка взять иллюзию: фигура вернулась назад");
         addActionEffects(before,preview);
         version++;
         return MoveResult.SUCCESS;
@@ -266,10 +274,20 @@ public final class Game {
         if (!preview.captures().isEmpty()) halfmoveClock = 0;
         if (drawOffer != null && drawOffer != player) drawOffer = null;
         String message = switch (ability) {
+            case YARN -> "Kikimora: пряжа на "+cell(target);
+            case CLAY_POT -> "Kikimora: глиняный горшок на "+cell(target);
+            case GRAPPLE -> "Chronomlin: притяжение к "+cell(target);
+            case EVOLVE -> "Chronomlin: улучшение фигуры";
+            case CHAIN_LIGHTNING -> "Zeus: цепная молния на "+cell(target);
+            case THUNDERSTORM -> "Zeus: разряд по заряженной цели";
+            case PLANT_MINE -> "Moleminer: заложил мину";
+            case DETONATE -> "Moleminer: прыжок и взрыв на "+cell(target);
+            case BOX -> "Clownganger: коробка на "+cell(target);
+            case ILLUSION -> "Clownganger: двойник на "+cell(target);
             case SPEAR -> "Ares: копьё в направлении "+cell(target);
             case CLOUD -> "Faun: туча с центром "+cell(target);
             case INVISIBILITY -> "Faun: стал невидимым";
-            case COPY_SPELL -> "Ginseng: скопировал "+before.spells().lastUsed().get(victim.id()).getDisplayName()+" у "+victim.hero().getName();
+            case COPY_SPELL -> victim.hero()==HeroType.ILLUSION?"Ginseng: потратил ульту на пустышку":"Ginseng: скопировал "+before.spells().lastUsed().get(victim.id()).getDisplayName()+" у "+victim.hero().getName();
             case DISPLACE -> "Ginseng: сдвиг "+cell(target)+" → "+cell(request.destination());
             case SUMMON_YAGA -> "Изба: призвала Бабу-ягу";
             case HOOK -> "Пудж: хук " + cell(target) + " → " + cell(pieces.get(victim.id()).position());
@@ -282,8 +300,8 @@ public final class Game {
             case STEAL -> "Bounty Crow: украл " + GoldRules.format(economy.history().getLast().totalHalves()) + " золота";
         };
         if(request.borrowed())message="Ginseng, копия: "+message;
-        Position eventTo=ability==Ability.DISPLACE?request.destination():(ability==Ability.STEAL || ability==Ability.AMBUSH || ability==Ability.SUMMON_YAGA || ability==Ability.INVISIBILITY)?actorSquare:target;
-        events.add(new GameEvent(events.size()+1L,turnNumber,GameEvent.Kind.valueOf(ability.name()),player.color(),actor.id(),victim==null || ability==Ability.CLOUD || ability==Ability.SPEAR?null:victim.id(),actorSquare,eventTo,message,
+        Position eventTo=ability==Ability.ILLUSION?clown.illusions().values().stream().filter(i->i.sourceId()==actor.id() && i.bornTurn()==turnNumber).findFirst().orElseThrow().bornAt():ability==Ability.DISPLACE?request.destination():(ability==Ability.STEAL || ability==Ability.AMBUSH || ability==Ability.SUMMON_YAGA || ability==Ability.INVISIBILITY || ability==Ability.PLANT_MINE || ability==Ability.THUNDERSTORM || ability==Ability.EVOLVE)?actorSquare:target;
+        events.add(new GameEvent(events.size()+1L,turnNumber,GameEvent.Kind.valueOf(ability.name()),player.color(),actor.id(),ability==Ability.ILLUSION?clown.illusions().values().stream().filter(i->i.sourceId()==actor.id() && i.bornTurn()==turnNumber).findFirst().map(i->Long.valueOf(i.id())).orElseThrow():victim==null || ability==Ability.CLOUD || ability==Ability.SPEAR || ability==Ability.PLANT_MINE || ability==Ability.DETONATE || ability==Ability.THUNDERSTORM || ability==Ability.EVOLVE?null:victim.id(),actorSquare,eventTo,message,
                 ability==Ability.COPY_SPELL?before.spells().lastUsed().get(victim.id()):null,request.borrowed()));
         addActionEffects(before,preview);
         version++;
@@ -297,6 +315,8 @@ public final class Game {
         if (!moveUsed) return MoveResult.MOVE_REQUIRED;
         if (!ActionEngine.canEnd(context(), player.color())) return MoveResult.KING_IN_CHECK;
         var before=context();
+        pieces=clown.clean(pieces,turnNumber);
+        pieces=AttackRules.expireStuns(pieces,turnNumber);
         var matured=SummonResolver.mature(pieces,summons,turnNumber,player.color(),terrain);
         pieces=matured.pieces();summons=matured.summons();
         var board=new HashMap<Position,Figure>();
@@ -306,9 +326,11 @@ public final class Game {
         addSummonChanges(before,context());
         terrain = terrain.expire(turnNumber);
         faun = faun.expire(turnNumber);
+        lightning=lightning.expire(turnNumber).clean(pieces);
         pieces = AttackRules.expireStuns(pieces,turnNumber);
         expireBlindness(player.color());
         economy = economy.expire(turnNumber);
+        for(var p:pieces.values())if(p.isRemoved())economy=economy.removeMark(p.id());
         addEvent(GameEvent.Kind.END_TURN, player.color(), null, null, null, null, "Ход завершён");
         if (drawOffer != null && drawOffer != player) drawOffer = null;
         advanceTurn(); repetitions.merge(getPositionKey(), 1, Integer::sum); evaluateOutcome(); version++;
@@ -361,7 +383,7 @@ public final class Game {
     public synchronized FaunState getFaun() { return faun; }
     public synchronized AvailableMoves getLegalMoves(Position from) {
         updateTime();
-        if (outcome.isFinished() || (mode == GameMode.MOBA && moveUsed)) return new AvailableMoves(List.of(), List.of());
+        if (outcome.isFinished() || (mode == GameMode.MOBA && moveUsed && (getPieceState(from)==null || !clown.canMove(getPieceState(from).id(),turnNumber,true,pieces)))) return new AvailableMoves(List.of(), List.of());
         return legalMoves(copy(from), currentPlayer.color());
     }
 
@@ -575,12 +597,13 @@ public final class Game {
     }
     private ActionEngine.Context context() {
         ensurePieces();
-        return new ActionEngine.Context(gameField, pieces, castlingRights, enPassantTarget, economy, turnNumber, terrain,summons,spells,faun);
+        return new ActionEngine.Context(gameField, pieces, castlingRights, enPassantTarget, economy, turnNumber, terrain,summons,spells,faun,clown,mines,lightning);
     }
     private void publish(ActionEngine.Preview preview) {
         gameField = preview.next().field(); pieces = preview.next().pieces(); pieceStateField = gameField;
-        castlingRights = preview.next().rights(); enPassantTarget = preview.next().ep(); economy = preview.next().economy(); terrain = preview.next().terrain(); summons=preview.next().summons(); spells=preview.next().spells(); faun=preview.next().faun();
+        castlingRights = preview.next().rights(); enPassantTarget = preview.next().ep(); economy = preview.next().economy(); terrain = preview.next().terrain(); summons=preview.next().summons(); spells=preview.next().spells(); faun=preview.next().faun();clown=preview.next().clown();mines=preview.next().mines();lightning=preview.next().lightning();
         for (var capture : preview.captures()) {
+            if(!capture.rewarded())continue;
             Player credited = capture.creditedSide() == FigureColor.WHITE ? whitePlayer : blackPlayer;
             credited.recordCapture(capture.victim());
         }
@@ -604,19 +627,28 @@ public final class Game {
     }
     public static Game mobaHeroesSandbox(int seconds) {
         var base=HeroRules.sandbox();
-        Game g=mobaPrototype(new HeroRules(base.pudge(),base.lumeshard(),base.crow(),base.gold(),base.bolotnik(),game.heroes.izba.IzbaRules.sandbox(),GinsengRules.sandbox(),FaunRules.sandbox(),AresRules.sandbox()),seconds);
+        Game g=mobaPrototype(new HeroRules(base.pudge(),base.lumeshard(),base.crow(),base.gold(),base.bolotnik(),game.heroes.izba.IzbaRules.sandbox(),GinsengRules.sandbox(),FaunRules.sandbox(),AresRules.sandbox(),ClowngangerRules.sandbox(),MoleminerRules.sandbox(),ZeusRules.sandbox(),game.heroes.chronomlin.ChronomlinRules.sandbox(),game.heroes.kikimora.KikimoraRules.sandbox()),seconds);
         var sandboxBoard=new HashMap<>(g.gameField.getGameField());
         for(Position p:List.of(new Position(1,3),new Position(6,3)))sandboxBoard.put(p,g.gameField.createFigure(Bishop.class,p,p.getRow()==1?FigureColor.WHITE:FigureColor.BLACK));
+        for(Position p:List.of(new Position(1,2),new Position(6,2)))sandboxBoard.put(p,g.gameField.createFigure(Knight.class,p,p.getRow()==1?FigureColor.WHITE:FigureColor.BLACK));
+        sandboxBoard.put(new Position(1,4),g.gameField.createFigure(Rook.class,new Position(1,4),FigureColor.WHITE));
+        sandboxBoard.put(new Position(1,6),g.gameField.createFigure(Bishop.class,new Position(1,6),FigureColor.WHITE));
         g.gameField=Field.fromMobaPosition(sandboxBoard);
         var heroes=new HashMap<Position,HeroType>();for(PieceState p:g.pieces.values())if(p.hero()!=HeroType.NONE)heroes.put(p.position(),p.hero());
+        heroes.put(new Position(1,6),HeroType.KIKIMORA_BISHOP);
+        heroes.put(new Position(1,5),HeroType.CHRONOMLIN_PAWN);
+        heroes.put(new Position(1,4),HeroType.ZEUS_ROOK);
+        heroes.put(new Position(1,0),HeroType.MOLEMINER_PAWN);heroes.put(new Position(6,0),HeroType.MOLEMINER_PAWN);
+        heroes.put(new Position(1,2),HeroType.CLOWNGANGER_KNIGHT);heroes.put(new Position(6,2),HeroType.CLOWNGANGER_KNIGHT);
         heroes.put(new Position(1,3),HeroType.ARES_BISHOP);heroes.put(new Position(6,3),HeroType.ARES_BISHOP);
         heroes.put(new Position(0,1),HeroType.FAUN_KNIGHT);heroes.put(new Position(7,1),HeroType.FAUN_KNIGHT);
         heroes.put(new Position(0,5),HeroType.GINSENG_BISHOP);heroes.put(new Position(7,5),HeroType.GINSENG_BISHOP);
         heroes.put(new Position(0,7),HeroType.IZBA_ROOK);heroes.put(new Position(7,7),HeroType.IZBA_ROOK);g.rebuildPieces(heroes);return g;
     }
     private void rebuildPieces(Map<Position, HeroType> heroes) {
-        if(heroes.containsValue(HeroType.BABA_YAGA_PAWN))throw new IllegalArgumentException("Baba Yaga can only be summoned");
-        if((heroes.containsValue(HeroType.IZBA_ROOK) || heroes.containsValue(HeroType.GINSENG_BISHOP)) && !summons.enabled())summons=SummonState.initial(java.util.concurrent.ThreadLocalRandom.current().nextLong());
+        if(heroes.values().stream().filter(h->h==HeroType.ZEUS_ROOK).count()>1)throw new IllegalArgumentException("Only one Zeus per match");
+        if(heroes.containsValue(HeroType.BABA_YAGA_PAWN) || heroes.containsValue(HeroType.ILLUSION))throw new IllegalArgumentException("Baba Yaga can only be summoned");
+        if((heroes.containsValue(HeroType.IZBA_ROOK) || heroes.containsValue(HeroType.GINSENG_BISHOP) || heroes.containsValue(HeroType.CLOWNGANGER_KNIGHT) || heroes.containsValue(HeroType.MOLEMINER_PAWN) || heroes.containsValue(HeroType.ZEUS_ROOK)) && !summons.enabled())summons=SummonState.initial(java.util.concurrent.ThreadLocalRandom.current().nextLong());
         for (var entry : heroes.entrySet()) {
             Figure piece = gameField.getFigureByPosition(entry.getKey());
             if (entry.getValue() == null || piece == null || !entry.getValue().supports(piece.getClass()))
@@ -660,6 +692,37 @@ public final class Game {
     }
     private void addActionEffects(ActionEngine.Context before,ActionEngine.Preview preview) {
         var after=preview.next();addSummonChanges(before,after);
+        for(var pulse:after.lightning().pulses().subList(before.lightning().pulses().size(),after.lightning().pulses().size())){
+            var source=after.pieces().get(pulse.casterId());var oldSource=before.pieces().get(pulse.casterId());
+            var kind=switch(pulse.kind()){case HIT->GameEvent.Kind.LIGHTNING_HIT;case RESET->GameEvent.Kind.LIGHTNING_RESET;case DISCHARGE->GameEvent.Kind.LIGHTNING_DISCHARGE;};
+            addEvent(kind,source.color(),source.id(),pulse.targetId(),oldSource.position(),pulse.square(),switch(pulse.kind()){case HIT->"Заряд молнии на "+cell(pulse.square());case RESET->"Заряды применившего молнию героя сброшены";case DISCHARGE->"Разряд не уничтожил иллюзию";});
+        }
+        for(var t:after.mines().triggers().subList(before.mines().triggers().size(),after.mines().triggers().size())){
+            var owner=after.pieces().get(t.ownerId());addEvent(GameEvent.Kind.MINE_TRIGGER,owner.color(),owner.id(),t.victimId(),t.square(),t.square(),"Мина взорвалась на "+cell(t.square()));
+        }
+        for(var b:after.mines().blasts().subList(before.mines().blasts().size(),after.mines().blasts().size())){
+            var owner=after.pieces().get(b.ownerId());addEvent(GameEvent.Kind.BLAST_AREA,owner.color(),owner.id(),owner.id(),b.corner(),b.end(),"Область взрыва: "+cell(b.corner())+" — "+cell(b.end()));
+        }
+        for(var i:after.clown().illusions().values()){
+            var old=before.clown().illusions().get(i.id());
+            if(i.extended() && (old==null || !old.extended()) && events.stream().noneMatch(e->e.turn()==turnNumber && e.kind()==GameEvent.Kind.ILLUSION_HIT && java.util.Objects.equals(e.targetId(),i.id()))){
+                var p=after.pieces().get(i.id());var previous=before.pieces().get(i.id());
+                Position square=p.position()!=null?p.position():previous!=null && previous.position()!=null?previous.position():i.bornAt();
+                var trap=after.terrain().cells().get(square);if(trap==null)trap=before.terrain().cells().get(square);
+                if(trap==null){
+                    Long bomber=after.mines().triggers().stream().skip(before.mines().triggers().size()).filter(t->t.victimId()==i.id()).map(MineState.Trigger::ownerId).findFirst().orElse(null);
+                    if(bomber==null)bomber=after.mines().blasts().stream().skip(before.mines().blasts().size()).filter(b->b.contains(square)).map(MineState.Blast::ownerId).findFirst().orElse(null);
+                    if(bomber==null)bomber=after.lightning().pulses().stream().skip(before.lightning().pulses().size()).filter(t->t.kind()==LightningState.Kind.DISCHARGE && t.targetId()==i.id()).map(LightningState.Pulse::casterId).findFirst().orElse(null);
+                    if(bomber!=null){var attacker=after.pieces().get(bomber);addEvent(GameEvent.Kind.ILLUSION_HIT,attacker.color(),bomber,i.id(),square,square,"Воздействие не уничтожило иллюзию; срок продлён");}
+                }
+                if(trap!=null){var attacker=after.pieces().get(trap.ownerId());addEvent(GameEvent.Kind.ILLUSION_HIT,attacker.color(),attacker.id(),i.id(),attacker.position()==null?square:attacker.position(),square,"Болото не взяло иллюзию; её срок продлён");}
+            }
+        }
+        var yarnEvent=events.isEmpty()?null:events.getLast().kind()==GameEvent.Kind.YARN?events.getLast():null;
+        if(yarnEvent!=null){
+            var actor=before.pieces().get(yarnEvent.actorId());var target=before.pieces().get(yarnEvent.targetId());
+            for(var p:game.heroes.kikimora.KikimoraAbilities.yarnTargets(before.pieces(),actor,target))addEvent(GameEvent.Kind.YARN_STUN,actor.color(),actor.id(),p.id(),actor.position(),p.position(),"Пряжа оглушила фигуру на "+cell(p.position()));
+        }
         Long spearActor=events.isEmpty()?null:events.getLast().kind()==GameEvent.Kind.SPEAR?events.getLast().actorId():null;
         if(spearActor!=null)for(PieceState p:after.pieces().values().stream().sorted(java.util.Comparator.comparingLong(PieceState::id)).toList()) {
             var old=before.pieces().get(p.id());
@@ -672,9 +735,9 @@ public final class Game {
         for(var capture:preview.captures())if(capture.reaction()) {
             // A fresh pawn can die in mud during its creation action; its birth must precede that capture in the journal.
             for(var birth:births)if(birth.id()==capture.victimId() && logged.add(birth.id()))addBirth(after,birth);
-            addEvent(capture.cause()==Capture.Cause.ARES?GameEvent.Kind.ARES_REVENGE:capture.cause()==Capture.Cause.BOG?GameEvent.Kind.BOG_CAPTURE:GameEvent.Kind.COUNTER_CAPTURE,
+            addEvent(capture.cause()==Capture.Cause.LIGHTNING?GameEvent.Kind.LIGHTNING_CAPTURE:capture.cause()==Capture.Cause.MINE?GameEvent.Kind.MINE_CAPTURE:capture.cause()==Capture.Cause.BLAST?(capture.rewarded()?GameEvent.Kind.BLAST_CAPTURE:GameEvent.Kind.BLAST_DEATH):capture.cause()==Capture.Cause.ARES?GameEvent.Kind.ARES_REVENGE:capture.cause()==Capture.Cause.BOG?GameEvent.Kind.BOG_CAPTURE:GameEvent.Kind.COUNTER_CAPTURE,
                     capture.creditedSide(),capture.actorId(),capture.victimId(),capture.square(),capture.square(),
-                    (capture.cause()==Capture.Cause.ARES?"Ares забрал с собой ":capture.cause()==Capture.Cause.BOG?"Bolotnik из болота взял ":"Союзник из Пуджа взял ")+capture.victim().getName()+" на "+cell(capture.square()));
+                    (capture.cause()==Capture.Cause.LIGHTNING?"Молния уничтожила ":capture.cause()==Capture.Cause.MINE?"Мина взяла ":capture.cause()==Capture.Cause.BLAST?"Взрыв уничтожил ":capture.cause()==Capture.Cause.ARES?"Ares забрал с собой ":capture.cause()==Capture.Cause.BOG?"Bolotnik из болота взял ":"Союзник из Пуджа взял ")+capture.victim().getName()+" на "+cell(capture.square()));
         }
         for(var birth:births)if(logged.add(birth.id()))addBirth(after,birth);
     }
@@ -690,7 +753,7 @@ public final class Game {
         return new GameSnapshot(version, mode, gameField, pieces, getTurnState(), currentPlayer.color(), castlingRights,
                 enPassantTarget, halfmoveClock, repetitions, clock.snapshot(), outcome, moves, events,
                 whitePlayer.getPoints(), blackPlayer.getPoints(), whitePlayer.getAttackedFigures(), blackPlayer.getAttackedFigures(),
-                drawOffer == null ? FigureColor.NONE : drawOffer.color(), heroRules, economy, terrain, draft, summons,spells,faun);
+                drawOffer == null ? FigureColor.NONE : drawOffer.color(), heroRules, economy, terrain, draft, summons,spells,faun,clown,mines,lightning);
     }
     public synchronized TurnState getTurnState() { return new TurnState(turnNumber, moveUsed, abilityUsed); }
     public synchronized PieceState getPieceState(Position square) { return context().at(square); }

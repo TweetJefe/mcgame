@@ -3,12 +3,19 @@ package game.moves;
 
 /** Rejected requests preserve chess state; elapsed thinking time still counts. */
 public enum MoveResult {
+    POTTED("Горшок — неуязвимое препятствие; его можно только передвинуть способностью"),
+    NO_SUMMON_SPACE("Для призыва нет свободного или заменяемого места"),
+    MAX_EVOLUTION("Достигнута последняя ступень улучшения"),
+    NO_GRAPPLE_MOVEMENT("Фигура уже стоит рядом; притягиваться некуда"),
     MUD_BLOCKED("Путь перекрыт вражеским болотом"),
     TERRAIN_OCCUPIED("Клетка уже занята другим болотом"),
     NO_TURN_CONTINUATION("После действия нельзя безопасно завершить ход"),
     ECONOMY_DISABLED("В этой партии экономика отключена"),
     NO_GOLD_TO_STEAL("У соперника нет золота для кражи"),
+    BOXED("Фигура защищена коробкой"),
+    ILLUSION_CANNOT_CAPTURE("Иллюзия не может брать фигуры"),
     STUNNED("Фигура оглушена и не может действовать"),
+    NO_CHARGED_TARGETS("У этого героя нет доступных заряженных врагов"),
     SILENCED("Внутри тучи нельзя применять скиллы и ульты"),
     TARGET_INVISIBLE("Вражеская фигура невидима"),
     NO_USED_ABILITY("Цель ещё не применяла активных способностей"),
@@ -28,7 +35,7 @@ public enum MoveResult {
     ALREADY_SWALLOWED("В Пудже уже находится союзная фигура"),
     INVALID_ABILITY_TARGET("Недопустимая цель способности"),
     ABILITY_OUT_OF_RANGE("Цель вне направления или радиуса способности"),
-    ABILITY_BLOCKED("Хук перекрыт другой фигурой"),
+    ABILITY_BLOCKED("Путь способности перекрыт другой фигурой"),
     NO_MOVE_AFTER_ABILITY("После способности нет допустимого обязательного перемещения"),
     KING_IMMUNE("Король невосприимчив к способностям"),
     INVALID_ITEM_SLOT("У фигуры только три слота предметов"),

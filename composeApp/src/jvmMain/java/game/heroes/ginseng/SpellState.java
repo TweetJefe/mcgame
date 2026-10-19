@@ -15,8 +15,8 @@ public record SpellState(Map<Long,Ability> lastUsed,Map<Long,BorrowedAbility> bo
             if(stored==null || stored.ability()!=ability || !stored.isReady(turn))throw new IllegalArgumentException("Borrowed cast without a ready copy");
         }
         if(ability==Ability.COPY_SPELL) {
-            if(source==null || copied==null || last.get(source)!=copied)throw new IllegalArgumentException("Copy differs from target's latest active cast");
-            copies.put(actor,new BorrowedAbility(copied,source,turn));
+            if(source==null || last.get(source)!=copied)throw new IllegalArgumentException("Copy differs from target's latest active cast");
+            if(copied==null)copies.remove(actor);else copies.put(actor,new BorrowedAbility(copied,source,turn));
         } else if(copied!=null)throw new IllegalArgumentException("Unexpected copied ability");
         last.put(actor,ability);return new SpellState(last,copies);
     }

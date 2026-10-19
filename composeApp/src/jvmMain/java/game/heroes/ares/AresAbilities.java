@@ -38,13 +38,13 @@ public final class AresAbilities {
             Position cell=new Position(actor.position().getRow()+rowStep*n,actor.position().getColumn()+colStep*n);if(!inside(cell))break;
             PieceState hit=at(pieces,cell);
             if(carried==null) {
-                if(hit!=null && hit.type()==King.class)break;
+                if(hit!=null && (hit.type()==King.class || hit.isBoxed()))break;
                 if(hit!=null){carried=hit;landing=cell;}
             } else if(hit!=null) {
-                if(hit.type()!=King.class) {
+                if(hit.type()!=King.class && !hit.isBoxed() && !hit.isPotted()) {
                     long until=Math.addExact(turn,1L);
                     updates.put(hit.id(),hit.withStun(Math.max(hit.stunnedThroughTurn(),until)));
-                    carried=carried.withStun(Math.max(carried.stunnedThroughTurn(),until));
+                    if(!carried.isPotted())carried=carried.withStun(Math.max(carried.stunnedThroughTurn(),until));
                 }
                 break;
             } else {
@@ -57,7 +57,7 @@ public final class AresAbilities {
         return HeroEffect.success(updates);
     }
     public static PieceState afterCapture(PieceState actor,AresRules rules){return actor.withAbilityState(actor.cooldown(),Math.min(rules.revengeCaptures(),actor.ultimateCharge()+1),null);}
-    public static boolean armed(PieceState actor,AresRules rules){return actor.hero()==HeroType.ARES_BISHOP && actor.ultimateCharge()>=rules.revengeCaptures();}
+    public static boolean armed(PieceState actor,AresRules rules){return !actor.isPotted() && actor.hero()==HeroType.ARES_BISHOP && actor.ultimateCharge()>=rules.revengeCaptures();}
     private static PieceState at(Map<Long,PieceState> pieces,Position p){return pieces.values().stream().filter(s->p.equals(s.position())).findFirst().orElse(null);}
     private static boolean inside(Position p){return p.getRow()>=0 && p.getRow()<8 && p.getColumn()>=0 && p.getColumn()<8;}
 }

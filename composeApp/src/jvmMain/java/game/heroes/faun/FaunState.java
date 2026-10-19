@@ -21,7 +21,7 @@ public record FaunState(List<Cloud> clouds,Map<Long,Invisibility> invisible) {
     }
     public FaunState afterCaptures(List<Capture> captures,Map<Long,PieceState> pieces) {
         var next=new HashMap<>(invisible);for(Capture c:captures)next.remove(c.actorId());
-        next.keySet().removeIf(id->!pieces.containsKey(id) || pieces.get(id).isRemoved());return new FaunState(clouds,next);
+        next.keySet().removeIf(id->!pieces.containsKey(id) || pieces.get(id).isRemoved() || pieces.get(id).isPotted());return new FaunState(clouds,next);
     }
     public FaunState expire(long turn) {
         var next=new HashMap<>(invisible);next.values().removeIf(i->i.expiresAfterTurn()<=turn);
@@ -38,9 +38,9 @@ public record FaunState(List<Cloud> clouds,Map<Long,Invisibility> invisible) {
                 state=state.cast(e.actorId(),a,e.to(),e.turn(),rules);
             }
             else if(e.kind()==GameEvent.Kind.END_TURN)state=state.expire(e.turn());
-            if((e.kind()==GameEvent.Kind.MOVE || e.kind()==GameEvent.Kind.COUNTER_CAPTURE || e.kind()==GameEvent.Kind.BOG_CAPTURE || e.kind()==GameEvent.Kind.ARES_REVENGE) && e.targetId()!=null) {
+            if((e.kind()==GameEvent.Kind.MOVE || e.kind()==GameEvent.Kind.COUNTER_CAPTURE || e.kind()==GameEvent.Kind.BOG_CAPTURE || e.kind()==GameEvent.Kind.ARES_REVENGE || e.kind()==GameEvent.Kind.MINE_CAPTURE || (e.kind()==GameEvent.Kind.BLAST_CAPTURE || e.kind()==GameEvent.Kind.LIGHTNING_CAPTURE) || e.kind()==GameEvent.Kind.BLAST_DEATH) && e.targetId()!=null) {
                 var next=new HashMap<>(state.invisible());next.remove(e.actorId());next.remove(e.targetId());state=new FaunState(state.clouds(),next);
-            } else if(e.kind()==GameEvent.Kind.REPLACE) {
+            } else if(e.kind()==GameEvent.Kind.REPLACE || e.kind()==GameEvent.Kind.CLAY_POT) {
                 var next=new HashMap<>(state.invisible());next.remove(e.targetId());state=new FaunState(state.clouds(),next);
             }
         }

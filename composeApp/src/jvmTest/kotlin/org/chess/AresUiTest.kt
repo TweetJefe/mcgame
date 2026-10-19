@@ -30,7 +30,7 @@ class AresUiTest {
     }
     @Test fun eighthHeroCanBeScrolledIntoViewAndPickedWhileButtonsStayVisible() {
         SwingUtilities.invokeAndWait {
-            val draft=Draft();draft.ban(model.FigureColor.WHITE,HeroType.PUDGE_ROOK);draft.ban(model.FigureColor.BLACK,HeroType.IZBA_ROOK)
+            val draft=Draft(DraftRules(1,6,5));draft.ban(model.FigureColor.WHITE,HeroType.PUDGE_ROOK);draft.ban(model.FigureColor.BLACK,HeroType.IZBA_ROOK)
             ImageComposeScene(1200,800){MaterialTheme{DraftScreen(draft,{}, {})}}.use {
                 save(it,"ares-catalog")
                 it.sendPointerEvent(PointerEventType.Scroll,Offset(300f,500f),scrollDelta=Offset(0f,4f))

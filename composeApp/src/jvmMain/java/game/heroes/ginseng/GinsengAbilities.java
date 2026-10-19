@@ -37,7 +37,7 @@ public final class GinsengAbilities {
         MoveResult ready=availability(actor,Ability.COPY_SPELL,rules,borrowed);
         if(!ready.isSuccess())return HeroEffect.rejected(ready);
         if(source==null || source.hero()==HeroType.NONE || source.type()==King.class)return HeroEffect.rejected(MoveResult.INVALID_ABILITY_TARGET);
-        if(last==null)return HeroEffect.rejected(MoveResult.NO_USED_ABILITY);
+        if(last==null && source.hero()!=HeroType.ILLUSION)return HeroEffect.rejected(MoveResult.NO_USED_ABILITY);
         return HeroEffect.success(Map.of(actor.id(),actor.withAbilityState(actor.cooldown(),
                 borrowed?actor.ultimateCharge():actor.ultimateCharge()-rules.ultimateCaptures(),actor.storedPieceId())));
     }

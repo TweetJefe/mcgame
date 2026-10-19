@@ -14,8 +14,9 @@ public final class TerrainResolver {
     public record Placement(MoveResult result, TerrainState terrain, List<Long> immediateEntries) {
         public Placement { immediateEntries = List.copyOf(immediateEntries); }
     }
-    public record Result(MoveResult result, Map<Long, PieceState> pieces, TerrainState terrain, List<Capture> captures) {
-        public Result { pieces = Map.copyOf(pieces); captures = List.copyOf(captures); }
+    public record Result(MoveResult result, Map<Long, PieceState> pieces, TerrainState terrain, List<Capture> captures, List<Long> illusionHits) {
+        public Result(MoveResult result,Map<Long,PieceState> pieces,TerrainState terrain,List<Capture> captures){this(result,pieces,terrain,captures,List.of());}
+        public Result { pieces = Map.copyOf(pieces); captures = List.copyOf(captures); illusionHits=List.copyOf(illusionHits); }
     }
     public static Placement place(TerrainState terrain, Map<Long, PieceState> before, PieceState actor,
                                   Position square, Ability ability, long turn, HeroRules rules) {
@@ -27,6 +28,7 @@ public final class TerrainResolver {
             footprint.add(new Position(actor.position().getRow(), c));
         for (Position p : footprint) {
             PieceState occupant = at(before, p);
+            if (occupant != null && occupant.isBoxed())return new Placement(MoveResult.BOXED,terrain,List.of());
             if (occupant != null && occupant.type() == King.class) return new Placement(MoveResult.KING_IMMUNE, terrain, List.of());
             MudCell old = cells.get(p);
             if (old != null && old.ownerId() != actor.id()) return new Placement(MoveResult.TERRAIN_OCCUPIED, terrain, List.of());
@@ -36,13 +38,14 @@ public final class TerrainResolver {
             cells.put(p, new MudCell(actor.id(), ability == Ability.MUD ? MudCell.Kind.MUD : MudCell.Kind.AMBUSH,
                     ability == Ability.MUD ? Math.addExact(turn, 2L*rules.bolotnik().mudTurns()) : 0));
             PieceState occupant = at(before, p);
-            if (firstEnemy == null && occupant != null && occupant.color() != actor.color()) firstEnemy = occupant.id();
+            if (firstEnemy == null && occupant != null && !occupant.isPotted() && occupant.color() != actor.color()) firstEnemy = occupant.id();
         }
         return new Placement(MoveResult.SUCCESS, new TerrainState(cells), firstEnemy == null ? List.of() : List.of(firstEnemy));
     }
     public static Result resolve(Field factory, Map<Long, PieceState> before, Map<Long, PieceState> prepared,
                                  TerrainState terrain, List<Capture> initialCaptures, List<Long> immediateEntries, HeroRules rules) {
         var states = new HashMap<>(prepared); var cells = new HashMap<>(terrain.cells());
+        var illusionHits=new ArrayList<Long>();
         var captures = new ArrayList<>(initialCaptures); var entries = new ArrayDeque<Long>(immediateEntries);
         prepared.values().stream().filter(p -> p.status() == PieceState.Status.BOARD).sorted(Comparator.comparingLong(PieceState::id))
                 .filter(p -> before.get(p.id()) == null || before.get(p.id()).status() != PieceState.Status.BOARD
@@ -55,7 +58,9 @@ public final class TerrainResolver {
             Position square = entrant.position(); MudCell trap = cells.get(square);
             if (trap == null) continue;
             PieceState owner = states.get(trap.ownerId());
-            if (owner == null || owner.isRemoved() || owner.color() == entrant.color()) continue;
+            if (entrant.isBoxed() || entrant.isPotted())continue;
+            if (owner == null || owner.isRemoved() || owner.isPotted() || owner.color() == entrant.color()) continue;
+            if(entrant.hero()==HeroType.ILLUSION){illusionHits.add(entrant.id());continue;}
             if (entrant.type() == King.class) return new Result(MoveResult.KING_IMMUNE, before, terrain, initialCaptures);
             if (++reactions > 64) return new Result(MoveResult.INVALID_BOARD, before, terrain, initialCaptures);
             boolean hidden = owner.status() == PieceState.Status.HIDDEN_BOG;
@@ -77,7 +82,7 @@ public final class TerrainResolver {
             reaction.updates().values().stream().filter(p -> p.status() == PieceState.Status.BOARD).forEach(p -> entries.add(p.id()));
         }
         removeDeadOwners(cells, states);
-        return new Result(MoveResult.SUCCESS, states, new TerrainState(cells), captures);
+        return new Result(MoveResult.SUCCESS, states, new TerrainState(cells), captures,illusionHits);
     }
     private static void removeDeadOwners(Map<Position, MudCell> cells, Map<Long, PieceState> states) {
         cells.entrySet().removeIf(e -> !states.containsKey(e.getValue().ownerId()) || states.get(e.getValue().ownerId()).isRemoved());
