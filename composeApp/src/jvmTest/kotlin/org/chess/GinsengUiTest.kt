@@ -24,7 +24,7 @@ import javax.swing.SwingUtilities
 class GinsengUiTest {
     @Test fun renderSixHeroCatalogAndGinsengControls() {
         SwingUtilities.invokeAndWait {
-            val draft=Draft()
+            val draft=Draft(game.draft.DraftRules(1,6,3))
             ImageComposeScene(1200,800) { MaterialTheme { DraftScreen(draft,{}, {}) } }.use {
                 save(it,"ginseng-catalog")
                 click(it,150f,150f);click(it,100f,649f) // Pudge banned by white.

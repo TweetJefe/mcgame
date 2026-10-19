@@ -3,6 +3,8 @@ package game.core;
 import game.heroes.Ability;
 import game.heroes.AbilityRequest;
 import game.heroes.ginseng.*;
+import game.heroes.faun.*;
+import game.heroes.ares.AresRules;
 import game.summoning.*;
 import game.draft.Draft;
 import game.draft.DraftSnapshot;
@@ -56,6 +58,7 @@ public final class Game {
     private DraftSnapshot draft;
     private SummonState summons=SummonState.empty();
     private SpellState spells=SpellState.empty();
+    private FaunState faun=FaunState.empty();
     private Map<Long, PieceState> pieces = Map.of();
     private Field pieceStateField;
     private long nextPieceId = 1, version, turnNumber = 1;
@@ -147,7 +150,7 @@ public final class Game {
         Game game = new Game(8, saved.mode(), time, saved.heroRules());
         game.gameField = saved.mode() == GameMode.MOBA ? Field.fromMobaPosition(saved.field().getGameField())
                 : Field.fromPosition(saved.field().getGameField());
-        game.pieces = saved.pieces(); game.pieceStateField = game.gameField; game.economy = saved.economy(); game.terrain = saved.terrain(); game.draft = saved.draft(); game.summons=saved.summons(); game.spells=saved.spells();
+        game.pieces = saved.pieces(); game.pieceStateField = game.gameField; game.economy = saved.economy(); game.terrain = saved.terrain(); game.draft = saved.draft(); game.summons=saved.summons(); game.spells=saved.spells(); game.faun=saved.faun();
         game.nextPieceId = saved.pieces().keySet().stream().mapToLong(Long::longValue).max().orElse(0L) + 1;
         game.version = saved.version(); game.turnNumber = saved.turn().number();
         game.moveUsed = saved.turn().moveUsed(); game.abilityUsed = saved.turn().abilityUsed();
@@ -263,6 +266,9 @@ public final class Game {
         if (!preview.captures().isEmpty()) halfmoveClock = 0;
         if (drawOffer != null && drawOffer != player) drawOffer = null;
         String message = switch (ability) {
+            case SPEAR -> "Ares: копьё в направлении "+cell(target);
+            case CLOUD -> "Faun: туча с центром "+cell(target);
+            case INVISIBILITY -> "Faun: стал невидимым";
             case COPY_SPELL -> "Ginseng: скопировал "+before.spells().lastUsed().get(victim.id()).getDisplayName()+" у "+victim.hero().getName();
             case DISPLACE -> "Ginseng: сдвиг "+cell(target)+" → "+cell(request.destination());
             case SUMMON_YAGA -> "Изба: призвала Бабу-ягу";
@@ -276,8 +282,8 @@ public final class Game {
             case STEAL -> "Bounty Crow: украл " + GoldRules.format(economy.history().getLast().totalHalves()) + " золота";
         };
         if(request.borrowed())message="Ginseng, копия: "+message;
-        Position eventTo=ability==Ability.DISPLACE?request.destination():(ability==Ability.STEAL || ability==Ability.AMBUSH || ability==Ability.SUMMON_YAGA)?actorSquare:target;
-        events.add(new GameEvent(events.size()+1L,turnNumber,GameEvent.Kind.valueOf(ability.name()),player.color(),actor.id(),victim==null?null:victim.id(),actorSquare,eventTo,message,
+        Position eventTo=ability==Ability.DISPLACE?request.destination():(ability==Ability.STEAL || ability==Ability.AMBUSH || ability==Ability.SUMMON_YAGA || ability==Ability.INVISIBILITY)?actorSquare:target;
+        events.add(new GameEvent(events.size()+1L,turnNumber,GameEvent.Kind.valueOf(ability.name()),player.color(),actor.id(),victim==null || ability==Ability.CLOUD || ability==Ability.SPEAR?null:victim.id(),actorSquare,eventTo,message,
                 ability==Ability.COPY_SPELL?before.spells().lastUsed().get(victim.id()):null,request.borrowed()));
         addActionEffects(before,preview);
         version++;
@@ -299,6 +305,8 @@ public final class Game {
         gameField=Field.fromMobaPosition(board);pieceStateField=gameField;
         addSummonChanges(before,context());
         terrain = terrain.expire(turnNumber);
+        faun = faun.expire(turnNumber);
+        pieces = AttackRules.expireStuns(pieces,turnNumber);
         expireBlindness(player.color());
         economy = economy.expire(turnNumber);
         addEvent(GameEvent.Kind.END_TURN, player.color(), null, null, null, null, "Ход завершён");
@@ -350,6 +358,7 @@ public final class Game {
         return ActionEngine.abilityReady(context(),currentPlayer.color(),actorSquare,ability,heroRules,borrowed);
     }
     public synchronized SpellState getSpells() { return spells; }
+    public synchronized FaunState getFaun() { return faun; }
     public synchronized AvailableMoves getLegalMoves(Position from) {
         updateTime();
         if (outcome.isFinished() || (mode == GameMode.MOBA && moveUsed)) return new AvailableMoves(List.of(), List.of());
@@ -566,11 +575,11 @@ public final class Game {
     }
     private ActionEngine.Context context() {
         ensurePieces();
-        return new ActionEngine.Context(gameField, pieces, castlingRights, enPassantTarget, economy, turnNumber, terrain,summons,spells);
+        return new ActionEngine.Context(gameField, pieces, castlingRights, enPassantTarget, economy, turnNumber, terrain,summons,spells,faun);
     }
     private void publish(ActionEngine.Preview preview) {
         gameField = preview.next().field(); pieces = preview.next().pieces(); pieceStateField = gameField;
-        castlingRights = preview.next().rights(); enPassantTarget = preview.next().ep(); economy = preview.next().economy(); terrain = preview.next().terrain(); summons=preview.next().summons(); spells=preview.next().spells();
+        castlingRights = preview.next().rights(); enPassantTarget = preview.next().ep(); economy = preview.next().economy(); terrain = preview.next().terrain(); summons=preview.next().summons(); spells=preview.next().spells(); faun=preview.next().faun();
         for (var capture : preview.captures()) {
             Player credited = capture.creditedSide() == FigureColor.WHITE ? whitePlayer : blackPlayer;
             credited.recordCapture(capture.victim());
@@ -595,8 +604,13 @@ public final class Game {
     }
     public static Game mobaHeroesSandbox(int seconds) {
         var base=HeroRules.sandbox();
-        Game g=mobaPrototype(new HeroRules(base.pudge(),base.lumeshard(),base.crow(),base.gold(),base.bolotnik(),game.heroes.izba.IzbaRules.sandbox(),GinsengRules.sandbox()),seconds);
+        Game g=mobaPrototype(new HeroRules(base.pudge(),base.lumeshard(),base.crow(),base.gold(),base.bolotnik(),game.heroes.izba.IzbaRules.sandbox(),GinsengRules.sandbox(),FaunRules.sandbox(),AresRules.sandbox()),seconds);
+        var sandboxBoard=new HashMap<>(g.gameField.getGameField());
+        for(Position p:List.of(new Position(1,3),new Position(6,3)))sandboxBoard.put(p,g.gameField.createFigure(Bishop.class,p,p.getRow()==1?FigureColor.WHITE:FigureColor.BLACK));
+        g.gameField=Field.fromMobaPosition(sandboxBoard);
         var heroes=new HashMap<Position,HeroType>();for(PieceState p:g.pieces.values())if(p.hero()!=HeroType.NONE)heroes.put(p.position(),p.hero());
+        heroes.put(new Position(1,3),HeroType.ARES_BISHOP);heroes.put(new Position(6,3),HeroType.ARES_BISHOP);
+        heroes.put(new Position(0,1),HeroType.FAUN_KNIGHT);heroes.put(new Position(7,1),HeroType.FAUN_KNIGHT);
         heroes.put(new Position(0,5),HeroType.GINSENG_BISHOP);heroes.put(new Position(7,5),HeroType.GINSENG_BISHOP);
         heroes.put(new Position(0,7),HeroType.IZBA_ROOK);heroes.put(new Position(7,7),HeroType.IZBA_ROOK);g.rebuildPieces(heroes);return g;
     }
@@ -646,6 +660,11 @@ public final class Game {
     }
     private void addActionEffects(ActionEngine.Context before,ActionEngine.Preview preview) {
         var after=preview.next();addSummonChanges(before,after);
+        Long spearActor=events.isEmpty()?null:events.getLast().kind()==GameEvent.Kind.SPEAR?events.getLast().actorId():null;
+        if(spearActor!=null)for(PieceState p:after.pieces().values().stream().sorted(java.util.Comparator.comparingLong(PieceState::id)).toList()) {
+            var old=before.pieces().get(p.id());
+            if(p.isStunned() && old!=null && p.stunnedThroughTurn()>old.stunnedThroughTurn())addEvent(GameEvent.Kind.STUN,currentPlayer.color(),spearActor,p.id(),p.position(),p.position(),"Копьё оглушило фигуру на "+cell(p.position()));
+        }
         var births=after.summons().records().values().stream().filter(r->!before.summons().records().containsKey(r.id()))
                 .sorted(java.util.Comparator.comparingLong(SummonRecord::id)).toList();
         var logged=new java.util.HashSet<Long>();
@@ -653,9 +672,9 @@ public final class Game {
         for(var capture:preview.captures())if(capture.reaction()) {
             // A fresh pawn can die in mud during its creation action; its birth must precede that capture in the journal.
             for(var birth:births)if(birth.id()==capture.victimId() && logged.add(birth.id()))addBirth(after,birth);
-            addEvent(capture.cause()==Capture.Cause.BOG?GameEvent.Kind.BOG_CAPTURE:GameEvent.Kind.COUNTER_CAPTURE,
+            addEvent(capture.cause()==Capture.Cause.ARES?GameEvent.Kind.ARES_REVENGE:capture.cause()==Capture.Cause.BOG?GameEvent.Kind.BOG_CAPTURE:GameEvent.Kind.COUNTER_CAPTURE,
                     capture.creditedSide(),capture.actorId(),capture.victimId(),capture.square(),capture.square(),
-                    (capture.cause()==Capture.Cause.BOG?"Bolotnik из болота взял ":"Союзник из Пуджа взял ")+capture.victim().getName()+" на "+cell(capture.square()));
+                    (capture.cause()==Capture.Cause.ARES?"Ares забрал с собой ":capture.cause()==Capture.Cause.BOG?"Bolotnik из болота взял ":"Союзник из Пуджа взял ")+capture.victim().getName()+" на "+cell(capture.square()));
         }
         for(var birth:births)if(logged.add(birth.id()))addBirth(after,birth);
     }
@@ -671,7 +690,7 @@ public final class Game {
         return new GameSnapshot(version, mode, gameField, pieces, getTurnState(), currentPlayer.color(), castlingRights,
                 enPassantTarget, halfmoveClock, repetitions, clock.snapshot(), outcome, moves, events,
                 whitePlayer.getPoints(), blackPlayer.getPoints(), whitePlayer.getAttackedFigures(), blackPlayer.getAttackedFigures(),
-                drawOffer == null ? FigureColor.NONE : drawOffer.color(), heroRules, economy, terrain, draft, summons,spells);
+                drawOffer == null ? FigureColor.NONE : drawOffer.color(), heroRules, economy, terrain, draft, summons,spells,faun);
     }
     public synchronized TurnState getTurnState() { return new TurnState(turnNumber, moveUsed, abilityUsed); }
     public synchronized PieceState getPieceState(Position square) { return context().at(square); }

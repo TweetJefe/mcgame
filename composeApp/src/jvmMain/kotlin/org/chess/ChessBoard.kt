@@ -3,6 +3,7 @@ package org.chess
 import game.core.Game
 import game.economy.GoldRules
 import game.terrain.MudCell
+import game.heroes.faun.FaunView
 import game.heroes.AbilityRequest
 import game.heroes.Ability
 import game.heroes.HeroType
@@ -58,7 +59,7 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
     }
     val selectedPos = selected?.position()
     val legal = remember(snapshot.version(), selectedId, selectedAbility) {
-        if (selectedPos != null && selectedAbility == null) game.getLegalMoves(selectedPos)
+        if (selectedPos != null && selectedAbility == null) if (FaunView.hasHiddenEnemy(snapshot)) FaunView.moves(snapshot,selectedPos) else game.getLegalMoves(selectedPos)
         else AvailableMoves(emptyList(), emptyList())
     }
     val displaced = displacementTargetId?.let { snapshot.pieces()[it] }?.takeIf { it.position() != null }
@@ -134,8 +135,10 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                     for (row in 7 downTo 0) Row {
                         for (column in 0..7) {
                             val square = Position(row, column)
-                            val figure = snapshot.field().getFigureByPosition(square)
-                            val piece = snapshot.pieceAt(square)
+                            val actualPiece = snapshot.pieceAt(square)
+                            val visible = FaunView.visible(snapshot, actualPiece)
+                            val figure = if (visible) snapshot.field().getFigureByPosition(square) else null
+                            val piece = if (visible) actualPiece else null
                             val own = piece?.color() == snapshot.active()
                             val isMove = legal.canMove.contains(square)
                             val isCapture = legal.canAttack.contains(square)
@@ -145,6 +148,8 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                                     HeroType.PUDGE_ROOK -> if (piece.storedPieceId() != null) "П●" else "П"
                                     HeroType.LUMESHARD_BISHOP -> "L"
                                     HeroType.BOUNTY_CROW_PAWN -> "C"
+                                    HeroType.FAUN_KNIGHT -> "F"
+                                    HeroType.ARES_BISHOP -> if (piece.ultimateCharge() >= snapshot.heroRules().ares().revengeCaptures()) "A●" else "A"
                                     HeroType.GINSENG_BISHOP -> if (piece.storedPieceId() != null) "G●" else "G"
                                     HeroType.IZBA_ROOK -> "И"
                                         HeroType.BABA_YAGA_PAWN -> "Я"
@@ -152,6 +157,9 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                                     else -> null
                                 },
                                 isBlinded = piece?.isBlinded == true,
+                                isStunned = piece?.isStunned == true,
+                                isInvisible = piece?.let { snapshot.faun().invisible().containsKey(it.id()) } == true,
+                                isCloud = snapshot.faun().silenced(square),
                                 isMud = snapshot.terrain().cells().containsKey(square),
                                 isAmbush = snapshot.terrain().cells()[square]?.kind() == MudCell.Kind.AMBUSH,
                                 isBountyMarked = piece?.let { snapshot.economy().mark(it.id()) != null } == true,
@@ -172,7 +180,9 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                                     } else if (selectedAbility == null && selectedPos != null && (isMove || isCapture)) {
                                         submitMove(selectedPos, square)
                                     } else if (square == selectedPos) clearSelection()
-                                    else if (own) {
+                                    else if (selectedAbility == null && selectedPos != null && !own && FaunView.hasHiddenEnemy(snapshot)) {
+                                        submitMove(selectedPos,square) // Blind capture attempts use the real board.
+                                    } else if (own) {
                                         selectedId = piece?.id(); selectedAbility = null; selectedBorrowed = false; displacementTargetId = null; moveError = null
                                     } else clearSelection()
                                 })
@@ -251,7 +261,7 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                             else ((origin.transformsAfterTurn() - snapshot.turn().number()) / 2 + 1).coerceAtLeast(1)
                         Text("Станет Избой: осталось завершить своих ходов — $remaining", fontSize = 13.sp)
                     }
-                    if (selected.hero() != HeroType.NONE && selected.hero() != HeroType.BABA_YAGA_PAWN && selected.hero() != HeroType.IZBA_ROOK && selected.hero() != HeroType.GINSENG_BISHOP) {
+                    if (selected.hero() != HeroType.NONE && selected.hero() != HeroType.BABA_YAGA_PAWN && selected.hero() != HeroType.IZBA_ROOK && selected.hero() != HeroType.GINSENG_BISHOP && selected.hero() != HeroType.FAUN_KNIGHT && selected.hero() != HeroType.ARES_BISHOP) {
                         val pudge = selected.hero() == HeroType.PUDGE_ROOK
                         val lume = selected.hero() == HeroType.LUMESHARD_BISHOP
                         val crow = selected.hero() == HeroType.BOUNTY_CROW_PAWN
@@ -287,10 +297,31 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                             }
                         }
                     }
-                } else if (moba) Text("Выберите свою фигуру. Пудж — П, Lumeshard — L, Crow — C, Bolotnik — Б.", fontSize = 13.sp, color = Color.Gray)
+                } else if (moba) Text("Выберите свою фигуру. Пудж — П, Lumeshard — L, Crow — C, Bolotnik — Б, Изба — И, Ginseng — G, Faun — F, Ares — A.", fontSize = 13.sp, color = Color.Gray)
             }
             val hidden = snapshot.pieces().values.filter { it.status() == PieceState.Status.HIDDEN_BOG }
             if (hidden.isNotEmpty()) Text("В болоте: " + hidden.joinToString { if (it.color() == FigureColor.WHITE) if (it.hero() == HeroType.GINSENG_BISHOP) "белый Ginseng" else "белый Bolotnik" else if (it.hero() == HeroType.GINSENG_BISHOP) "чёрный Ginseng" else "чёрный Bolotnik" } + ". Выход только при срабатывании.", fontSize = 12.sp, color = Color(0xFF275D38))
+            if (moba && selected?.hero() == HeroType.ARES_BISHOP) {
+                Text("Копьё: 3 прямо / 2 по диагонали • КД ${selected.cooldown()}",fontSize=13.sp)
+                Text("Пассивная ульта: ${selected.ultimateCharge()} / ${snapshot.heroRules().ares().revengeCaptures()} • заберёт взявшую его фигуру",fontSize=13.sp)
+                val ready=game.getAbilityAvailability(selectedPos,Ability.SPEAR)
+                Button(enabled=ready.isSuccess,onClick={chooseAbility(Ability.SPEAR)}){Text("Бросить копьё")}
+                if(selectedAbility==Ability.SPEAR)Text("Выберите подсвеченное направление: первая фигура летит до конца, столкновение оглушает обе",fontSize=13.sp)
+                if(!ready.isSuccess)Text(ready.message,fontSize=12.sp,color=Color.Gray)
+            }
+            if (moba && selected?.isStunned == true) Text("Оглушён до конца следующего хода соперника источника",fontSize=12.sp,color=Color(0xFF8A4F00))
+            if (moba && selected?.hero() == HeroType.FAUN_KNIGHT) {
+                Text("Туча 3×3 • дальность 4 • КД ${selected.cooldown()}",fontSize=13.sp)
+                Text("Невидимость: ${selected.ultimateCharge()} / ${snapshot.heroRules().faun().ultimateCaptures()} • 2 следующих своих хода",fontSize=13.sp)
+                val cloudReady=game.getAbilityAvailability(selectedPos,Ability.CLOUD)
+                val invisReady=game.getAbilityAvailability(selectedPos,Ability.INVISIBILITY)
+                Row {
+                    Button(enabled=cloudReady.isSuccess,onClick={chooseAbility(Ability.CLOUD)}){Text("Бросить тучу")}
+                    Spacer(Modifier.width(8.dp))
+                    Button(enabled=invisReady.isSuccess,onClick={val actor=selectedPos;clearSelection();updateView(game.useAbility(currentPlayer,actor,null,Ability.INVISIBILITY))}){Text("Невидимость")}
+                }
+                if(snapshot.faun().silenced(selectedPos))Text("В туче: скилл и ульта недоступны",fontSize=12.sp,color=Color.Gray)
+            }
             if (moba && selected?.hero() == HeroType.IZBA_ROOK) {
                 Text("Пассивка: при взятии призовёт Бабу-ягу на свободную клетку рядом", fontSize = 13.sp)
                 Text("Ульта: ${selected.ultimateCharge()} / ${snapshot.heroRules().izba().ultimateCaptures()}", fontSize = 13.sp)
@@ -313,7 +344,7 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                     val ready = game.getAbilityAvailability(selectedPos, copy.ability(), true)
                     Text("Копия: ${copy.ability().displayName} • одно применение", fontSize = 13.sp)
                     Button(enabled = ready.isSuccess, onClick = {
-                        if (copy.ability() in listOf(Ability.STEAL, Ability.AMBUSH, Ability.SUMMON_YAGA)) {
+                        if (copy.ability() in listOf(Ability.STEAL, Ability.AMBUSH, Ability.SUMMON_YAGA, Ability.INVISIBILITY)) {
                             val request = AbilityRequest(selectedPos, copy.ability(), null, null, true)
                             clearSelection(); updateView(game.useAbility(currentPlayer, request))
                         } else chooseAbility(copy.ability(), true)
@@ -328,9 +359,9 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
             }
             moveError?.let { Text(it, color = Color.Red) }
             Spacer(Modifier.height(8.dp))
-            val whiteHistory = if (moba) snapshot.events().filter { it.color() == FigureColor.WHITE }.map { it.message() }
+            val whiteHistory = if (moba) snapshot.events().filter { it.color() == FigureColor.WHITE }.map { FaunView.message(snapshot,it) }
                 else snapshot.moves().filter { it.color == FigureColor.WHITE }.map { it.toString() }
-            val blackHistory = if (moba) snapshot.events().filter { it.color() == FigureColor.BLACK }.map { it.message() }
+            val blackHistory = if (moba) snapshot.events().filter { it.color() == FigureColor.BLACK }.map { FaunView.message(snapshot,it) }
                 else snapshot.moves().filter { it.color == FigureColor.BLACK }.map { it.toString() }
             Row(Modifier.weight(1f)) {
                 MoveHistoryColumn("Белые", whiteHistory)

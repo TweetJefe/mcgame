@@ -11,5 +11,5 @@ public record GameEvent(long sequence, long turn, Kind kind, FigureColor color, 
     public GameEvent(long sequence,long turn,Kind kind,FigureColor color,Long actorId,Long targetId,Position from,Position to,String message) {
         this(sequence,turn,kind,color,actorId,targetId,from,to,message,null,false);
     }
-    public enum Kind { MOVE, HOOK, SWALLOW, COUNTER_CAPTURE, END_TURN, LASER, TELEPORT, BOUNTY, STEAL, MUD, AMBUSH, BOG_CAPTURE, SUMMON_YAGA, YAGA_BIRTH, YAGA_MATURE, REPLACE, DISPLACE, COPY_SPELL }
+    public enum Kind { MOVE, HOOK, SWALLOW, COUNTER_CAPTURE, END_TURN, LASER, TELEPORT, BOUNTY, STEAL, MUD, AMBUSH, BOG_CAPTURE, SUMMON_YAGA, YAGA_BIRTH, YAGA_MATURE, REPLACE, DISPLACE, COPY_SPELL, CLOUD, INVISIBILITY, SPEAR, STUN, ARES_REVENGE }
 }

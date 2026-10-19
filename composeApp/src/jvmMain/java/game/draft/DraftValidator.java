@@ -17,7 +17,7 @@ public final class DraftValidator {
             for(HeroPick pick:draft.picksFor(side))expected.merge(pick.hero(),1,Integer::sum);
             for(PieceState piece:game.pieces().values())if(piece.color()==side && piece.hero()!=HeroType.NONE && !game.summons().records().containsKey(piece.id())) {
                 actual.merge(piece.hero(),1,Integer::sum);
-                if(piece.hero()==HeroType.LUMESHARD_BISHOP || piece.hero()==HeroType.GINSENG_BISHOP) {
+                if(piece.hero()==HeroType.LUMESHARD_BISHOP || piece.hero()==HeroType.GINSENG_BISHOP || piece.hero()==HeroType.ARES_BISHOP) {
                     HeroPick origin=draft.picksFor(side).stream().filter(p->p.hero()==piece.hero()).findFirst().orElseThrow(()->new IllegalArgumentException("Unpicked Lumeshard"));
                     if(piece.startingColor()!=SquareColor.at(origin.square()))throw new IllegalArgumentException("Lumeshard starting color differs from its draft placement");
                 }

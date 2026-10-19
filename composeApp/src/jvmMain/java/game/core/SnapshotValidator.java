@@ -4,6 +4,8 @@ import game.heroes.HeroType;
 import game.draft.DraftValidator;
 import game.summoning.*;
 import game.heroes.ginseng.SpellValidator;
+import game.heroes.faun.FaunValidator;
+import game.heroes.ares.AresValidator;
 import game.economy.EconomyValidator;
 import game.terrain.TerrainValidator;
 import game.history.GameEvent;
@@ -31,7 +33,7 @@ public final class SnapshotValidator {
     private SnapshotValidator() {}
     public static void validate(GameSnapshot s) {
         require(s != null, "Missing game snapshot");
-        require(s.mode() != null && s.field() != null && s.turn() != null && s.heroRules() != null && s.summons()!=null && s.spells()!=null, "Missing game metadata");
+        require(s.mode() != null && s.field() != null && s.turn() != null && s.heroRules() != null && s.summons()!=null && s.spells()!=null && s.faun()!=null, "Missing game metadata");
         require(side(s.active()) && s.version() >= 0 && s.version() < Long.MAX_VALUE && s.turn().number() > 0
                 && s.turn().number() < Long.MAX_VALUE, "Invalid turn or version");
         PositionValidator.validateBoard(s.field().getGameField(), s.mode() == GameMode.CLASSIC);
@@ -58,6 +60,8 @@ public final class SnapshotValidator {
             else if (piece.hero() == HeroType.PUDGE_ROOK) require(piece.cooldown() <= s.pudgeRules().hookCooldown() && piece.ultimateCharge() <= s.pudgeRules().ultimateCaptures(), "Ability state exceeds configured limits");
             else if (piece.hero() == HeroType.LUMESHARD_BISHOP) require(piece.cooldown() <= s.lumeshardRules().laserCooldown() && piece.ultimateCharge() <= s.lumeshardRules().ultimateCaptures(), "Lumeshard state exceeds configured limits");
             else if (piece.hero() == HeroType.BOUNTY_CROW_PAWN) require(piece.cooldown() <= s.crowRules().bountyCooldown() && piece.ultimateCharge() <= s.crowRules().ultimateCaptures(), "Crow state exceeds configured limits");
+            else if(piece.hero()==HeroType.ARES_BISHOP)require(piece.cooldown()<=s.heroRules().ares().spearCooldown() && piece.ultimateCharge()<=s.heroRules().ares().revengeCaptures(),"Invalid Ares resources");
+            else if(piece.hero()==HeroType.FAUN_KNIGHT)require(piece.cooldown()<=s.heroRules().faun().cloudCooldown() && piece.ultimateCharge()<=s.heroRules().faun().ultimateCaptures(),"Invalid Faun resources");
             else if(piece.hero()==HeroType.GINSENG_BISHOP)require(piece.cooldown()<=s.heroRules().ginseng().displacementCooldown() && piece.ultimateCharge()<=s.heroRules().ginseng().ultimateCaptures(),"Invalid Ginseng resources");
             else if(piece.hero()==HeroType.IZBA_ROOK) require(piece.cooldown()==0 && piece.ultimateCharge()<=s.heroRules().izba().ultimateCaptures(),"Invalid Izba charge");
             else if(piece.hero()==HeroType.BABA_YAGA_PAWN) require(piece.cooldown()==0 && piece.ultimateCharge()==0,"Invalid Baba Yaga resources");
@@ -86,6 +90,8 @@ public final class SnapshotValidator {
         }
         validateHistory(s);
         SpellValidator.validate(s);
+        FaunValidator.validate(s);
+        AresValidator.validate(s);
         EconomyValidator.validate(s);
         TerrainValidator.validate(s);
         SummonValidator.validate(s);
@@ -107,7 +113,7 @@ public final class SnapshotValidator {
             require(!win || s.outcome().winner() == MoveValidator.opposite(s.active()), "Timeout winner is active player");
         }
         if (s.mode() == GameMode.MOBA && (!s.outcome().isFinished() || s.outcome().reason() == Termination.CHECKMATE || s.outcome().reason() == Termination.STALEMATE)) {
-            var ctx = new ActionEngine.Context(s.field(), s.pieces(), s.castlingRights(), s.enPassantTarget(), s.economy(), s.turn().number(), s.terrain(),s.summons(),s.spells());
+            var ctx = new ActionEngine.Context(s.field(), s.pieces(), s.castlingRights(), s.enPassantTarget(), s.economy(), s.turn().number(), s.terrain(),s.summons(),s.spells(),s.faun());
             boolean playable = s.turn().moveUsed() ? ActionEngine.canFinishAfterMove(ctx, s.active(), !s.turn().abilityUsed(), s.heroRules()) : (s.turn().abilityUsed() ? ActionEngine.hasMove(ctx, s.active(), s.mode(), s.heroRules()) : ActionEngine.hasTurn(ctx, s.active(), s.heroRules()));
             require(playable == !s.outcome().isFinished(), "Outcome differs from available turn");
             if (!playable) require((s.outcome().reason() == Termination.CHECKMATE) == AttackRules.isInCheck(s.field().getGameField(), s.pieces(), s.active(), s.terrain()), "Mate/pat differs from check");
@@ -141,7 +147,7 @@ public final class SnapshotValidator {
             if (event.actorId() != null) require(s.pieces().containsKey(event.actorId()), "Unknown event actor");
             if (event.targetId() != null) require(s.pieces().containsKey(event.targetId()), "Unknown event target");
             if (event.kind() != GameEvent.Kind.END_TURN) require(event.actorId() != null && inside(event.from()) && inside(event.to()), "Incomplete action event");
-            if (event.kind() != GameEvent.Kind.COUNTER_CAPTURE && event.kind() != GameEvent.Kind.BOG_CAPTURE && event.kind()!=GameEvent.Kind.YAGA_BIRTH) {
+            if (event.kind() != GameEvent.Kind.COUNTER_CAPTURE && event.kind() != GameEvent.Kind.BOG_CAPTURE && event.kind()!=GameEvent.Kind.YAGA_BIRTH && event.kind()!=GameEvent.Kind.ARES_REVENGE) {
                 FigureColor expected = (s.turn().number() - event.turn()) % 2 == 0 ? s.active() : MoveValidator.opposite(s.active());
                 require(event.color() == expected && !closed.contains(event.turn()), "Action outside its active turn");
             }
@@ -156,8 +162,8 @@ public final class SnapshotValidator {
                 validateClock(move.getClock(), move.getClock().activeColor(), !move.getClock().running());
                 if (move.getCaptureSquare() != null) require(inside(move.getCaptureSquare()), "Invalid capture square");
                 if (event.turn() == s.turn().number()) currentMoves++;
-            } else if (event.kind() == GameEvent.Kind.HOOK || event.kind() == GameEvent.Kind.SWALLOW || event.kind() == GameEvent.Kind.LASER || event.kind() == GameEvent.Kind.TELEPORT || event.kind() == GameEvent.Kind.BOUNTY || event.kind() == GameEvent.Kind.STEAL || event.kind() == GameEvent.Kind.MUD || event.kind() == GameEvent.Kind.AMBUSH || event.kind()==GameEvent.Kind.SUMMON_YAGA || event.kind()==GameEvent.Kind.DISPLACE || event.kind()==GameEvent.Kind.COPY_SPELL) {
-                require(s.mode() == GameMode.MOBA && cast.add(event.turn()) && (event.kind() == GameEvent.Kind.MUD || ((event.kind() == GameEvent.Kind.TELEPORT || event.kind() == GameEvent.Kind.STEAL || event.kind() == GameEvent.Kind.AMBUSH || event.kind()==GameEvent.Kind.SUMMON_YAGA) ? event.targetId() == null : event.targetId() != null)), "Invalid ability event");
+            } else if (event.kind() == GameEvent.Kind.HOOK || event.kind() == GameEvent.Kind.SWALLOW || event.kind() == GameEvent.Kind.LASER || event.kind() == GameEvent.Kind.TELEPORT || event.kind() == GameEvent.Kind.BOUNTY || event.kind() == GameEvent.Kind.STEAL || event.kind() == GameEvent.Kind.MUD || event.kind() == GameEvent.Kind.AMBUSH || event.kind()==GameEvent.Kind.SUMMON_YAGA || event.kind()==GameEvent.Kind.DISPLACE || event.kind()==GameEvent.Kind.COPY_SPELL || event.kind()==GameEvent.Kind.CLOUD || event.kind()==GameEvent.Kind.INVISIBILITY || event.kind()==GameEvent.Kind.SPEAR) {
+                require(s.mode() == GameMode.MOBA && cast.add(event.turn()) && (event.kind() == GameEvent.Kind.MUD || ((event.kind() == GameEvent.Kind.TELEPORT || event.kind() == GameEvent.Kind.STEAL || event.kind() == GameEvent.Kind.AMBUSH || event.kind()==GameEvent.Kind.SUMMON_YAGA || event.kind()==GameEvent.Kind.CLOUD || event.kind()==GameEvent.Kind.INVISIBILITY || event.kind()==GameEvent.Kind.SPEAR) ? event.targetId() == null : event.targetId() != null)), "Invalid ability event");
                 if (event.turn() == s.turn().number()) currentAbilities++;
             } else if (event.kind() == GameEvent.Kind.END_TURN) {
                 require(s.mode() == GameMode.MOBA && moved.contains(event.turn()) && event.turn() < s.turn().number()

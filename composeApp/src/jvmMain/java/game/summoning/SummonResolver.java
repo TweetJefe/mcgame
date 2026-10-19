@@ -69,7 +69,7 @@ public final class SummonResolver {
         for(var record:summons.records().values()) {
             PieceState p=states.get(record.id());
             if(!record.transformed() && record.transformsAfterTurn()<=endedTurn && p.color()==owner && !p.isRemoved()) {
-                states.put(p.id(),new PieceState(p.id(),Rook.class,p.color(),p.position(),p.status(),HeroType.IZBA_ROOK,0,0,p.inventory(),null, p.blindTurns(),null));
+                states.put(p.id(),new PieceState(p.id(),Rook.class,p.color(),p.position(),p.status(),HeroType.IZBA_ROOK,0,0,p.inventory(),null, p.blindTurns(),null,p.stunnedThroughTurn()));
                 records.put(record.id(),record.mature());
             }
         }

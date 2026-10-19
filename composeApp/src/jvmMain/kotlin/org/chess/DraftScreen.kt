@@ -27,7 +27,7 @@ private fun draftSide(side: FigureColor) = if (side == FigureColor.WHITE) "Бе�
 private fun draftCell(square: Position) = "${'a' + square.column}${square.row + 1}"
 private fun heroBadge(hero: HeroType) = when (hero) {
     HeroType.PUDGE_ROOK -> "П"; HeroType.LUMESHARD_BISHOP -> "L"
-    HeroType.BOUNTY_CROW_PAWN -> "C"; HeroType.BOLOTNIK_KNIGHT -> "Б"; HeroType.IZBA_ROOK -> "И"; HeroType.GINSENG_BISHOP -> "G"; else -> ""
+    HeroType.BOUNTY_CROW_PAWN -> "C"; HeroType.BOLOTNIK_KNIGHT -> "Б"; HeroType.IZBA_ROOK -> "И"; HeroType.FAUN_KNIGHT -> "F"; HeroType.ARES_BISHOP -> "A"; HeroType.GINSENG_BISHOP -> "G"; else -> ""
 }
 
 @Composable
@@ -61,16 +61,17 @@ fun DraftScreen(draft: Draft, onStart: (DraftSnapshot) -> Unit, onBack: () -> Un
         }, fontSize = 13.sp)
         Spacer(Modifier.height(12.dp))
         Row(Modifier.weight(1f)) {
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            Column(Modifier.weight(1f).then(if(snapshot.rules().catalogVersion()<5) Modifier.verticalScroll(rememberScrollState()) else Modifier)) {
+                Column(if(snapshot.rules().catalogVersion()>=5) Modifier.weight(1f).verticalScroll(rememberScrollState()) else Modifier) {
                 for (hero in HeroCatalog.heroes(snapshot.rules().catalogVersion())) {
                     val ban = snapshot.events().firstOrNull { it.kind() == DraftEvent.Kind.BAN && it.hero() == hero }
                     val pick = snapshot.events().firstOrNull { it.kind() == DraftEvent.Kind.PICK && it.hero() == hero }
                     val available = !snapshot.isComplete && ban == null && pick == null
-                    Column(Modifier.fillMaxWidth().height(if (snapshot.rules().catalogVersion() >= 3) 84.dp else 102.dp).padding(bottom = 8.dp)
+                    Column(Modifier.fillMaxWidth().height(if (snapshot.rules().catalogVersion() >= 4) 76.dp else if (snapshot.rules().catalogVersion() >= 3) 84.dp else 102.dp).padding(bottom = 8.dp)
                         .background(if (ban != null) Color(0xFFE9E3E3) else if (pick != null) Color(0xFFE2EAE0) else Color.White)
                         .border(if (selectedHero == hero) 3.dp else 1.dp, if (selectedHero == hero) Color(0xFF6A5ACD) else Color(0xFFCECECE))
                         .clickable(enabled = available) { selectedHero = hero; error = null }
-                        .padding(if (snapshot.rules().catalogVersion() >= 3) 8.dp else 12.dp)) {
+                        .padding(if (snapshot.rules().catalogVersion() >= 4) 4.dp else if (snapshot.rules().catalogVersion() >= 3) 8.dp else 12.dp)) {
                         Text(hero.getName(), fontWeight = FontWeight.Bold, fontSize = 17.sp,
                             lineHeight = if (snapshot.rules().catalogVersion() >= 3) 20.sp else 24.sp)
                         Text(HeroCatalog.summary(hero), fontSize = 12.sp,
@@ -82,6 +83,7 @@ fun DraftScreen(draft: Draft, onStart: (DraftSnapshot) -> Unit, onBack: () -> Un
                         }, fontSize = 12.sp, color = Color.Gray,
                             lineHeight = if (snapshot.rules().catalogVersion() >= 3) 16.sp else 24.sp)
                     }
+                }
                 }
                 if (snapshot.phase() == DraftPhase.PICKS) {
                     Text(if (selectedHero == null) "Сначала выберите героя" else
@@ -99,7 +101,7 @@ fun DraftScreen(draft: Draft, onStart: (DraftSnapshot) -> Unit, onBack: () -> Un
                     if (snapshot.isComplete) Button(onClick = { onStart(snapshot) }) { Text("Начать партию") }
                 }
                 error?.let { Text(it, color = Color.Red) }
-                Text("Остальные фигуры остаются обычными. Ульты заряжаются за 2 собственных взятия, включая пешки.", fontSize = 12.sp, color = Color.Gray)
+                Text(if(snapshot.rules().catalogVersion()>=5) "Остальные фигуры обычные. Ульты: Ares — 1 взятие, остальные — 2. Пешки считаются." else "Остальные фигуры остаются обычными. Ульты заряжаются за 2 собственных взятия, включая пешки.", fontSize = 12.sp, color = Color.Gray)
             }
             Spacer(Modifier.width(24.dp))
             Column(Modifier.width(440.dp).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {

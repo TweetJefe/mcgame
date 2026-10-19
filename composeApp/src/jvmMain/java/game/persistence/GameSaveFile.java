@@ -5,6 +5,8 @@ import game.draft.*;
 import game.summoning.*;
 import game.heroes.izba.IzbaRules;
 import game.heroes.ginseng.GinsengRules;
+import game.heroes.faun.FaunRules;
+import game.heroes.ares.AresRules;
 import game.heroes.Ability;
 import game.heroes.bolotnik.BolotnikRules;
 import game.terrain.*;
@@ -47,7 +49,7 @@ import java.util.function.LongSupplier;
 
 /** Versioned XML data, never Java object deserialization. No arbitrary class names are loaded. */
 public final class GameSaveFile {
-    public static final int FORMAT_VERSION = 7;
+    public static final int FORMAT_VERSION = 9;
     public static final int MAX_BYTES = 16 * 1024 * 1024;
     private GameSaveFile() {}
 
@@ -76,7 +78,11 @@ public final class GameSaveFile {
             SnapshotValidator.validate(s);
             boolean extended = !s.lumeshardRules().equals(LumeshardRules.prototype()) || s.pieces().values().stream()
                     .anyMatch(piece -> piece.hero() == HeroType.LUMESHARD_BISHOP || piece.isBlinded());
-            boolean spellExtension=!s.heroRules().ginseng().equals(GinsengRules.prototype()) || s.pieces().values().stream().anyMatch(p->p.hero()==HeroType.GINSENG_BISHOP)
+            boolean aresExtension=!s.heroRules().ares().equals(AresRules.prototype()) || s.pieces().values().stream().anyMatch(p->p.hero()==HeroType.ARES_BISHOP || p.isStunned())
+                    || s.events().stream().anyMatch(e->e.kind()==GameEvent.Kind.SPEAR || e.kind()==GameEvent.Kind.STUN || e.kind()==GameEvent.Kind.ARES_REVENGE) || (s.draft()!=null && s.draft().rules().catalogVersion()>4);
+            boolean faunExtension=aresExtension || !s.heroRules().faun().equals(FaunRules.prototype()) || s.pieces().values().stream().anyMatch(p->p.hero()==HeroType.FAUN_KNIGHT)
+                    || s.events().stream().anyMatch(e->e.kind()==GameEvent.Kind.CLOUD || e.kind()==GameEvent.Kind.INVISIBILITY) || (s.draft()!=null && s.draft().rules().catalogVersion()>3);
+            boolean spellExtension=faunExtension || !s.heroRules().ginseng().equals(GinsengRules.prototype()) || s.pieces().values().stream().anyMatch(p->p.hero()==HeroType.GINSENG_BISHOP)
                     || s.events().stream().anyMatch(e->e.borrowed() || e.copiedAbility()!=null || e.kind()==GameEvent.Kind.DISPLACE || e.kind()==GameEvent.Kind.COPY_SPELL)
                     || (s.draft()!=null && s.draft().rules().catalogVersion()>2);
             boolean summonExtension=spellExtension || s.summons().enabled() || !s.heroRules().izba().equals(IzbaRules.prototype()) || (s.draft()!=null && s.draft().rules().catalogVersion()>1);
@@ -84,7 +90,7 @@ public final class GameSaveFile {
             boolean terrainExtension = summonExtension || draftExtension || !s.terrain().cells().isEmpty() || !s.bolotnikRules().equals(BolotnikRules.prototype())
                     || s.pieces().values().stream().anyMatch(piece -> piece.hero() == HeroType.BOLOTNIK_KNIGHT);
             boolean economyExtension = terrainExtension || s.economy().enabled() || !s.crowRules().equals(BountyCrowRules.prototype()) || !s.heroRules().gold().equals(GoldRules.prototype());
-            int formatVersion = spellExtension ? 7 : summonExtension ? 6 : draftExtension ? 5 : terrainExtension ? 4 : economyExtension ? 3 : extended ? 2 : 1;
+            int formatVersion = aresExtension ? 9 : faunExtension ? 8 : spellExtension ? 7 : summonExtension ? 6 : draftExtension ? 5 : terrainExtension ? 4 : economyExtension ? 3 : extended ? 2 : 1;
             extended = formatVersion >= 2;
             Document doc = factory().newDocumentBuilder().newDocument();
             Element root = doc.createElement("moba-chess"); doc.appendChild(root);
@@ -112,6 +118,8 @@ public final class GameSaveFile {
                 for (DraftEvent event : s.draft().events()) child(draft, "action", "sequence", event.sequence(), "kind", event.kind(),
                         "side", event.side(), "hero", event.hero(), "square", cell(event.square()));
             }
+            if(aresExtension)child(root,"aresRules","spearCooldown",s.heroRules().ares().spearCooldown(),"revengeCaptures",s.heroRules().ares().revengeCaptures());
+            if(faunExtension)child(root,"faunRules","cloudCooldown",s.heroRules().faun().cloudCooldown(),"cloudTurns",s.heroRules().faun().cloudTurns(),"invisibilityTurns",s.heroRules().faun().invisibilityTurns(),"ultimateCaptures",s.heroRules().faun().ultimateCaptures());
             if(spellExtension)child(root,"ginsengRules","displacementCooldown",s.heroRules().ginseng().displacementCooldown(),"ultimateCaptures",s.heroRules().ginseng().ultimateCaptures());
             if(summonExtension) {
                 child(root,"izbaRules","ultimateCaptures",s.heroRules().izba().ultimateCaptures(),"lifetimeTurns",s.heroRules().izba().lifetimeTurns());
@@ -128,6 +136,7 @@ public final class GameSaveFile {
                 Element entry = child(pieces, "piece", "id", piece.id(), "type", piece.type().getSimpleName(), "color", piece.color(),
                         "square", cell(piece.position()), "status", piece.status(), "hero", piece.hero(), "cooldown", piece.cooldown(),
                         "ultimateCharge", piece.ultimateCharge(), "storedPieceId", piece.storedPieceId());
+                if(aresExtension)attrs(entry,"stunnedThroughTurn",piece.stunnedThroughTurn());
                 if (extended) attrs(entry, "blindTurns", piece.blindTurns(), "startingColor", piece.startingColor());
                 for (ItemSlot slot : piece.inventory()) child(entry, "slot", "itemId", slot.itemId(), "charges", slot.charges(), "cooldown", slot.cooldown());
             }
@@ -204,11 +213,17 @@ public final class GameSaveFile {
                 var draftEvents = new ArrayList<DraftEvent>();
                 for (Element action : children(cfg, "action", 100)) draftEvents.add(new DraftEvent(number(action, "sequence"), enumeration(action, "kind", DraftEvent.Kind.class),
                         enumeration(action, "side", FigureColor.class), optionalEnum(action, "hero", HeroType.class), position(action, "square")));
+                require(formatVersion>=9 || draftRules.catalogVersion()<=4,"Ares catalog requires format 9");
+                require(formatVersion>=8 || draftRules.catalogVersion()<=3,"Faun catalog requires format 8");
                 require(formatVersion>=7 || draftRules.catalogVersion()<=2,"Ginseng catalog requires format 7");
                 require(formatVersion>=6 || draftRules.catalogVersion()==1,"New hero catalog requires format 6");
                 draft = Draft.replay(draftRules, draftEvents).getSnapshot();
                 require(draft.isComplete(), "Game save contains an unfinished draft");
             }
+            AresRules ares=AresRules.prototype();
+            if(formatVersion>=9){Element cfg=one(root,"aresRules");ares=new AresRules(integer(cfg,"spearCooldown"),integer(cfg,"revengeCaptures"));}
+            FaunRules faun=FaunRules.prototype();
+            if(formatVersion>=8){Element cfg=one(root,"faunRules");faun=new FaunRules(integer(cfg,"cloudCooldown"),integer(cfg,"cloudTurns"),integer(cfg,"invisibilityTurns"),integer(cfg,"ultimateCaptures"));}
             GinsengRules ginseng=GinsengRules.prototype();
             if(formatVersion>=7) { Element cfg=one(root,"ginsengRules");ginseng=new GinsengRules(integer(cfg,"displacementCooldown"),integer(cfg,"ultimateCaptures")); }
             SummonState summons=SummonState.empty();IzbaRules izba=IzbaRules.prototype();
@@ -234,11 +249,13 @@ public final class GameSaveFile {
                 PieceState piece = new PieceState(number(entry, "id"), type(text(entry, "type")), enumeration(entry, "color", FigureColor.class),
                         position(entry, "square"), enumeration(entry, "status", PieceState.Status.class), enumeration(entry, "hero", HeroType.class),
                         integer(entry, "cooldown"), integer(entry, "ultimateCharge"), slots, optionalLong(entry, "storedPieceId"),
-                        formatVersion >= 2 ? integer(entry, "blindTurns") : 0, formatVersion >= 2 ? optionalEnum(entry, "startingColor", SquareColor.class) : null);
+                        formatVersion >= 2 ? integer(entry, "blindTurns") : 0, formatVersion >= 2 ? optionalEnum(entry, "startingColor", SquareColor.class) : null,formatVersion>=9?number(entry,"stunnedThroughTurn"):0);
                 require(formatVersion != 1 || (piece.hero() != HeroType.LUMESHARD_BISHOP && !entry.hasAttribute("blindTurns") && !entry.hasAttribute("startingColor")), "Lumeshard extension requires format 2");
                 require(formatVersion >= 3 || piece.hero() != HeroType.BOUNTY_CROW_PAWN, "Crow requires format 3");
                 require(formatVersion >= 4 || (piece.hero() != HeroType.BOLOTNIK_KNIGHT && piece.status() != PieceState.Status.HIDDEN_BOG), "Bolotnik requires format 4");
                 require(formatVersion>=6 || (piece.hero()!=HeroType.IZBA_ROOK && piece.hero()!=HeroType.BABA_YAGA_PAWN && piece.status()!=PieceState.Status.REPLACED),"Summoning requires format 6");
+                require(formatVersion>=9 || (piece.hero()!=HeroType.ARES_BISHOP && !entry.hasAttribute("stunnedThroughTurn")),"Ares requires format 9");
+                require(formatVersion>=8 || piece.hero()!=HeroType.FAUN_KNIGHT,"Faun requires format 8");
                 require(formatVersion>=7 || piece.hero()!=HeroType.GINSENG_BISHOP,"Ginseng requires format 7");
                 require(pieces.put(piece.id(), piece) == null, "Duplicate piece identity");
                 if (piece.position() != null) {
@@ -262,13 +279,15 @@ public final class GameSaveFile {
                 require(formatVersion >= 4 || !Set.of(GameEvent.Kind.MUD, GameEvent.Kind.AMBUSH, GameEvent.Kind.BOG_CAPTURE).contains(event.kind()), "Bolotnik events require format 4");
                 require(formatVersion>=6 || !Set.of(GameEvent.Kind.SUMMON_YAGA,GameEvent.Kind.YAGA_BIRTH,GameEvent.Kind.YAGA_MATURE,GameEvent.Kind.REPLACE).contains(event.kind()),"Summoning events require format 6");
                 require(formatVersion>=7 || (!entry.hasAttribute("borrowed") && !entry.hasAttribute("copiedAbility") && event.kind()!=GameEvent.Kind.DISPLACE && event.kind()!=GameEvent.Kind.COPY_SPELL),"Ginseng events require format 7");
+                require(formatVersion>=8 || (event.kind()!=GameEvent.Kind.CLOUD && event.kind()!=GameEvent.Kind.INVISIBILITY && event.copiedAbility()!=Ability.CLOUD && event.copiedAbility()!=Ability.INVISIBILITY),"Faun events require format 8");
+                require(formatVersion>=9 || (!Set.of(GameEvent.Kind.SPEAR,GameEvent.Kind.STUN,GameEvent.Kind.ARES_REVENGE).contains(event.kind()) && event.copiedAbility()!=Ability.SPEAR),"Ares events require format 9");
                 events.add(event);
             }
             Element white = one(root, "whiteCaptures"), black = one(root, "blackCaptures");
-            Set<String> sections = Set.of("rules", "castling", "clock", "outcome", "pieces", "repetitions", "moves", "events", "whiteCaptures", "blackCaptures", "lumeshardRules", "crowRules", "goldRules", "economy", "bolotnikRules", "terrain", "draft", "izbaRules", "summons", "ginsengRules");
+            Set<String> sections = Set.of("rules", "castling", "clock", "outcome", "pieces", "repetitions", "moves", "events", "whiteCaptures", "blackCaptures", "lumeshardRules", "crowRules", "goldRules", "economy", "bolotnikRules", "terrain", "draft", "izbaRules", "summons", "ginsengRules", "faunRules", "aresRules");
             for (Node node = root.getFirstChild(); node != null; node = node.getNextSibling()) if (node instanceof Element entry)
                 require(sections.contains(entry.getTagName()) && (formatVersion >= 2 || !entry.getTagName().equals("lumeshardRules"))
-                        && (formatVersion >= 3 || !Set.of("crowRules", "goldRules", "economy").contains(entry.getTagName())) && (formatVersion >= 4 || !Set.of("bolotnikRules", "terrain").contains(entry.getTagName())) && (formatVersion >= 5 || !entry.getTagName().equals("draft")) && (formatVersion>=6 || !Set.of("izbaRules","summons").contains(entry.getTagName())) && (formatVersion>=7 || !entry.getTagName().equals("ginsengRules")), "Unknown save section: " + entry.getTagName());
+                        && (formatVersion >= 3 || !Set.of("crowRules", "goldRules", "economy").contains(entry.getTagName())) && (formatVersion >= 4 || !Set.of("bolotnikRules", "terrain").contains(entry.getTagName())) && (formatVersion >= 5 || !entry.getTagName().equals("draft")) && (formatVersion>=6 || !Set.of("izbaRules","summons").contains(entry.getTagName())) && (formatVersion>=7 || !entry.getTagName().equals("ginsengRules")) && (formatVersion>=8 || !entry.getTagName().equals("faunRules")) && (formatVersion>=9 || !entry.getTagName().equals("aresRules")), "Unknown save section: " + entry.getTagName());
             GameSnapshot s = new GameSnapshot(number(root, "stateVersion"), mode,
                     mode == GameMode.MOBA ? Field.fromMobaPosition(board) : Field.fromPosition(board), pieces,
                     new TurnState(number(root, "turn"), bool(root, "moveUsed"), bool(root, "abilityUsed")), enumeration(root, "active", FigureColor.class),
@@ -276,7 +295,7 @@ public final class GameSaveFile {
                     position(root, "enPassant"), integer(root, "halfmoveClock"), repetitions, readClock(one(root, "clock")),
                     new GameOutcome(enumeration(outcome, "reason", Termination.class), enumeration(outcome, "winner", FigureColor.class)), moves, events,
                     number(white, "points"), number(black, "points"), readCaptures(white, factory), readCaptures(black, factory),
-                    enumeration(root, "drawOffer", FigureColor.class), new HeroRules(new PudgeRules(integer(rules, "hookCooldown"), integer(rules, "ultimateCaptures"), bool(rules, "hookDiagonals"), bool(rules, "swallowDiagonals")), lume, crow, gold, bolotnik,izba,ginseng), economy, terrain, draft,summons);
+                    enumeration(root, "drawOffer", FigureColor.class), new HeroRules(new PudgeRules(integer(rules, "hookCooldown"), integer(rules, "ultimateCaptures"), bool(rules, "hookDiagonals"), bool(rules, "swallowDiagonals")), lume, crow, gold, bolotnik,izba,ginseng,faun,ares), economy, terrain, draft,summons);
             SnapshotValidator.validate(s);
             return s;
         } catch (Exception ex) { throw new IOException("Некорректное сохранение: " + ex.getMessage(), ex); }

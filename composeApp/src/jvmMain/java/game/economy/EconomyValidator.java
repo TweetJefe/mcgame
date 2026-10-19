@@ -29,7 +29,7 @@ public final class EconomyValidator {
         var thefts = new HashSet<ActionKey>();
         var bounties = new HashMap<Long, ArrayList<GameEvent>>();
         for (GameEvent event : s.events()) {
-            if ((event.kind() == GameEvent.Kind.MOVE || event.kind() == GameEvent.Kind.COUNTER_CAPTURE || event.kind() == GameEvent.Kind.BOG_CAPTURE) && event.targetId() != null)
+            if ((event.kind() == GameEvent.Kind.MOVE || event.kind() == GameEvent.Kind.COUNTER_CAPTURE || event.kind() == GameEvent.Kind.BOG_CAPTURE || event.kind()==GameEvent.Kind.ARES_REVENGE) && event.targetId() != null)
                 captures.put(new ActionKey(event.turn(), event.actorId(), event.targetId()), event);
             if (event.kind() == GameEvent.Kind.STEAL) thefts.add(new ActionKey(event.turn(), event.actorId(), null));
             if (event.kind() == GameEvent.Kind.BOUNTY) {

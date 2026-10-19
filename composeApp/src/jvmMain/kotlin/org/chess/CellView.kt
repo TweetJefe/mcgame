@@ -35,7 +35,10 @@ fun CellView(
     isBlinded: Boolean = false,
     isBountyMarked: Boolean = false,
     isMud: Boolean = false,
-    isAmbush: Boolean = false
+    isAmbush: Boolean = false,
+    isInvisible: Boolean = false,
+    isCloud: Boolean = false,
+    isStunned: Boolean = false
 ) {
     val isDark = (x + y) % 2 == 0
     val baseColor = if (isDark) Color(0xFF769656) else Color(0xFFEEEED2)
@@ -62,6 +65,10 @@ fun CellView(
             Text(if (isAmbush) "≈●" else "≈", fontSize = 15.sp, color = Color(0xFFD4E9A6),
                 modifier = Modifier.align(Alignment.BottomStart).padding(start = 3.dp))
         }
+        if (isCloud) {
+            Box(Modifier.fillMaxSize().background(Color(0xFF687784).copy(alpha = 0.5f)))
+            Text("☁",fontSize=18.sp,color=Color.White,modifier=Modifier.align(Alignment.TopCenter))
+        }
         // Рисуем слой подсветки
         Box(Modifier.fillMaxSize().background(overlayColor))
 
@@ -76,13 +83,15 @@ fun CellView(
                 is King -> if (figure.color == FigureColor.WHITE) "♔" else "♚"
                 else -> ""
             }
-            Text(text = symbol, fontSize = 40.sp)
+            Text(text = symbol, fontSize = 40.sp, color = if (isInvisible) Color.Black.copy(alpha=0.4f) else Color.Black)
+            if (isInvisible) Text("Невид",fontSize=10.sp,color=Color.White,modifier=Modifier.align(Alignment.TopStart).background(Color(0xFF44577A)))
             heroLabel?.let { label ->
                 Text(label, color = Color.White, fontSize = 12.sp,
                     modifier = Modifier.align(Alignment.BottomEnd).background(Color(0xFF6A5ACD)).padding(horizontal = 3.dp))
             }
             if (isBountyMarked) Text("+1,5", color = Color.Black, fontSize = 11.sp,
                 modifier = Modifier.align(Alignment.TopEnd).background(Color(0xFFFFD54F)).padding(horizontal = 2.dp))
+            if (isStunned) Text("Стан",color=Color.Black,fontSize=11.sp,modifier=Modifier.align(Alignment.BottomStart).background(Color(0xFFFFBD59)).padding(horizontal=2.dp))
             if (isBlinded) Text("Осл", color = Color.White, fontSize = 11.sp,
                 modifier = Modifier.align(Alignment.TopStart).background(Color(0xFFC65D00)).padding(horizontal = 2.dp))
         } else if (isMoveTarget) {

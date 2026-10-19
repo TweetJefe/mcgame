@@ -4,6 +4,7 @@ import game.heroes.pudge.PudgeRules;
 import game.draft.DraftSnapshot;
 import game.summoning.SummonState;
 import game.heroes.ginseng.SpellState;
+import game.heroes.faun.FaunState;
 import game.heroes.bolotnik.BolotnikRules;
 import game.terrain.TerrainState;
 import game.economy.EconomyState;
@@ -26,11 +27,18 @@ public record GameSnapshot(long version, GameMode mode, Field field, Map<Long, P
                            Position enPassantTarget, int halfmoveClock, Map<String, Integer> repetitions,
                            ClockSnapshot clock, GameOutcome outcome, List<MadeMove> moves, List<GameEvent> events,
                            long whitePoints, long blackPoints, List<Figure> whiteCaptures, List<Figure> blackCaptures,
-                           FigureColor drawOffer, HeroRules heroRules, EconomyState economy, TerrainState terrain, DraftSnapshot draft, SummonState summons, SpellState spells) {
+                           FigureColor drawOffer, HeroRules heroRules, EconomyState economy, TerrainState terrain, DraftSnapshot draft, SummonState summons, SpellState spells, FaunState faun) {
     public GameSnapshot {
         pieces = Map.copyOf(pieces); repetitions = Map.copyOf(repetitions);
         moves = List.copyOf(moves); events = List.copyOf(events);
         whiteCaptures = List.copyOf(whiteCaptures); blackCaptures = List.copyOf(blackCaptures);
+    }
+    public GameSnapshot(long version, GameMode mode, Field field, Map<Long, PieceState> pieces,
+                        TurnState turn, FigureColor active, CastlingRights castlingRights, Position enPassantTarget,
+                        int halfmoveClock, Map<String,Integer> repetitions, ClockSnapshot clock, GameOutcome outcome,
+                        List<MadeMove> moves,List<GameEvent> events,long whitePoints,long blackPoints,List<Figure> whiteCaptures,List<Figure> blackCaptures,
+                        FigureColor drawOffer,HeroRules heroRules,EconomyState economy,TerrainState terrain,DraftSnapshot draft,SummonState summons,SpellState spells) {
+        this(version,mode,field,pieces,turn,active,castlingRights,enPassantTarget,halfmoveClock,repetitions,clock,outcome,moves,events,whitePoints,blackPoints,whiteCaptures,blackCaptures,drawOffer,heroRules,economy,terrain,draft,summons,spells,FaunState.fromHistory(events,heroRules.faun()));
     }
     public GameSnapshot(long version, GameMode mode, Field field, Map<Long, PieceState> pieces,
                         TurnState turn, FigureColor active, CastlingRights castlingRights, Position enPassantTarget,

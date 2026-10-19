@@ -42,7 +42,7 @@ public final class SummonValidator {
             if(r.cause()==SummonRecord.Cause.ULTIMATE)
                 require(s.events().stream().anyMatch(e->e.kind()==GameEvent.Kind.SUMMON_YAGA && e.turn()==r.bornTurn() && e.actorId()==r.sourceId()),"Birth without ultimate");
             else require(source.status()==PieceState.Status.CAPTURED && s.events().stream().anyMatch(e->e.targetId()!=null && e.targetId()==r.sourceId() && e.turn()==r.bornTurn()
-                    && Set.of(GameEvent.Kind.MOVE,GameEvent.Kind.COUNTER_CAPTURE,GameEvent.Kind.BOG_CAPTURE).contains(e.kind())
+                    && Set.of(GameEvent.Kind.MOVE,GameEvent.Kind.COUNTER_CAPTURE,GameEvent.Kind.BOG_CAPTURE,GameEvent.Kind.ARES_REVENGE).contains(e.kind())
                     && Math.max(Math.abs(e.to().getRow()-r.bornAt().getRow()),Math.abs(e.to().getColumn()-r.bornAt().getColumn()))==1),"Birth without nearby death");
             if(r.cause()==SummonRecord.Cause.ULTIMATE)require(p.color()==FigureColor.WHITE?r.bornAt().getRow()<2:r.bornAt().getRow()>5,"Ultimate birth outside home ranks");
             GameEvent mature=matures.get(r.id());
