@@ -1,6 +1,8 @@
 package game.core;
 
-import game.moves.MoveResult;
+import game.moves.MovementRejection;
+import game.moves.Success;
+import game.moves.TurnRejection;
 import game.moves.Promotion;
 import game.state.ClockSnapshot;
 import game.state.Termination;
@@ -54,7 +56,7 @@ public class ClockTest {
     @Test public void timeoutWithoutPollingRejectsMoveBeforeBoardChanges() {
         AtomicLong time = new AtomicLong(); Game game = new Game(8, time::get); game.startClock(1);
         time.set(1_000_000_000L);
-        assertEquals(MoveResult.GAME_OVER, move(game, "e2", "e4"));
+        assertEquals(TurnRejection.GAME_OVER, move(game, "e2", "e4"));
         assertEquals(Termination.TIMEOUT, game.getOutcome().getReason()); assertEquals(BLACK, game.getOutcome().getWinner());
         assertTrue(game.getMoves().isEmpty()); assertTrue(game.getFigureByPosition(pos("e2")) instanceof Pawn);
         assertEquals(0L, game.getClockSnapshot().getWhiteNanos()); assertFalse(game.getClockSnapshot().isRunning());
@@ -87,15 +89,15 @@ public class ClockTest {
     }
     @Test public void rejectedMoveDoesNotRefundThinkingTime() {
         AtomicLong time = new AtomicLong(); Game game = new Game(8, time::get); game.startClock(10);
-        time.set(250_000_000L); assertEquals(MoveResult.ILLEGAL_MOVEMENT, move(game, "a1", "a3"));
+        time.set(250_000_000L); assertEquals(MovementRejection.ILLEGAL_MOVEMENT, move(game, "a1", "a3"));
         assertEquals(9_750_000_000L, game.getClockSnapshot().getWhiteNanos());
         assertTrue(game.getMoves().isEmpty()); assertSame(game.getWhitePlayer(), game.getCurrentPlayer());
     }
     @Test public void promotionChoiceDoesNotPauseOrSwitchClock() {
         AtomicLong time = new AtomicLong(); Game game = game("h1", "h8", time::get); put(game, Pawn.class, WHITE, "b7");
-        game.startClock(10); time.set(250_000_000L); assertEquals(MoveResult.PROMOTION_REQUIRED, move(game, "b7", "b8"));
+        game.startClock(10); time.set(250_000_000L); assertEquals(MovementRejection.PROMOTION_REQUIRED, move(game, "b7", "b8"));
         time.set(500_000_000L);
-        assertEquals(MoveResult.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos("b7"), pos("b8"), Promotion.QUEEN));
+        assertEquals(Success.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos("b7"), pos("b8"), Promotion.QUEEN));
         assertEquals(9_500_000_000L, game.getClockSnapshot().getWhiteNanos()); assertEquals(BLACK, game.getClockSnapshot().getActiveColor());
     }
     @Test public void checkmateFreezesClocksAndIsNeverReplacedByTimeout() {
@@ -108,7 +110,7 @@ public class ClockTest {
         AtomicLong reads = new AtomicLong();
         Game game = new Game(8, () -> reads.getAndIncrement() < 2 ? 0L : 1_000_000_000L);
         game.startClock(1);
-        assertEquals(MoveResult.GAME_OVER, move(game, "e2", "e4"));
+        assertEquals(TurnRejection.GAME_OVER, move(game, "e2", "e4"));
         assertTrue(game.getMoves().isEmpty()); assertTrue(game.getFigureByPosition(pos("e2")) instanceof Pawn);
     }
     @Test public void snapshotsAndMoveRecordsRetainTimeOutsideCompose() {

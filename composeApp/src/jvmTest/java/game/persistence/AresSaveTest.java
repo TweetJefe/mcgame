@@ -1,9 +1,10 @@
 package game.persistence;
+import game.moves.StatusRejection;
+import game.moves.Success;
 import game.core.Game;
 import game.heroes.*;
 import game.heroes.ares.AresTest;
 import game.draft.*;
-import game.moves.MoveResult;
 import org.junit.Test;
 import java.nio.charset.StandardCharsets;
 import static game.core.Positions.pos;
@@ -14,9 +15,9 @@ public class AresSaveTest {
     private Game load(String s)throws Exception{return Game.fromSnapshot(GameSaveFile.decode(s.getBytes(StandardCharsets.UTF_8)),()->0L);}
     private void invalid(String s){assertThrows(java.io.IOException.class,()->load(s));}
     @Test public void stunAndSpearCooldownSurviveLoadingAndExpireAtTheCorrectBoundary()throws Exception {
-        Game g=AresTest.collision();assertEquals(MoveResult.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("c2"),pos("f2"),Ability.SPEAR));String s=xml(g);assertTrue(s.contains("formatVersion=\"9\""));Game other=load(s);assertEquals(s,xml(other));assertTrue(other.getPieceState(pos("e2")).isStunned());
-        assertEquals(MoveResult.SUCCESS,other.moveFigure(other.getCurrentPlayer(),pos("b1"),pos("a3")));assertEquals(MoveResult.SUCCESS,other.endTurn(other.getCurrentPlayer()));
-        assertEquals(MoveResult.STUNNED,other.getAbilityAvailability(pos("f2"),Ability.HOOK));assertEquals(MoveResult.SUCCESS,other.moveFigure(other.getCurrentPlayer(),pos("g8"),pos("f6")));assertEquals(MoveResult.SUCCESS,other.endTurn(other.getCurrentPlayer()));assertFalse(other.getPieceState(pos("e2")).isStunned());AresTest.roundtrip(other);
+        Game g=AresTest.collision();assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("c2"),pos("f2"),Ability.SPEAR));String s=xml(g);assertTrue(s.contains("formatVersion=\"9\""));Game other=load(s);assertEquals(s,xml(other));assertTrue(other.getPieceState(pos("e2")).isStunned());
+        assertEquals(Success.SUCCESS,other.moveFigure(other.getCurrentPlayer(),pos("b1"),pos("a3")));assertEquals(Success.SUCCESS,other.endTurn(other.getCurrentPlayer()));
+        assertEquals(StatusRejection.STUNNED,other.getAbilityAvailability(pos("f2"),Ability.HOOK));assertEquals(Success.SUCCESS,other.moveFigure(other.getCurrentPlayer(),pos("g8"),pos("f6")));assertEquals(Success.SUCCESS,other.endTurn(other.getCurrentPlayer()));assertFalse(other.getPieceState(pos("e2")).isStunned());AresTest.roundtrip(other);
     }
     @Test public void tamperedStunRulesEventsAndVersionAreRejected()throws Exception {
         Game g=AresTest.collision();g.useAbility(g.getCurrentPlayer(),pos("c2"),pos("f2"),Ability.SPEAR);String s=xml(g);

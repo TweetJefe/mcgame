@@ -1,9 +1,9 @@
 package game.persistence;
 
+import game.moves.Success;
 import game.core.Game;
 import game.draft.*;
 import game.heroes.*;
-import game.moves.MoveResult;
 import org.junit.Test;
 import java.nio.charset.StandardCharsets;
 import static game.core.Positions.pos;
@@ -16,11 +16,11 @@ public class DraftSaveTest {
     private Game load(String s)throws Exception {return Game.fromSnapshot(GameSaveFile.decode(s.getBytes(StandardCharsets.UTF_8)),()->0L);}
     private void invalid(String s) {assertThrows(java.io.IOException.class,()->GameSaveFile.decode(s.getBytes(StandardCharsets.UTF_8)));}
     @Test public void completedDraftRoundtripsExactlyAndMidTurnCanContinue()throws Exception {
-        Game g=game();var draft=g.getDraft();assertEquals(MoveResult.SUCCESS,g.moveFigure(g.getCurrentPlayer(),pos("h2"),pos("h4")));
+        Game g=game();var draft=g.getDraft();assertEquals(Success.SUCCESS,g.moveFigure(g.getCurrentPlayer(),pos("h2"),pos("h4")));
         String s=xml(g);assertTrue(s.contains("formatVersion=\"5\""));Game restored=load(s);
         assertEquals(s,xml(restored));assertEquals(draft,restored.getDraft());assertTrue(restored.getTurnState().moveUsed());
-        assertEquals(MoveResult.SUCCESS,restored.endTurn(restored.getCurrentPlayer()));
-        assertEquals(MoveResult.SUCCESS,restored.moveFigure(restored.getCurrentPlayer(),pos("e7"),pos("e5")));
+        assertEquals(Success.SUCCESS,restored.endTurn(restored.getCurrentPlayer()));
+        assertEquals(Success.SUCCESS,restored.moveFigure(restored.getCurrentPlayer(),pos("e7"),pos("e5")));
         assertEquals(draft,load(xml(restored)).getDraft());
     }
     @Test public void rejectsMissingUnfinishedDuplicateUnknownAndOutOfOrderDraft()throws Exception {

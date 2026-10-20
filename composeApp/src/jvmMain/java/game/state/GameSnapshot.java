@@ -31,7 +31,10 @@ public record GameSnapshot(long version, GameMode mode, Field field, Map<Long, P
                            ClockSnapshot clock, GameOutcome outcome, List<MadeMove> moves, List<GameEvent> events,
                            long whitePoints, long blackPoints, List<Figure> whiteCaptures, List<Figure> blackCaptures,
                            FigureColor drawOffer, HeroRules heroRules, EconomyState economy, TerrainState terrain,
-                           DraftSnapshot draft, SummonState summons, SpellState spells, FaunState faun) {
+                           DraftSnapshot draft, SummonState summons, SpellState spells, FaunState faun, game.heroes.clownganger.ClownState clown, game.heroes.moleminer.MineState mines, game.heroes.zeus.LightningState lightning) {
+    public GameSnapshot(long version, GameMode mode, Field field, Map<Long, PieceState> pieces,                            TurnState turn, FigureColor active, CastlingRights castlingRights,                            Position enPassantTarget, int halfmoveClock, Map<String, Integer> repetitions,                            ClockSnapshot clock, GameOutcome outcome, List<MadeMove> moves, List<GameEvent> events,                            long whitePoints, long blackPoints, List<Figure> whiteCaptures, List<Figure> blackCaptures,                            FigureColor drawOffer, HeroRules heroRules, EconomyState economy, TerrainState terrain, DraftSnapshot draft, SummonState summons, SpellState spells, FaunState faun, game.heroes.clownganger.ClownState clown, game.heroes.moleminer.MineState mines){
+        this(version,mode,field,pieces,turn,active,castlingRights,enPassantTarget,halfmoveClock,repetitions,clock,outcome,moves,events,whitePoints,blackPoints,whiteCaptures,blackCaptures,drawOffer,heroRules,economy,terrain,draft,summons,spells,faun,clown,mines,game.heroes.zeus.LightningState.fromHistory(events,heroRules.zeus()).clean(pieces));
+    }
     public GameSnapshot {
         pieces = Map.copyOf(pieces);
         repetitions = Map.copyOf(repetitions);
@@ -39,6 +42,12 @@ public record GameSnapshot(long version, GameMode mode, Field field, Map<Long, P
         events = List.copyOf(events);
         whiteCaptures = List.copyOf(whiteCaptures);
         blackCaptures = List.copyOf(blackCaptures);
+    }
+    public GameSnapshot(long version,GameMode mode,Field field,Map<Long,PieceState> pieces,TurnState turn,FigureColor active,CastlingRights castlingRights,Position enPassantTarget,int halfmoveClock,Map<String,Integer> repetitions,ClockSnapshot clock,GameOutcome outcome,List<MadeMove> moves,List<GameEvent> events,long whitePoints,long blackPoints,List<Figure> whiteCaptures,List<Figure> blackCaptures,FigureColor drawOffer,HeroRules heroRules,EconomyState economy,TerrainState terrain,DraftSnapshot draft,SummonState summons,SpellState spells,FaunState faun,game.heroes.clownganger.ClownState clown){
+        this(version,mode,field,pieces,turn,active,castlingRights,enPassantTarget,halfmoveClock,repetitions,clock,outcome,moves,events,whitePoints,blackPoints,whiteCaptures,blackCaptures,drawOffer,heroRules,economy,terrain,draft,summons,spells,faun,clown,game.heroes.moleminer.MineState.fromHistory(events));
+    }
+    public GameSnapshot(long version,GameMode mode,Field field,Map<Long,PieceState> pieces,TurnState turn,FigureColor active,CastlingRights castlingRights,Position enPassantTarget,int halfmoveClock,Map<String,Integer> repetitions,ClockSnapshot clock,GameOutcome outcome,List<MadeMove> moves,List<GameEvent> events,long whitePoints,long blackPoints,List<Figure> whiteCaptures,List<Figure> blackCaptures,FigureColor drawOffer,HeroRules heroRules,EconomyState economy,TerrainState terrain,DraftSnapshot draft,SummonState summons,SpellState spells,FaunState faun){
+        this(version,mode,field,pieces,turn,active,castlingRights,enPassantTarget,halfmoveClock,repetitions,clock,outcome,moves,events,whitePoints,blackPoints,whiteCaptures,blackCaptures,drawOffer,heroRules,economy,terrain,draft,summons,spells,faun,game.heroes.clownganger.ClownState.fromHistory(events,heroRules.clownganger()));
     }
 
     public GameSnapshot(long version, GameMode mode, Field field, Map<Long, PieceState> pieces,

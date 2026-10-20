@@ -1,10 +1,11 @@
 package game.persistence;
 
+import game.moves.Success;
+import game.moves.TurnRejection;
 import game.core.Game;
 import game.heroes.Ability;
 import game.heroes.HeroType;
 import game.heroes.pudge.PudgeRules;
-import game.moves.MoveResult;
 import game.moves.Promotion;
 import game.scenarios.PudgeScenario;
 import game.state.CastlingRights;
@@ -39,9 +40,9 @@ public class GameSaveFileTest {
         Game restored = Game.fromSnapshot(GameSaveFile.decode(bytes), () -> 0L);
         assertArrayEquals(bytes, GameSaveFile.encode(restored.getSnapshot())); return restored;
     }
-    private void move(Game game, String from, String to) { assertEquals(MoveResult.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos(from), pos(to))); }
-    private void ability(Game game, String from, String to, Ability ability) { assertEquals(MoveResult.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos(from), pos(to), ability)); }
-    private void end(Game game) { assertEquals(MoveResult.SUCCESS, game.endTurn(game.getCurrentPlayer())); }
+    private void move(Game game, String from, String to) { assertEquals(Success.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos(from), pos(to))); }
+    private void ability(Game game, String from, String to, Ability ability) { assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos(from), pos(to), ability)); }
+    private void end(Game game) { assertEquals(Success.SUCCESS, game.endTurn(game.getCurrentPlayer())); }
     private Map<Position, Figure> board(String whiteKing, String blackKing) {
         Field factory = new Field(8); var board = new HashMap<Position, Figure>();
         for (int row = 0; row < 8; row++) for (int col = 0; col < 8; col++) {
@@ -70,14 +71,14 @@ public class GameSaveFileTest {
         Game game = scenario(PudgeScenario.COUNTER_CAPTURE); long ally = game.getPieceState(pos("d3")).id();
         ability(game, "e2", "d3", Ability.SWALLOW); Game restored = roundtrip(game);
         assertEquals(PieceState.Status.SWALLOWED, restored.getPieceState(ally).status());
-        assertEquals(MoveResult.MOVE_REQUIRED, restored.endTurn(restored.getCurrentPlayer()));
-        assertEquals(MoveResult.ABILITY_ALREADY_USED, restored.useAbility(restored.getCurrentPlayer(), pos("e2"), pos("f8"), Ability.HOOK));
+        assertEquals(TurnRejection.MOVE_REQUIRED, restored.endTurn(restored.getCurrentPlayer()));
+        assertEquals(TurnRejection.ABILITY_ALREADY_USED, restored.useAbility(restored.getCurrentPlayer(), pos("e2"), pos("f8"), Ability.HOOK));
         move(restored, "e2", "f2"); end(restored);
         assertFalse(game.getTurnState().moveUsed()); // Restored player/Game are independent.
     }
     @Test public void moveOnlySaveDoesNotGrantASecondMovement() throws Exception {
         Game game = scenario(PudgeScenario.DIAGONAL_HOOK); move(game, "e2", "d2"); Game restored = roundtrip(game);
-        assertEquals(MoveResult.MOVE_ALREADY_USED, restored.moveFigure(restored.getCurrentPlayer(), pos("d2"), pos("d3")));
+        assertEquals(TurnRejection.MOVE_ALREADY_USED, restored.moveFigure(restored.getCurrentPlayer(), pos("d2"), pos("d3")));
         assertFalse(restored.getTurnState().abilityUsed()); end(restored);
     }
     @Test public void loadedPudgesReactionAfterLoadingPreservesAllyIdAndBothCaptureLists() throws Exception {
@@ -127,16 +128,16 @@ public class GameSaveFileTest {
         board = board("h1", "h8"); put(board, Pawn.class, WHITE, "a7");
         game = Game.fromPosition(new GamePosition(board, WHITE, CastlingRights.none(), null, 0), () -> 0L);
         long id = game.getPieceState(pos("a7")).id();
-        assertEquals(MoveResult.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos("a7"), pos("a8"), Promotion.QUEEN));
+        assertEquals(Success.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos("a7"), pos("a8"), Promotion.QUEEN));
         assertEquals(id, roundtrip(game).getPieceState(pos("a8")).id());
     }
     @Test public void repetitionCountersAndDrawOfferPersistAndBothPlayersHistoriesAreRestored() throws Exception {
         Game game = new Game(8, () -> 0L);
         move(game, "g1", "f3"); move(game, "g8", "f6"); move(game, "f3", "g1"); move(game, "f6", "g8");
-        assertEquals(MoveResult.SUCCESS, game.offerDraw(game.getWhitePlayer()));
+        assertEquals(Success.SUCCESS, game.offerDraw(game.getWhitePlayer()));
         Game restored = roundtrip(game); assertSame(restored.getWhitePlayer(), restored.getDrawOffer()); assertEquals(2, restored.getRepetitionCount());
         assertEquals(2, restored.getWhitePlayer().getMadeMoves().size()); assertEquals(2, restored.getBlackPlayer().getMadeMoves().size());
-        assertEquals(MoveResult.SUCCESS, restored.acceptDraw(restored.getBlackPlayer())); roundtrip(restored);
+        assertEquals(Success.SUCCESS, restored.acceptDraw(restored.getBlackPlayer())); roundtrip(restored);
     }
     @Test public void localClockRestorationPausesOfflineTimeAndRetainsSubsecondAccuracy() throws Exception {
         AtomicLong now = new AtomicLong(); Game game = PudgeScenario.ULTIMATE_CHARGE.createGame(now::get); game.startClock(60);
@@ -148,9 +149,9 @@ public class GameSaveFileTest {
     }
     @Test public void finishedGameRemainsFinishedAndItsClockStaysStoppedAfterLoading() throws Exception {
         Game game = scenario(PudgeScenario.DIAGONAL_HOOK); game.startClock(10);
-        assertEquals(MoveResult.SUCCESS, game.resign(game.getWhitePlayer())); Game restored = roundtrip(game);
+        assertEquals(Success.SUCCESS, game.resign(game.getWhitePlayer())); Game restored = roundtrip(game);
         assertFalse(restored.getClockSnapshot().running()); assertEquals(Termination.RESIGNATION, restored.getOutcome().reason());
-        assertEquals(MoveResult.GAME_OVER, restored.moveFigure(restored.getWhitePlayer(), pos("e2"), pos("e3")));
+        assertEquals(TurnRejection.GAME_OVER, restored.moveFigure(restored.getWhitePlayer(), pos("e2"), pos("e3")));
     }
     @Test public void unicodeFileNamesAndReplacementOfAnExistingSaveWork() throws Exception {
         var path = temporary.newFolder("Сохранения").toPath().resolve("Пудж.moba.xml");

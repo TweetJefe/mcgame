@@ -43,7 +43,7 @@ class MoleminerUiTest{
         SwingUtilities.invokeAndWait{
             val d=Draft(DraftRules(1,6,7));d.ban(model.FigureColor.WHITE,HeroType.PUDGE_ROOK);d.ban(model.FigureColor.BLACK,HeroType.IZBA_ROOK)
             ImageComposeScene(1200,800){MaterialTheme{DraftScreen(d,{}, {})}}.use{
-                it.render().close();it.sendPointerEvent(PointerEventType.Scroll,Offset(300f,500f),scrollDelta=Offset(0f,10f));val t=System.nanoTime();repeat(40){f->it.render(t+f*16_000_000L).close()};save(it,"moleminer-draft")
+                it.render().close();it.scrollDraftToLastHero();save(it,"moleminer-draft")
                 click(it,150f,580f);click(it,840f,399f);click(it,100f,677f);assertEquals(HeroType.MOLEMINER_PAWN,d.snapshot.assignments()[pos("a2")]);save(it,"moleminer-picked")
             }
         }

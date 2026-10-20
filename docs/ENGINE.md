@@ -274,7 +274,16 @@ MoveResult moveFigure(Player player, Position from, Position to, Promotion promo
 
 ### Результаты команд
 
-`MoveResult` содержит `isSuccess()` и русское `getMessage()`. Основные причины отказа:
+`MoveResult` — интерфейс с методами `isSuccess()` и русским `getMessage()`.
+Успешный результат — `Success.SUCCESS`. Интерфейс `Rejection` задаёт
+`isSuccess() == false` для тематических перечислений: `MovementRejection`
+(перемещение и превращение), `AbilityRejection` (способности и их цели),
+`StatusRejection` (состояния и иммунитеты фигур), `TurnRejection` (порядок действий
+и состояние партии), `DrawRejection` (ничья), `ItemRejection` (предметы),
+`EconomyRejection` (экономика). Все типы находятся в `game.moves`.
+Новые причины отказа можно добавлять в соответствующее перечисление или в новую
+реализацию `Rejection`, сохраняя общий контракт обработки результата.
+Основные причины отказа:
 
 | Результат | Значение |
 | --- | --- |

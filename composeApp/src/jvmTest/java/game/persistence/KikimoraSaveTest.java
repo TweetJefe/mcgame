@@ -1,4 +1,5 @@
 package game.persistence;
+import game.moves.Success;
 import game.core.*;
 import game.heroes.*;
 import game.heroes.ares.AresTest;
@@ -21,7 +22,7 @@ public class KikimoraSaveTest{
         var b=setup();put(b,Knight.class,BLACK,"d3");put(b,Knight.class,WHITE,"e4");Game g=create(b,Map.of());yarn(g,"d3");String s=xml(g);assertTrue(s.contains("formatVersion=\"14\""));g=load(s);assertEquals(s,xml(g));assertEquals(4,g.getPieceState(pos("d3")).stunnedThroughTurn());assertEquals(5,g.getPieceState(pos("e4")).stunnedThroughTurn());cycle(g);cycle(g);assertFalse(g.getPieceState(pos("d3")).isStunned());assertTrue(g.getPieceState(pos("e4")).isStunned());AresTest.roundtrip(g);
     }
     @Test public void potFlagAndIdentitySurviveLoadingAndForcedMovement()throws Exception{
-        var b=setup();put(b,Knight.class,BLACK,"d3");put(b,Bishop.class,WHITE,"f2");Game g=AresTest.charge(create(b,Map.of(pos("f2"),HeroType.GINSENG_BISHOP)),"c2",2);long id=g.getPieceState(pos("d3")).id();pot(g,"d3");String s=xml(g);g=load(s);assertEquals(s,xml(g));cycle(g);assertEquals(game.moves.MoveResult.SUCCESS,g.useAbility(g.getCurrentPlayer(),new AbilityRequest(pos("f2"),Ability.DISPLACE,pos("d3"),pos("e4"),false)));g=load(xml(g));assertEquals(id,g.getPieceState(pos("e4")).id());assertTrue(g.getPieceState(id).isPotted());AresTest.roundtrip(g);
+        var b=setup();put(b,Knight.class,BLACK,"d3");put(b,Bishop.class,WHITE,"f2");Game g=AresTest.charge(create(b,Map.of(pos("f2"),HeroType.GINSENG_BISHOP)),"c2",2);long id=g.getPieceState(pos("d3")).id();pot(g,"d3");String s=xml(g);g=load(s);assertEquals(s,xml(g));cycle(g);assertEquals(game.moves.Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),new AbilityRequest(pos("f2"),Ability.DISPLACE,pos("d3"),pos("e4"),false)));g=load(xml(g));assertEquals(id,g.getPieceState(pos("e4")).id());assertTrue(g.getPieceState(id).isPotted());AresTest.roundtrip(g);
     }
     @Test public void removingPotFlagOrItsHistoryOrRulesIsRejected()throws Exception{
         Game g=ready();pot(g,"d3");String s=xml(g);invalid(s.replace("potted=\"true\"","potted=\"false\""));invalid(s.replace("kind=\"CLAY_POT\"","kind=\"YARN\""));invalid(s.replaceAll("(?s)<kikimoraRules [^>]*/>",""));invalid(s.replace("formatVersion=\"14\"","formatVersion=\"13\""));

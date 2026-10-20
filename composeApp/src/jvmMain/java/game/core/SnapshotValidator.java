@@ -38,7 +38,7 @@ public final class SnapshotValidator {
 
     public static void validate(GameSnapshot s) {
         require(s != null, "Missing game snapshot");
-        require(s.mode() != null && s.field() != null && s.turn() != null && s.heroRules() != null && s.summons() != null && s.spells() != null && s.faun() != null, "Missing game metadata");
+        require(s.mode() != null && s.field() != null && s.turn() != null && s.heroRules() != null && s.summons() != null && s.spells() != null && s.faun()!=null && s.clown()!=null && s.mines()!=null && s.lightning() != null, "Missing game metadata");
         require(side(s.active()) && s.version() >= 0 && s.version() < Long.MAX_VALUE && s.turn().number() > 0
                 && s.turn().number() < Long.MAX_VALUE, "Invalid turn or version");
         PositionValidator.validateBoard(s.field().getGameField(), s.mode() == GameMode.CLASSIC);
@@ -54,7 +54,7 @@ public final class SnapshotValidator {
         for (var entry : s.pieces().entrySet()) {
             PieceState piece = entry.getValue();
             require(entry.getKey() == piece.id() && piece.id() < Long.MAX_VALUE, "Invalid piece identity");
-            if (!s.summons().records().containsKey(piece.id())) {
+            if (!s.summons().records().containsKey(piece.id()) && !s.clown().illusions().containsKey(piece.id())) {
                 if (piece.color() == FigureColor.WHITE) white++;
                 else black++;
             }
@@ -63,7 +63,12 @@ public final class SnapshotValidator {
                 Figure figure = s.field().getFigureByPosition(piece.position());
                 require(figure != null && figure.getClass() == piece.type() && figure.getColor() == piece.color(), "Piece state differs from board");
             } else require(piece.type() != King.class, "King cannot be captured or swallowed");
-            if (piece.hero() == HeroType.NONE)
+            if (piece.hero() == HeroType.KIKIMORA_BISHOP)require(piece.cooldown()<=s.heroRules().kikimora().yarnCooldown() && piece.ultimateCharge()<=s.heroRules().kikimora().ultimateCaptures(),"Invalid Kikimora resources");
+            else if(piece.hero()==HeroType.CHRONOMLIN_PAWN)require(piece.cooldown()<=s.heroRules().chronomlin().grappleCooldown() && piece.ultimateCharge()<=s.heroRules().chronomlin().ultimateCaptures(),"Invalid Chronomlin resources");
+            else if(piece.hero()==HeroType.ZEUS_ROOK)require(piece.cooldown()<=s.heroRules().zeus().lightningCooldown() && piece.ultimateCharge()<=s.heroRules().zeus().ultimateCaptures(),"Invalid Zeus resources");
+            else if(piece.hero()==HeroType.MOLEMINER_PAWN)require(piece.cooldown()<=s.heroRules().moleminer().mineCooldown() && piece.ultimateCharge()<=s.heroRules().moleminer().ultimateCaptures(),"Invalid Moleminer resources");
+            else if(piece.hero()==HeroType.CLOWNGANGER_KNIGHT)require(piece.cooldown()<=s.heroRules().clownganger().boxCooldown() && piece.ultimateCharge()<=s.heroRules().clownganger().ultimateCaptures(),"Invalid Clownganger resources");
+            else if (piece.hero() == HeroType.NONE || piece.hero()==HeroType.ILLUSION)
                 require(piece.cooldown() == 0 && piece.ultimateCharge() == 0 && piece.storedPieceId() == null, "Nonhero has hero state");
             else if (piece.hero() == HeroType.PUDGE_ROOK)
                 require(piece.cooldown() <= s.pudgeRules().hookCooldown() && piece.ultimateCharge() <= s.pudgeRules().ultimateCaptures(), "Ability state exceeds configured limits");
@@ -109,8 +114,13 @@ public final class SnapshotValidator {
         }
         validateHistory(s);
         SpellValidator.validate(s);
+        game.heroes.chronomlin.ChronomlinValidator.validate(s);
+        game.heroes.kikimora.KikimoraValidator.validate(s);
         FaunValidator.validate(s);
         AresValidator.validate(s);
+        game.heroes.clownganger.ClownValidator.validate(s);
+        game.heroes.moleminer.MineValidator.validate(s);
+        game.heroes.zeus.LightningValidator.validate(s);
         EconomyValidator.validate(s);
         TerrainValidator.validate(s);
         SummonValidator.validate(s);
@@ -133,7 +143,7 @@ public final class SnapshotValidator {
             require(!win || s.outcome().winner() == MoveValidator.opposite(s.active()), "Timeout winner is active player");
         }
         if (s.mode() == GameMode.MOBA && (!s.outcome().isFinished() || s.outcome().reason() == Termination.CHECKMATE || s.outcome().reason() == Termination.STALEMATE)) {
-            var ctx = new ActionEngine.Context(s.field(), s.pieces(), s.castlingRights(), s.enPassantTarget(), s.economy(), s.turn().number(), s.terrain(), s.summons(), s.spells(), s.faun());
+            var ctx = new ActionEngine.Context(s.field(), s.pieces(), s.castlingRights(), s.enPassantTarget(), s.economy(), s.turn().number(), s.terrain(), s.summons(), s.spells(), s.faun(),s.clown(),s.mines(),s.lightning(),game.heroes.HeroRegistry.fromRules(s.heroRules()));
             boolean playable = s.turn().moveUsed() ? ActionEngine.canFinishAfterMove(ctx, s.active(), !s.turn().abilityUsed(), s.heroRules()) : (s.turn().abilityUsed() ? ActionEngine.hasMove(ctx, s.active(), s.mode(), s.heroRules()) : ActionEngine.hasTurn(ctx, s.active(), s.heroRules()));
             require(playable == !s.outcome().isFinished(), "Outcome differs from available turn");
             if (!playable)
@@ -173,12 +183,13 @@ public final class SnapshotValidator {
             if (event.targetId() != null) require(s.pieces().containsKey(event.targetId()), "Unknown event target");
             if (event.kind() != GameEvent.Kind.END_TURN)
                 require(event.actorId() != null && inside(event.from()) && inside(event.to()), "Incomplete action event");
-            if (event.kind() != GameEvent.Kind.COUNTER_CAPTURE && event.kind() != GameEvent.Kind.BOG_CAPTURE && event.kind() != GameEvent.Kind.YAGA_BIRTH && event.kind() != GameEvent.Kind.ARES_REVENGE) {
+            if (event.kind() != GameEvent.Kind.COUNTER_CAPTURE && event.kind() != GameEvent.Kind.BOG_CAPTURE && event.kind() != GameEvent.Kind.YAGA_BIRTH && event.kind() != GameEvent.Kind.ARES_REVENGE && event.kind()!=GameEvent.Kind.ILLUSION_HIT && event.kind()!=GameEvent.Kind.MINE_TRIGGER && event.kind()!=GameEvent.Kind.MINE_CAPTURE && event.kind()!=GameEvent.Kind.BLAST_CAPTURE && event.kind()!=GameEvent.Kind.BLAST_DEATH && event.kind()!=GameEvent.Kind.LIGHTNING_CAPTURE) {
                 FigureColor expected = (s.turn().number() - event.turn()) % 2 == 0 ? s.active() : MoveValidator.opposite(s.active());
                 require(event.color() == expected && !closed.contains(event.turn()), "Action outside its active turn");
             }
             if (event.kind() == GameEvent.Kind.MOVE) {
-                require(moved.add(event.turn()) && moveIndex < s.moves().size(), "Duplicate or missing move");
+                moved.add(event.turn());
+                require(moveIndex < s.moves().size(), "Duplicate or missing move");
                 MadeMove move = s.moves().get(moveIndex++);
                 require(move.getPly() == moveIndex && move.getColor() == event.color() && move.getFrom().equals(event.from())
                         && move.getTo().equals(event.to()) && move.getKind() != null && move.getFigure() != null, "Move differs from action history");
@@ -188,8 +199,8 @@ public final class SnapshotValidator {
                 validateClock(move.getClock(), move.getClock().activeColor(), !move.getClock().running());
                 if (move.getCaptureSquare() != null) require(inside(move.getCaptureSquare()), "Invalid capture square");
                 if (event.turn() == s.turn().number()) currentMoves++;
-            } else if (event.kind() == GameEvent.Kind.HOOK || event.kind() == GameEvent.Kind.SWALLOW || event.kind() == GameEvent.Kind.LASER || event.kind() == GameEvent.Kind.TELEPORT || event.kind() == GameEvent.Kind.BOUNTY || event.kind() == GameEvent.Kind.STEAL || event.kind() == GameEvent.Kind.MUD || event.kind() == GameEvent.Kind.AMBUSH || event.kind() == GameEvent.Kind.SUMMON_YAGA || event.kind() == GameEvent.Kind.DISPLACE || event.kind() == GameEvent.Kind.COPY_SPELL || event.kind() == GameEvent.Kind.CLOUD || event.kind() == GameEvent.Kind.INVISIBILITY || event.kind() == GameEvent.Kind.SPEAR) {
-                require(s.mode() == GameMode.MOBA && cast.add(event.turn()) && (event.kind() == GameEvent.Kind.MUD || ((event.kind() == GameEvent.Kind.TELEPORT || event.kind() == GameEvent.Kind.STEAL || event.kind() == GameEvent.Kind.AMBUSH || event.kind() == GameEvent.Kind.SUMMON_YAGA || event.kind() == GameEvent.Kind.CLOUD || event.kind() == GameEvent.Kind.INVISIBILITY || event.kind() == GameEvent.Kind.SPEAR) ? event.targetId() == null : event.targetId() != null)), "Invalid ability event");
+            } else if (event.kind() == GameEvent.Kind.HOOK || event.kind() == GameEvent.Kind.SWALLOW || event.kind() == GameEvent.Kind.LASER || event.kind() == GameEvent.Kind.TELEPORT || event.kind() == GameEvent.Kind.BOUNTY || event.kind() == GameEvent.Kind.STEAL || event.kind() == GameEvent.Kind.MUD || event.kind() == GameEvent.Kind.AMBUSH || event.kind() == GameEvent.Kind.SUMMON_YAGA || event.kind() == GameEvent.Kind.DISPLACE || event.kind() == GameEvent.Kind.COPY_SPELL || event.kind() == GameEvent.Kind.CLOUD || event.kind() == GameEvent.Kind.INVISIBILITY || event.kind() == GameEvent.Kind.SPEAR || event.kind()==GameEvent.Kind.BOX || event.kind()==GameEvent.Kind.ILLUSION || event.kind()==GameEvent.Kind.PLANT_MINE || event.kind()==GameEvent.Kind.DETONATE || event.kind()==GameEvent.Kind.CHAIN_LIGHTNING || event.kind()==GameEvent.Kind.THUNDERSTORM || event.kind()==GameEvent.Kind.GRAPPLE || event.kind()==GameEvent.Kind.EVOLVE || event.kind()==GameEvent.Kind.YARN || event.kind()==GameEvent.Kind.CLAY_POT) {
+                require(s.mode() == GameMode.MOBA && cast.add(event.turn()) && (event.kind() == GameEvent.Kind.MUD || ((event.kind() == GameEvent.Kind.TELEPORT || event.kind() == GameEvent.Kind.STEAL || event.kind() == GameEvent.Kind.AMBUSH || event.kind() == GameEvent.Kind.SUMMON_YAGA || event.kind() == GameEvent.Kind.CLOUD || event.kind() == GameEvent.Kind.INVISIBILITY || event.kind() == GameEvent.Kind.SPEAR || event.kind()==GameEvent.Kind.PLANT_MINE || event.kind()==GameEvent.Kind.DETONATE || event.kind()==GameEvent.Kind.THUNDERSTORM || event.kind()==GameEvent.Kind.EVOLVE) ? event.targetId() == null : event.targetId() != null)), "Invalid ability event");
                 if (event.turn() == s.turn().number()) currentAbilities++;
             } else if (event.kind() == GameEvent.Kind.END_TURN) {
                 require(s.mode() == GameMode.MOBA && moved.contains(event.turn()) && event.turn() < s.turn().number()
@@ -199,7 +210,7 @@ public final class SnapshotValidator {
         require(moveIndex == s.moves().size(), "Unmatched move history");
         if (s.mode() == GameMode.MOBA) {
             require(closed.size() == s.turn().number() - 1, "Missing turn boundaries");
-            require(s.turn().moveUsed() == (currentMoves == 1) && s.turn().abilityUsed() == (currentAbilities == 1), "Budget differs from history");
+            require(s.turn().moveUsed() == (currentMoves > 0) && s.turn().abilityUsed() == (currentAbilities == 1), "Budget differs from history");
         } else
             require(!s.turn().moveUsed() && !s.turn().abilityUsed() && s.turn().number() == s.moves().size() + 1L, "Invalid classic turn budget");
     }

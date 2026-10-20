@@ -1,8 +1,9 @@
 package game.persistence;
 
+import game.moves.StatusRejection;
+import game.moves.Success;
 import game.core.Game;
 import game.heroes.Ability;
-import game.moves.MoveResult;
 import game.scenarios.LumeshardScenario;
 import game.state.SquareColor;
 import org.junit.Test;
@@ -40,13 +41,13 @@ public class LumeshardSaveTest {
     }
     @Test public void blindEnemyAndLaserCooldownRemainEffectiveAfterLoadingThenExpireNormally() throws Exception {
         Game game = LumeshardScenario.LASER.createGame(() -> 0L);
-        assertEquals(MoveResult.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("d2"), pos("g5"), Ability.LASER));
-        assertEquals(MoveResult.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos("d2"), pos("c1")));
-        assertEquals(MoveResult.SUCCESS, game.endTurn(game.getCurrentPlayer())); game = copy(game);
+        assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("d2"), pos("g5"), Ability.LASER));
+        assertEquals(Success.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos("d2"), pos("c1")));
+        assertEquals(Success.SUCCESS, game.endTurn(game.getCurrentPlayer())); game = copy(game);
         assertTrue(game.getPieceState(pos("g5")).isBlinded());
-        assertEquals(MoveResult.BLINDED_CANNOT_CAPTURE, game.moveFigure(game.getCurrentPlayer(), pos("g5"), pos("g2")));
-        assertEquals(MoveResult.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos("g5"), pos("g4")));
-        assertEquals(MoveResult.SUCCESS, game.endTurn(game.getCurrentPlayer()));
+        assertEquals(StatusRejection.BLINDED_CANNOT_CAPTURE, game.moveFigure(game.getCurrentPlayer(), pos("g5"), pos("g2")));
+        assertEquals(Success.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos("g5"), pos("g4")));
+        assertEquals(Success.SUCCESS, game.endTurn(game.getCurrentPlayer()));
         assertFalse(game.getPieceState(pos("g4")).isBlinded()); assertEquals(2, game.getPieceState(pos("c1")).cooldown()); copy(game);
     }
     @Test public void invalidNewFieldsAndDowngradedExtendedFilesAreRejected() throws Exception {

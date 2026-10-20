@@ -1,5 +1,8 @@
 package game.heroes.izba;
 
+import game.moves.AbilityRejection;
+import game.moves.MovementRejection;
+import game.moves.Success;
 import game.heroes.*;
 import game.moves.MoveResult;
 import game.state.PieceState;
@@ -16,10 +19,10 @@ public final class IzbaAbilities {
     }
 
     public static MoveResult availability(PieceState actor, Ability ability, IzbaRules rules) {
-        if (ability == null) return MoveResult.INVALID_ABILITY;
-        if (actor == null || actor.status() != PieceState.Status.BOARD) return MoveResult.EMPTY_SOURCE;
-        if (actor.hero() != HeroType.IZBA_ROOK || ability != Ability.SUMMON_YAGA) return MoveResult.NO_ABILITY;
-        return actor.ultimateCharge() < rules.ultimateCaptures() ? MoveResult.ULTIMATE_NOT_READY : MoveResult.SUCCESS;
+        if (ability == null) return AbilityRejection.INVALID_ABILITY;
+        if (actor == null || actor.status() != PieceState.Status.BOARD) return MovementRejection.EMPTY_SOURCE;
+        if (actor.hero() != HeroType.IZBA_ROOK || ability != Ability.SUMMON_YAGA) return AbilityRejection.NO_ABILITY;
+        return actor.ultimateCharge() < rules.ultimateCaptures() ? AbilityRejection.ULTIMATE_NOT_READY : Success.SUCCESS;
     }
 
     public static HeroEffect preview(PieceState actor, Ability ability, IzbaRules rules) {

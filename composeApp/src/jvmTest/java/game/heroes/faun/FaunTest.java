@@ -1,5 +1,10 @@
 package game.heroes.faun;
 
+import game.moves.AbilityRejection;
+import game.moves.MovementRejection;
+import game.moves.StatusRejection;
+import game.moves.Success;
+import game.moves.TurnRejection;
 import game.core.*;
 import game.heroes.*;
 import game.heroes.ginseng.GinsengFixtures;
@@ -20,23 +25,23 @@ public class FaunTest {
     public static Game fixture(Map<Position,Figure> board,Map<Position,HeroType> heroes){return Game.fromMobaPosition(new GamePosition(board,WHITE,CastlingRights.none(),null,0),heroes,HeroRules.prototype(),()->0L);}
     public static Game basic(){var b=board();put(b,Knight.class,WHITE,"c2");return fixture(b,Map.of(pos("c2"),HeroType.FAUN_KNIGHT));}
     public static Game charged(){return GinsengFixtures.charged(basic(),"c2");}
-    private void move(Game g,String a,String b){assertEquals(MoveResult.SUCCESS,g.moveFigure(g.getCurrentPlayer(),pos(a),pos(b)));}
-    private void end(Game g){assertEquals(MoveResult.SUCCESS,g.endTurn(g.getCurrentPlayer()));}
-    private void cast(Game g,String actor,String target,Ability a){assertEquals(MoveResult.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos(actor),target==null?null:pos(target),a));}
+    private void move(Game g,String a,String b){assertEquals(Success.SUCCESS,g.moveFigure(g.getCurrentPlayer(),pos(a),pos(b)));}
+    private void end(Game g){assertEquals(Success.SUCCESS,g.endTurn(g.getCurrentPlayer()));}
+    private void cast(Game g,String actor,String target,Ability a){assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos(actor),target==null?null:pos(target),a));}
     private void cycle(Game g){boolean white=g.getPieceState(pos("b1"))!=null;move(g,white?"b1":"a3",white?"a3":"b1");end(g);boolean black=g.getPieceState(pos("g8"))!=null;move(g,black?"g8":"f6",black?"f6":"g8");end(g);}
     public static void roundtrip(Game g)throws Exception{var bytes=GameSaveFile.encode(g.getSnapshot());var other=Game.fromSnapshot(GameSaveFile.decode(bytes),()->0L);assertArrayEquals(bytes,GameSaveFile.encode(other.getSnapshot()));assertEquals(g.getFaun(),other.getFaun());}
 
     @Test public void cloudIsThreeByThreeAndCenterRangeIsFourIncludingDiagonals()throws Exception {
         Game g=basic();cast(g,"c2","g6",Ability.CLOUD);assertEquals(1,g.getFaun().clouds().size());
         var c=g.getFaun().clouds().getFirst();assertTrue(c.contains(pos("h7")));assertTrue(c.contains(pos("f5")));assertFalse(c.contains(pos("e5")));
-        assertEquals(3,g.getPieceState(pos("c2")).cooldown());assertEquals(MoveResult.MOVE_REQUIRED,g.endTurn(g.getCurrentPlayer()));roundtrip(g);
+        assertEquals(3,g.getPieceState(pos("c2")).cooldown());assertEquals(TurnRejection.MOVE_REQUIRED,g.endTurn(g.getCurrentPlayer()));roundtrip(g);
     }
     @Test public void cloudClipsToBoardCanCoverOccupiedSquaresAndDoesNotAffectKingAttacks()throws Exception {
         Game g=basic();assertTrue(g.getAbilityTargets(pos("c2"),Ability.CLOUD).contains(pos("a1")));cast(g,"c2","a1",Ability.CLOUD);
         assertTrue(g.getFaun().silenced(pos("a1")));assertTrue(g.getFaun().silenced(pos("b2")));assertFalse(g.isInCheck());roundtrip(g);
     }
     @Test public void cloudRejectsOutsideRadiusWithoutSpendingAnything() {
-        Game g=basic();var s=g.getSnapshot();assertEquals(MoveResult.ABILITY_OUT_OF_RANGE,g.useAbility(g.getCurrentPlayer(),pos("c2"),pos("h7"),Ability.CLOUD));assertEquals(s,g.getSnapshot());
+        Game g=basic();var s=g.getSnapshot();assertEquals(AbilityRejection.ABILITY_OUT_OF_RANGE,g.useAbility(g.getCurrentPlayer(),pos("c2"),pos("h7"),Ability.CLOUD));assertEquals(s,g.getSnapshot());
     }
     @Test public void cloudLastsTwoFollowingOwnEndsWhileCooldownNeedsThreeOwnStarts()throws Exception {
         Game g=basic();cast(g,"c2","f4",Ability.CLOUD);cycle(g);assertEquals(2,g.getPieceState(pos("c2")).cooldown());assertFalse(g.getFaun().clouds().isEmpty());
@@ -47,12 +52,12 @@ public class FaunTest {
         var b=board();put(b,Knight.class,WHITE,"c2");put(b,Rook.class,WHITE,"e2");put(b,Rook.class,BLACK,"f2");
         Game g=GinsengFixtures.charged(fixture(b,Map.of(pos("c2"),HeroType.FAUN_KNIGHT,pos("e2"),HeroType.PUDGE_ROOK,pos("f2"),HeroType.PUDGE_ROOK)),"e2","f2");
         cast(g,"c2","e2",Ability.CLOUD);move(g,"b1","a3");end(g);
-        assertEquals(MoveResult.SILENCED,g.getAbilityAvailability(pos("f2"),Ability.HOOK));assertEquals(MoveResult.SILENCED,g.getAbilityAvailability(pos("f2"),Ability.SWALLOW));
-        move(g,"g8","f6");end(g);assertEquals(MoveResult.SILENCED,g.getAbilityAvailability(pos("e2"),Ability.HOOK));
-        move(g,"e2","e4");assertEquals(MoveResult.SUCCESS,g.getAbilityAvailability(pos("e4"),Ability.HOOK));roundtrip(g);
+        assertEquals(StatusRejection.SILENCED,g.getAbilityAvailability(pos("f2"),Ability.HOOK));assertEquals(StatusRejection.SILENCED,g.getAbilityAvailability(pos("f2"),Ability.SWALLOW));
+        move(g,"g8","f6");end(g);assertEquals(StatusRejection.SILENCED,g.getAbilityAvailability(pos("e2"),Ability.HOOK));
+        move(g,"e2","e4");assertEquals(Success.SUCCESS,g.getAbilityAvailability(pos("e4"),Ability.HOOK));roundtrip(g);
     }
     @Test public void casterCanSilenceItselfAndMovingOutRestoresItsUltimate()throws Exception {
-        Game g=charged();cast(g,"c2","c2",Ability.CLOUD);cycle(g);assertEquals(MoveResult.SILENCED,g.getAbilityAvailability(pos("c2"),Ability.INVISIBILITY));
+        Game g=charged();cast(g,"c2","c2",Ability.CLOUD);cycle(g);assertEquals(StatusRejection.SILENCED,g.getAbilityAvailability(pos("c2"),Ability.INVISIBILITY));
         move(g,"c2","e3");cast(g,"e3",null,Ability.INVISIBILITY);assertTrue(g.getFaun().invisible().containsKey(g.getPieceState(pos("e3")).id()));roundtrip(g);
     }
     @Test public void invisibilityKeepsRealBoardIdentityAndMovementDoesNotReveal()throws Exception {
@@ -70,7 +75,7 @@ public class FaunTest {
     }
     @Test public void successfulCloudRevealsButRejectedCastKeepsInvisibility()throws Exception {
         Game g=charged();cast(g,"c2",null,Ability.INVISIBILITY);cycle(g);var before=g.getSnapshot();
-        assertEquals(MoveResult.ABILITY_OUT_OF_RANGE,g.useAbility(g.getCurrentPlayer(),pos("c2"),pos("h7"),Ability.CLOUD));assertEquals(before,g.getSnapshot());
+        assertEquals(AbilityRejection.ABILITY_OUT_OF_RANGE,g.useAbility(g.getCurrentPlayer(),pos("c2"),pos("h7"),Ability.CLOUD));assertEquals(before,g.getSnapshot());
         cast(g,"c2","f4",Ability.CLOUD);assertTrue(g.getFaun().invisible().isEmpty());roundtrip(g);
     }
     @Test public void enemyCanBlindlyCaptureInvisibleFaun()throws Exception {
@@ -83,7 +88,7 @@ public class FaunTest {
     @Test public void invisibleEnemyCannotBeSelectedForLaserOrCopy()throws Exception {
         var b=board();put(b,Knight.class,WHITE,"c2");put(b,Bishop.class,BLACK,"f5");Game g=GinsengFixtures.charged(fixture(b,Map.of(pos("c2"),HeroType.FAUN_KNIGHT,pos("f5"),HeroType.LUMESHARD_BISHOP)),"c2");
         cast(g,"c2",null,Ability.INVISIBILITY);move(g,"c2","d4");end(g);var s=g.getSnapshot();
-        assertFalse(g.getAbilityTargets(pos("f5"),Ability.LASER).contains(pos("d4")));assertEquals(MoveResult.TARGET_INVISIBLE,g.useAbility(g.getCurrentPlayer(),pos("f5"),pos("d4"),Ability.LASER));assertEquals(s,g.getSnapshot());roundtrip(g);
+        assertFalse(g.getAbilityTargets(pos("f5"),Ability.LASER).contains(pos("d4")));assertEquals(StatusRejection.TARGET_INVISIBLE,g.useAbility(g.getCurrentPlayer(),pos("f5"),pos("d4"),Ability.LASER));assertEquals(s,g.getSnapshot());roundtrip(g);
     }
     @Test public void faunCanBeDraftedIntoEitherKnightSlotAndBabaRemainsExcluded()throws Exception {
         for(String square:List.of("b1","g1")){
@@ -96,21 +101,21 @@ public class FaunTest {
     @Test public void ginsengCanCopyCloudAndSilenceAlsoBlocksItsCopiedChannel()throws Exception {
         var b=board();put(b,Knight.class,WHITE,"e2");Game g=GinsengFixtures.charged(GinsengFixtures.create(b,Map.of(pos("e2"),HeroType.FAUN_KNIGHT)),"c2");
         cast(g,"e2","h4",Ability.CLOUD);cycle(g);cast(g,"c2","e2",Ability.COPY_SPELL);cycle(g);
-        assertEquals(MoveResult.SUCCESS,g.useAbility(g.getCurrentPlayer(),new AbilityRequest(pos("c2"),Ability.CLOUD,pos("c2"),null,true)));
+        assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),new AbilityRequest(pos("c2"),Ability.CLOUD,pos("c2"),null,true)));
         assertFalse(g.getFaun().clouds().isEmpty());assertTrue(g.getSpells().borrowed().isEmpty());assertEquals(0,g.getPieceState(pos("c2")).cooldown());cycle(g);
-        assertEquals(MoveResult.SILENCED,g.getAbilityAvailability(pos("c2"),Ability.DISPLACE));assertEquals(MoveResult.SILENCED,g.getAbilityAvailability(pos("c2"),Ability.CLOUD,true));roundtrip(g);
+        assertEquals(StatusRejection.SILENCED,g.getAbilityAvailability(pos("c2"),Ability.DISPLACE));assertEquals(StatusRejection.SILENCED,g.getAbilityAvailability(pos("c2"),Ability.CLOUD,true));roundtrip(g);
     }
     @Test public void ginsengInvisibilityRetainsBishopAndRevealsOnNativeDisplacement()throws Exception {
         var b=board();put(b,Knight.class,WHITE,"e2");Game g=GinsengFixtures.charged(GinsengFixtures.create(b,Map.of(pos("e2"),HeroType.FAUN_KNIGHT)),"c2","e2");
         cast(g,"e2",null,Ability.INVISIBILITY);cycle(g);cast(g,"c2","e2",Ability.COPY_SPELL);cycle(g);
-        assertEquals(MoveResult.SUCCESS,g.useAbility(g.getCurrentPlayer(),new AbilityRequest(pos("c2"),Ability.INVISIBILITY,null,null,true)));long id=g.getPieceState(pos("c2")).id();assertTrue(g.getFaun().invisible().containsKey(id));assertEquals(Bishop.class,g.getPieceState(pos("c2")).type());roundtrip(g);
-        cycle(g);assertEquals(MoveResult.SUCCESS,g.useAbility(g.getCurrentPlayer(),new AbilityRequest(pos("c2"),Ability.DISPLACE,pos("a3"),pos("b3"),false)));assertFalse(g.getFaun().invisible().containsKey(id));roundtrip(g);
+        assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),new AbilityRequest(pos("c2"),Ability.INVISIBILITY,null,null,true)));long id=g.getPieceState(pos("c2")).id();assertTrue(g.getFaun().invisible().containsKey(id));assertEquals(Bishop.class,g.getPieceState(pos("c2")).type());roundtrip(g);
+        cycle(g);assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),new AbilityRequest(pos("c2"),Ability.DISPLACE,pos("a3"),pos("b3"),false)));assertFalse(g.getFaun().invisible().containsKey(id));roundtrip(g);
     }
     @Test public void invisibleKnightStillAttacksSquaresAndProtectsThemFromTheEnemyKing()throws Exception {
         var b=board();put(b,Knight.class,WHITE,"c2");empty(b,"h8");put(b,King.class,BLACK,"f6");
         Game g=GinsengFixtures.charged(fixture(b,Map.of(pos("c2"),HeroType.FAUN_KNIGHT)),"c2");
         cast(g,"c2",null,Ability.INVISIBILITY);move(g,"c2","d4");end(g);
-        assertEquals(MoveResult.KING_IN_CHECK,g.moveFigure(g.getCurrentPlayer(),pos("f6"),pos("e6")));assertFalse(g.getFaun().invisible().isEmpty());roundtrip(g);
+        assertEquals(MovementRejection.KING_IN_CHECK,g.moveFigure(g.getCurrentPlayer(),pos("f6"),pos("e6")));assertFalse(g.getFaun().invisible().isEmpty());roundtrip(g);
     }
     @Test public void cloudContinuesAfterItsCasterIsCaptured()throws Exception {
         var b=board();put(b,Knight.class,WHITE,"c2");put(b,Rook.class,BLACK,"c8");Game g=fixture(b,Map.of(pos("c2"),HeroType.FAUN_KNIGHT));

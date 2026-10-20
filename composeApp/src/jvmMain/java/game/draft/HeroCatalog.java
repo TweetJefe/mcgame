@@ -15,10 +15,15 @@ public final class HeroCatalog {
     }
 
     public static List<HeroType> heroes() {
-        return heroes(5);
+        return heroes(10);
     }
 
     public static List<HeroType> heroes(int version) {
+        if(version==10){var heroes=new ArrayList<>(heroes(9));heroes.add(HeroType.KIKIMORA_BISHOP);return List.copyOf(heroes);}
+        if(version==9){var heroes=new ArrayList<>(heroes(8));heroes.add(HeroType.CHRONOMLIN_PAWN);return List.copyOf(heroes);}
+        if(version==8){var heroes=new ArrayList<>(heroes(7));heroes.add(HeroType.ZEUS_ROOK);return List.copyOf(heroes);}
+        if(version==7){var heroes=new ArrayList<>(heroes(6));heroes.add(HeroType.MOLEMINER_PAWN);return List.copyOf(heroes);}
+        if(version==6){var heroes=new ArrayList<>(heroes(5));heroes.add(HeroType.CLOWNGANGER_KNIGHT);return List.copyOf(heroes);}
         if (version == 5)
             return List.of(HeroType.PUDGE_ROOK, HeroType.LUMESHARD_BISHOP, HeroType.BOUNTY_CROW_PAWN, HeroType.BOLOTNIK_KNIGHT, HeroType.IZBA_ROOK, HeroType.GINSENG_BISHOP, HeroType.FAUN_KNIGHT, HeroType.ARES_BISHOP);
         if (version == 4)
@@ -36,15 +41,15 @@ public final class HeroCatalog {
             return List.of();
         int row = side == FigureColor.WHITE ? 0 : 7;
         return switch (hero) {
-            case PUDGE_ROOK, IZBA_ROOK -> List.of(new Position(row, 0), new Position(row, 7));
-            case LUMESHARD_BISHOP, GINSENG_BISHOP, ARES_BISHOP -> List.of(new Position(row, 2), new Position(row, 5));
-            case BOLOTNIK_KNIGHT, FAUN_KNIGHT -> List.of(new Position(row, 1), new Position(row, 6));
-            case BOUNTY_CROW_PAWN -> {
+            case ZEUS_ROOK, PUDGE_ROOK, IZBA_ROOK -> List.of(new Position(row, 0), new Position(row, 7));
+            case KIKIMORA_BISHOP, LUMESHARD_BISHOP, GINSENG_BISHOP, ARES_BISHOP -> List.of(new Position(row, 2), new Position(row, 5));
+            case CLOWNGANGER_KNIGHT, BOLOTNIK_KNIGHT, FAUN_KNIGHT -> List.of(new Position(row, 1), new Position(row, 6));
+            case CHRONOMLIN_PAWN, MOLEMINER_PAWN, BOUNTY_CROW_PAWN -> {
                 var squares = new ArrayList<Position>();
                 for (int col = 0; col < 8; col++) squares.add(new Position(side == FigureColor.WHITE ? 1 : 6, col));
                 yield List.copyOf(squares);
             }
-            case NONE, BABA_YAGA_PAWN -> List.of();
+            case ILLUSION, NONE, BABA_YAGA_PAWN -> List.of();
         };
     }
 
@@ -61,6 +66,12 @@ public final class HeroCatalog {
             case FAUN_KNIGHT -> "Конь • Туча 3×3: дальность 4, КД 3. Ульта: невидимость на 2 хода.";
             case GINSENG_BISHOP ->
                     "Слон • Сдвиг: радиус 3, соседняя клетка, КД 3. Ульта: копия последнего скилла героя.";
+            case CLOWNGANGER_KNIGHT -> "Конь • Коробка: радиус 3, КД 3, защита на 1 ход. Ульта: двойник на 2 хода за 1 взятие.";
+            case ILLUSION -> "Пустышка: блокирует проход, не берёт фигуры и не имеет способностей.";
+            case MOLEMINER_PAWN -> "Пешка • Мина под собой: КД 3, скрыта и бессрочна. Ульта: прыжок 3 и взрыв 2×2 за 2 взятия.";
+            case ZEUS_ROOK -> "Ладья • Цепь до 3 врагов: радиус 3, КД 1; третий заряд убивает. Ульта: случайный заряженный враг за 2 взятия.";
+            case CHRONOMLIN_PAWN -> "Пешка • Притяжение без дальности, КД 3. Ульта за 1 взятие: пешка → слон → конь → ладья.";
+            case KIKIMORA_BISHOP -> "Слон • Пряжа: радиус 2, стан 1 или 2 хода, КД 3. Ульта за 2 взятия: неуязвимый подвижный горшок рядом.";
             case NONE -> "Обычная шахматная фигура";
         };
     }

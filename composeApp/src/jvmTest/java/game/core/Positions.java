@@ -1,5 +1,6 @@
 package game.core;
 
+import game.moves.Success;
 import game.history.MadeMove;
 import game.moves.MoveResult;
 import game.moves.Promotion;
@@ -47,7 +48,7 @@ public final class Positions {
     }
     static MoveResult move(Game game, String from, String to) { return game.moveFigure(game.getCurrentPlayer(), pos(from), pos(to)); }
     static void play(Game game, String... moves) {
-        for (String move : moves) assertEquals(move, MoveResult.SUCCESS, move(game, move.substring(0, 2), move.substring(2, 4)));
+        for (String move : moves) assertEquals(move, Success.SUCCESS, move(game, move.substring(0, 2), move.substring(2, 4)));
     }
     static void set(Game game, String field, Object value) {
         try {

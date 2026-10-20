@@ -1,5 +1,9 @@
 package game.heroes.bountycrow;
 
+import game.moves.AbilityRejection;
+import game.moves.MovementRejection;
+import game.moves.StatusRejection;
+import game.moves.Success;
 import game.heroes.*;
 import game.moves.MoveResult;
 import game.state.PieceState;
@@ -17,13 +21,13 @@ public final class BountyCrowAbilities {
     }
 
     public static MoveResult availability(PieceState actor, Ability ability, BountyCrowRules rules) {
-        if (ability == null) return MoveResult.INVALID_ABILITY;
-        if (actor == null || actor.status() != PieceState.Status.BOARD) return MoveResult.EMPTY_SOURCE;
-        if (actor.hero() != HeroType.BOUNTY_CROW_PAWN || !abilities().contains(ability)) return MoveResult.NO_ABILITY;
-        if (ability == Ability.BOUNTY && actor.cooldown() > 0) return MoveResult.ABILITY_COOLDOWN;
+        if (ability == null) return AbilityRejection.INVALID_ABILITY;
+        if (actor == null || actor.status() != PieceState.Status.BOARD) return MovementRejection.EMPTY_SOURCE;
+        if (actor.hero() != HeroType.BOUNTY_CROW_PAWN || !abilities().contains(ability)) return AbilityRejection.NO_ABILITY;
+        if (ability == Ability.BOUNTY && actor.cooldown() > 0) return AbilityRejection.ABILITY_COOLDOWN;
         if (ability == Ability.STEAL && actor.ultimateCharge() < rules.ultimateCaptures())
-            return MoveResult.ULTIMATE_NOT_READY;
-        return MoveResult.SUCCESS;
+            return AbilityRejection.ULTIMATE_NOT_READY;
+        return Success.SUCCESS;
     }
 
     public static HeroEffect preview(PieceState actor, PieceState target, Ability ability, BountyCrowRules rules) {
@@ -32,8 +36,8 @@ public final class BountyCrowAbilities {
         if (ability == Ability.STEAL)
             return HeroEffect.success(Map.of(actor.id(), actor.withAbilityState(actor.cooldown(), actor.ultimateCharge() - rules.ultimateCaptures(), null)));
         if (target == null || target.status() != PieceState.Status.BOARD || target.color() == actor.color())
-            return HeroEffect.rejected(MoveResult.INVALID_ABILITY_TARGET);
-        if (target.type() == King.class) return HeroEffect.rejected(MoveResult.KING_IMMUNE);
+            return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
+        if (target.type() == King.class) return HeroEffect.rejected(StatusRejection.KING_IMMUNE);
         return HeroEffect.success(Map.of(actor.id(), actor.withAbilityState(rules.bountyCooldown(), actor.ultimateCharge(), null)));
     }
 

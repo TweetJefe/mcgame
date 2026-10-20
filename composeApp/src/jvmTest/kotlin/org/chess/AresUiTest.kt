@@ -33,8 +33,7 @@ class AresUiTest {
             val draft=Draft(DraftRules(1,6,5));draft.ban(model.FigureColor.WHITE,HeroType.PUDGE_ROOK);draft.ban(model.FigureColor.BLACK,HeroType.IZBA_ROOK)
             ImageComposeScene(1200,800){MaterialTheme{DraftScreen(draft,{}, {})}}.use {
                 save(it,"ares-catalog")
-                it.sendPointerEvent(PointerEventType.Scroll,Offset(300f,500f),scrollDelta=Offset(0f,4f))
-                val scrollTime=System.nanoTime();repeat(40){frame->it.render(scrollTime+frame*16_000_000L).close()};save(it,"ares-catalog-scrolled")
+                it.scrollDraftToLastHero();save(it,"ares-catalog-scrolled")
                 click(it,150f,580f);click(it,1020f,435f);click(it,100f,677f)
                 assertEquals(HeroType.ARES_BISHOP,draft.snapshot.assignments()[pos("f1")]);save(it,"ares-picked")
             }

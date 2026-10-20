@@ -1,5 +1,11 @@
 package game.core;
 
+import game.moves.AbilityRejection;
+import game.moves.ItemRejection;
+import game.moves.MovementRejection;
+import game.moves.StatusRejection;
+import game.moves.Success;
+import game.moves.TurnRejection;
 import game.heroes.Ability;
 import game.heroes.HeroType;
 import game.heroes.pudge.PudgeRules;
@@ -86,13 +92,13 @@ public class MobaGameTest {
 
     @Test public void onlyNormalMoveIsMandatoryAndPlayerControlsEndTurn() {
         Game game = game();
-        reject(game, MoveResult.MOVE_REQUIRED, () -> game.endTurn(game.getCurrentPlayer()));
-        assertEquals(MoveResult.SUCCESS, move(game, "e2", "f2"));
+        reject(game, TurnRejection.MOVE_REQUIRED, () -> game.endTurn(game.getCurrentPlayer()));
+        assertEquals(Success.SUCCESS, move(game, "e2", "f2"));
         assertSame(game.getWhitePlayer(), game.getCurrentPlayer()); assertTrue(game.getTurnState().moveUsed());
         assertFalse(game.getTurnState().abilityUsed()); assertTrue(game.getTurnState().canEndTurn());
-        reject(game, MoveResult.MOVE_ALREADY_USED, () -> move(game, "d2", "d3"));
+        reject(game, TurnRejection.MOVE_ALREADY_USED, () -> move(game, "d2", "d3"));
         assertTrue(game.getLegalMoves(pos("d2")).getCanMove().isEmpty());
-        assertEquals(MoveResult.SUCCESS, game.endTurn(game.getCurrentPlayer()));
+        assertEquals(Success.SUCCESS, game.endTurn(game.getCurrentPlayer()));
         assertSame(game.getBlackPlayer(), game.getCurrentPlayer());
         assertFalse(game.getTurnState().moveUsed()); assertFalse(game.getTurnState().abilityUsed());
         assertEquals(2, game.getTurnState().number()); assertConsistent(game);
@@ -100,22 +106,22 @@ public class MobaGameTest {
     @Test public void skillThenMoveSamePudgePreservesIds() {
         Game game = game(); long pudge = game.getPieceState(pos("e2")).id(), victim = game.getPieceState(pos("e5")).id();
         var before = game.getSnapshot();
-        assertEquals(MoveResult.SUCCESS, hook(game, "e2", "e5"));
+        assertEquals(Success.SUCCESS, hook(game, "e2", "e5"));
         assertEquals(victim, game.getPieceState(pos("e3")).id());
-        reject(game, MoveResult.MOVE_REQUIRED, () -> game.endTurn(game.getCurrentPlayer()));
-        assertEquals(MoveResult.SUCCESS, move(game, "e2", "f2"));
+        reject(game, TurnRejection.MOVE_REQUIRED, () -> game.endTurn(game.getCurrentPlayer()));
+        assertEquals(Success.SUCCESS, move(game, "e2", "f2"));
         assertEquals(pudge, game.getPieceState(pos("f2")).id());
         assertTrue(game.getTurnState().abilityUsed()); assertTrue(game.getTurnState().moveUsed());
-        assertEquals(MoveResult.SUCCESS, game.endTurn(game.getCurrentPlayer()));
+        assertEquals(Success.SUCCESS, game.endTurn(game.getCurrentPlayer()));
         assertEquals(pos("e2"), before.pieces().get(pudge).position());
         assertEquals(pos("e5"), before.pieces().get(victim).position()); assertConsistent(game);
     }
     @Test public void moveThenSkillSamePudgeUsesNewPosition() {
         var board = board("a1", "h8"); put(board, Rook.class, WHITE, "e2"); put(board, Knight.class, BLACK, "f5");
         Game game = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK));
-        assertEquals(MoveResult.SUCCESS, move(game, "e2", "f2"));
+        assertEquals(Success.SUCCESS, move(game, "e2", "f2"));
         assertTrue(game.getAbilityTargets(pos("f2"), Ability.HOOK).contains(pos("f5")));
-        assertEquals(MoveResult.SUCCESS, hook(game, "f2", "f5"));
+        assertEquals(Success.SUCCESS, hook(game, "f2", "f5"));
         assertTrue(game.getFigureByPosition(pos("f3")) instanceof Knight);
         assertSame(game.getWhitePlayer(), game.getCurrentPlayer()); assertConsistent(game);
     }
@@ -123,9 +129,9 @@ public class MobaGameTest {
         var board = board("a1", "h8"); put(board, Rook.class, WHITE, "e2"); put(board, Rook.class, WHITE, "g2");
         put(board, Pawn.class, WHITE, "e3"); put(board, Pawn.class, WHITE, "g3");
         Game game = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK, pos("g2"), HeroType.PUDGE_ROOK));
-        assertEquals(MoveResult.SUCCESS, hook(game, "e2", "e3"));
-        reject(game, MoveResult.ABILITY_ALREADY_USED, () -> swallow(game, "g2", "g3"));
-        reject(game, MoveResult.ABILITY_ALREADY_USED, () -> hook(game, "g2", "g3"));
+        assertEquals(Success.SUCCESS, hook(game, "e2", "e3"));
+        reject(game, TurnRejection.ABILITY_ALREADY_USED, () -> swallow(game, "g2", "g3"));
+        reject(game, TurnRejection.ABILITY_ALREADY_USED, () -> hook(game, "g2", "g3"));
         assertTrue(game.getAbilityTargets(pos("g2"), Ability.SWALLOW).isEmpty());
     }
     @Test public void hookWorksInAllEightDirectionsUpToThreeStepsAndStopsAdjacent() {
@@ -136,7 +142,7 @@ public class MobaGameTest {
             board.put(target, factory.createFigure(Knight.class, target, BLACK));
             Game game = create(board, Map.of(pos("d4"), HeroType.PUDGE_ROOK));
             long id = game.getPieceState(target).id();
-            assertEquals(MoveResult.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("d4"), target, Ability.HOOK));
+            assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("d4"), target, Ability.HOOK));
             assertEquals(id, game.getPieceState(landing).id()); assertEquals(0, game.getWhitePlayer().getPoints());
             assertTrue(game.getTurnState().abilityUsed()); assertFalse(game.getTurnState().moveUsed()); assertConsistent(game);
         }
@@ -145,71 +151,71 @@ public class MobaGameTest {
         var board = board("a1", "h8"); put(board, Rook.class, WHITE, "e2"); put(board, Pawn.class, WHITE, "e3");
         Game game = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK));
         var target = game.getPieceState(pos("e3"));
-        assertEquals(MoveResult.SUCCESS, hook(game, "e2", "e3")); assertEquals(target, game.getPieceState(pos("e3")));
+        assertEquals(Success.SUCCESS, hook(game, "e2", "e3")); assertEquals(target, game.getPieceState(pos("e3")));
         assertEquals(0, game.getWhitePlayer().getPoints()); assertEquals(3, game.getSnapshot().pieces().size() - 1);
         assertTrue(game.getTurnState().abilityUsed()); assertConsistent(game);
     }
     @Test public void ordinaryFiguresAndNullAbilitiesCannotCast() {
         Game game = game();
-        reject(game, MoveResult.NO_ABILITY, () -> hook(game, "d2", "e5"));
-        reject(game, MoveResult.INVALID_ABILITY, () -> game.useAbility(game.getCurrentPlayer(), pos("e2"), pos("e5"), null));
+        reject(game, AbilityRejection.NO_ABILITY, () -> hook(game, "d2", "e5"));
+        reject(game, AbilityRejection.INVALID_ABILITY, () -> game.useAbility(game.getCurrentPlayer(), pos("e2"), pos("e5"), null));
         assertTrue(game.getAbilityTargets(pos("d2"), Ability.HOOK).isEmpty());
     }
     @Test public void hookNeverIgnoresBlockersOrPullsKings() {
         var board = board("a1", "h8"); put(board, Rook.class, WHITE, "e2"); put(board, Knight.class, BLACK, "e5");
         put(board, Pawn.class, WHITE, "e3"); put(board, Knight.class, BLACK, "g3"); put(board, Knight.class, BLACK, "e6");
         Game game = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK));
-        reject(game, MoveResult.ABILITY_BLOCKED, () -> hook(game, "e2", "e5"));
-        reject(game, MoveResult.ABILITY_OUT_OF_RANGE, () -> hook(game, "e2", "g3"));
-        reject(game, MoveResult.ABILITY_OUT_OF_RANGE, () -> hook(game, "e2", "e6"));
-        reject(game, MoveResult.INVALID_ABILITY_TARGET, () -> hook(game, "e2", "f2"));
-        reject(game, MoveResult.KING_IMMUNE, () -> hook(game, "e2", "h8"));
-        reject(game, MoveResult.OUT_OF_BOUNDS, () -> game.useAbility(game.getCurrentPlayer(), pos("e2"), null, Ability.HOOK));
+        reject(game, AbilityRejection.ABILITY_BLOCKED, () -> hook(game, "e2", "e5"));
+        reject(game, AbilityRejection.ABILITY_OUT_OF_RANGE, () -> hook(game, "e2", "g3"));
+        reject(game, AbilityRejection.ABILITY_OUT_OF_RANGE, () -> hook(game, "e2", "e6"));
+        reject(game, AbilityRejection.INVALID_ABILITY_TARGET, () -> hook(game, "e2", "f2"));
+        reject(game, StatusRejection.KING_IMMUNE, () -> hook(game, "e2", "h8"));
+        reject(game, MovementRejection.OUT_OF_BOUNDS, () -> game.useAbility(game.getCurrentPlayer(), pos("e2"), null, Ability.HOOK));
     }
     @Test public void hookMayOpenIndirectCheckButCannotExposeOwnKing() {
         var board = board("a1", "e8"); put(board, Rook.class, WHITE, "e1"); put(board, Rook.class, WHITE, "d7");
         put(board, Bishop.class, BLACK, "e7");
         Game game = create(board, Map.of(pos("d7"), HeroType.PUDGE_ROOK));
-        assertEquals(MoveResult.SUCCESS, hook(game, "d7", "e7")); // Adjacent, remains blocking.
+        assertEquals(Success.SUCCESS, hook(game, "d7", "e7")); // Adjacent, remains blocking.
         assertFalse(rules.standard.MoveValidator.isInCheck(game.getGameField().getGameField(), BLACK));
         var opening = board("a1", "e8"); put(opening, Rook.class, WHITE, "e1"); put(opening, Rook.class, WHITE, "b7");
         put(opening, Bishop.class, BLACK, "e7");
         game = create(opening, Map.of(pos("b7"), HeroType.PUDGE_ROOK));
-        assertEquals(MoveResult.SUCCESS, hook(game, "b7", "e7"));
+        assertEquals(Success.SUCCESS, hook(game, "b7", "e7"));
         assertTrue(rules.standard.MoveValidator.isInCheck(game.getGameField().getGameField(), BLACK));
         var pinned = board("e1", "h8"); put(pinned, Rook.class, WHITE, "b2"); put(pinned, Pawn.class, WHITE, "e2");
         put(pinned, Rook.class, BLACK, "e8");
         Game protectedGame = create(pinned, Map.of(pos("b2"), HeroType.PUDGE_ROOK));
-        reject(protectedGame, MoveResult.KING_IN_CHECK, () -> hook(protectedGame, "b2", "e2"));
+        reject(protectedGame, MovementRejection.KING_IN_CHECK, () -> hook(protectedGame, "b2", "e2"));
     }
     @Test public void swallowStoresAllyWithoutAwardingCaptureAndDoesNotSatisfyMove() {
         Game game = game(); long pudge = game.getPieceState(pos("e2")).id(), ally = game.getPieceState(pos("d2")).id();
-        assertEquals(MoveResult.SUCCESS, swallow(game, "e2", "d2"));
+        assertEquals(Success.SUCCESS, swallow(game, "e2", "d2"));
         assertEquals(Long.valueOf(ally), game.getPieceState(pudge).storedPieceId());
         assertEquals(PieceState.Status.SWALLOWED, game.getPieceState(ally).status()); assertNull(game.getPieceState(ally).position());
         assertTrue(game.getFigureByPosition(pos("d2")) instanceof Empty);
         assertTrue(game.getWhitePlayer().getAttackedFigures().isEmpty()); assertEquals(0, game.getWhitePlayer().getPoints());
-        reject(game, MoveResult.MOVE_REQUIRED, () -> game.endTurn(game.getCurrentPlayer()));
-        assertEquals(MoveResult.SUCCESS, move(game, "e2", "f2")); assertEquals(pudge, game.getPieceState(pos("f2")).id());
+        reject(game, TurnRejection.MOVE_REQUIRED, () -> game.endTurn(game.getCurrentPlayer()));
+        assertEquals(Success.SUCCESS, move(game, "e2", "f2")); assertEquals(pudge, game.getPieceState(pos("f2")).id());
         assertEquals(Long.valueOf(ally), game.getPieceState(pos("f2")).storedPieceId()); assertConsistent(game);
     }
     @Test public void swallowRangeAndFriendlyRestrictionAreCheckedWithoutMutation() {
         Game game = game();
-        reject(game, MoveResult.ABILITY_OUT_OF_RANGE, () -> swallow(game, "e2", "e5"));
-        reject(game, MoveResult.KING_IMMUNE, () -> swallow(game, "e2", "a1"));
+        reject(game, AbilityRejection.ABILITY_OUT_OF_RANGE, () -> swallow(game, "e2", "e5"));
+        reject(game, StatusRejection.KING_IMMUNE, () -> swallow(game, "e2", "a1"));
         var board = board("a1", "h8"); put(board, Rook.class, WHITE, "e2"); put(board, Knight.class, BLACK, "e3");
         Game targetGame = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK));
-        reject(targetGame, MoveResult.INVALID_ABILITY_TARGET, () -> swallow(targetGame, "e2", "e3"));
+        reject(targetGame, AbilityRejection.INVALID_ABILITY_TARGET, () -> swallow(targetGame, "e2", "e3"));
     }
     @Test public void capturedPudgeReleasesSameAllyAndAllyCapturesAttacker() {
         var board = board("a1", "h8"); put(board, Rook.class, WHITE, "e2"); put(board, Knight.class, WHITE, "d2");
         put(board, Rook.class, BLACK, "f8");
         Game game = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK));
         long pudge = game.getPieceState(pos("e2")).id(), ally = game.getPieceState(pos("d2")).id(), attacker = game.getPieceState(pos("f8")).id();
-        assertEquals(MoveResult.SUCCESS, swallow(game, "e2", "d2"));
-        assertEquals(MoveResult.SUCCESS, move(game, "e2", "f2"));
-        assertEquals(MoveResult.SUCCESS, game.endTurn(game.getCurrentPlayer()));
-        assertEquals(MoveResult.SUCCESS, move(game, "f8", "f2"));
+        assertEquals(Success.SUCCESS, swallow(game, "e2", "d2"));
+        assertEquals(Success.SUCCESS, move(game, "e2", "f2"));
+        assertEquals(Success.SUCCESS, game.endTurn(game.getCurrentPlayer()));
+        assertEquals(Success.SUCCESS, move(game, "f8", "f2"));
         assertEquals(ally, game.getPieceState(pos("f2")).id()); assertTrue(game.getFigureByPosition(pos("f2")) instanceof Knight);
         assertEquals(PieceState.Status.CAPTURED, game.getPieceState(pudge).status());
         assertEquals(PieceState.Status.CAPTURED, game.getPieceState(attacker).status());
@@ -221,8 +227,8 @@ public class MobaGameTest {
     @Test public void unloadedPudgeIsCapturedNormally() {
         var board = board("a1", "h8"); put(board, Rook.class, WHITE, "e2"); put(board, Rook.class, BLACK, "f8");
         Game game = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK));
-        assertEquals(MoveResult.SUCCESS, move(game, "e2", "f2")); game.endTurn(game.getCurrentPlayer());
-        assertEquals(MoveResult.SUCCESS, move(game, "f8", "f2"));
+        assertEquals(Success.SUCCESS, move(game, "e2", "f2")); game.endTurn(game.getCurrentPlayer());
+        assertEquals(Success.SUCCESS, move(game, "f8", "f2"));
         assertEquals(BLACK, game.getFigureByPosition(pos("f2")).getColor()); assertTrue(game.getWhitePlayer().getAttackedFigures().isEmpty());
         assertConsistent(game);
     }
@@ -230,10 +236,10 @@ public class MobaGameTest {
         Game game = game(); PieceState pudge = game.getPieceState(pos("e2"));
         assertEquals(3, pudge.inventory().size()); assertTrue(pudge.inventory().stream().allMatch(ItemSlot::isEmpty));
         assertThrows(UnsupportedOperationException.class, () -> pudge.inventory().clear());
-        reject(game, MoveResult.EMPTY_ITEM_SLOT, () -> game.useItem(game.getCurrentPlayer(), pudge.id(), 0));
-        reject(game, MoveResult.INVALID_ITEM_SLOT, () -> game.useItem(game.getCurrentPlayer(), pudge.id(), 3));
-        assertEquals(MoveResult.SUCCESS, move(game, "e2", "f2"));
-        reject(game, MoveResult.EMPTY_ITEM_SLOT, () -> game.useItem(game.getCurrentPlayer(), pudge.id(), 2));
+        reject(game, ItemRejection.EMPTY_ITEM_SLOT, () -> game.useItem(game.getCurrentPlayer(), pudge.id(), 0));
+        reject(game, ItemRejection.INVALID_ITEM_SLOT, () -> game.useItem(game.getCurrentPlayer(), pudge.id(), 3));
+        assertEquals(Success.SUCCESS, move(game, "e2", "f2"));
+        reject(game, ItemRejection.EMPTY_ITEM_SLOT, () -> game.useItem(game.getCurrentPlayer(), pudge.id(), 2));
         assertFalse(game.getTurnState().abilityUsed()); assertConsistent(game);
     }
     @Test public void snapshotsCollectionsAndQueryPreviewsAreImmutableAndPure() {
@@ -242,7 +248,7 @@ public class MobaGameTest {
         game.getLegalMoves(pos("e2")); assertEquals(before, game.getSnapshot());
         assertThrows(UnsupportedOperationException.class, () -> before.pieces().clear());
         assertThrows(UnsupportedOperationException.class, () -> before.events().clear());
-        assertEquals(MoveResult.SUCCESS, hook(game, "e2", "e5"));
+        assertEquals(Success.SUCCESS, hook(game, "e2", "e5"));
         assertEquals(WHITE, before.active()); assertTrue(before.events().isEmpty());
         assertTrue(before.field().getFigureByPosition(pos("e5")) instanceof Knight);
     }
@@ -250,32 +256,32 @@ public class MobaGameTest {
         AtomicLong time = new AtomicLong();
         var board = board("a1", "h8"); put(board, Rook.class, WHITE, "e2"); put(board, Pawn.class, WHITE, "d2");
         Game game = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK), free, time::get); game.startClock(10);
-        time.set(1_000_000_000L); assertEquals(MoveResult.SUCCESS, swallow(game, "e2", "d2"));
+        time.set(1_000_000_000L); assertEquals(Success.SUCCESS, swallow(game, "e2", "d2"));
         assertEquals(WHITE, game.getClockSnapshot().activeColor());
-        time.set(2_000_000_000L); assertEquals(MoveResult.SUCCESS, move(game, "e2", "f2"));
+        time.set(2_000_000_000L); assertEquals(Success.SUCCESS, move(game, "e2", "f2"));
         assertEquals(8_000_000_000L, game.getClockSnapshot().whiteNanos());
-        time.set(3_000_000_000L); assertEquals(MoveResult.SUCCESS, game.endTurn(game.getCurrentPlayer()));
+        time.set(3_000_000_000L); assertEquals(Success.SUCCESS, game.endTurn(game.getCurrentPlayer()));
         assertEquals(BLACK, game.getClockSnapshot().activeColor());
         time.set(4_000_000_000L); assertEquals(7_000_000_000L, game.getClockSnapshot().whiteNanos());
         assertEquals(9_000_000_000L, game.getClockSnapshot().blackNanos());
     }
     @Test public void wrongPlayersAndClassicModeCannotUseMobaCommands() {
         Game game = game();
-        reject(game, MoveResult.WRONG_PLAYER, () -> game.useAbility(game.getBlackPlayer(), pos("e2"), pos("e5"), Ability.HOOK));
-        reject(game, MoveResult.WRONG_PLAYER, () -> game.endTurn(new Player(true)));
+        reject(game, TurnRejection.WRONG_PLAYER, () -> game.useAbility(game.getBlackPlayer(), pos("e2"), pos("e5"), Ability.HOOK));
+        reject(game, TurnRejection.WRONG_PLAYER, () -> game.endTurn(new Player(true)));
         Game classic = new Game(8);
-        assertEquals(MoveResult.UNSUPPORTED_ACTION, classic.endTurn(classic.getCurrentPlayer()));
-        assertEquals(MoveResult.UNSUPPORTED_ACTION, classic.useAbility(classic.getCurrentPlayer(), pos("a1"), pos("a2"), Ability.HOOK));
+        assertEquals(TurnRejection.UNSUPPORTED_ACTION, classic.endTurn(classic.getCurrentPlayer()));
+        assertEquals(TurnRejection.UNSUPPORTED_ACTION, classic.useAbility(classic.getCurrentPlayer(), pos("a1"), pos("a2"), Ability.HOOK));
         assertEquals(GameMode.CLASSIC, classic.getMode());
     }
 
     @Test public void loadedPudgeCannotBeCapturedByKing() {
         var board = board("a1", "g3"); put(board, Rook.class, WHITE, "e2"); put(board, Pawn.class, WHITE, "d2");
         Game game = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK));
-        assertEquals(MoveResult.SUCCESS, swallow(game, "e2", "d2"));
-        assertEquals(MoveResult.SUCCESS, move(game, "e2", "f2")); game.endTurn(game.getCurrentPlayer());
+        assertEquals(Success.SUCCESS, swallow(game, "e2", "d2"));
+        assertEquals(Success.SUCCESS, move(game, "e2", "f2")); game.endTurn(game.getCurrentPlayer());
         assertFalse(game.isInCheck());
-        reject(game, MoveResult.KING_IN_CHECK, () -> move(game, "g3", "f2"));
+        reject(game, MovementRejection.KING_IN_CHECK, () -> move(game, "g3", "f2"));
         assertFalse(game.getLegalMoves(pos("g3")).getCanMove().contains(pos("f2")));
         assertFalse(game.getLegalMoves(pos("g3")).getCanAttack().contains(pos("f2"))); assertConsistent(game);
     }
@@ -283,10 +289,10 @@ public class MobaGameTest {
         var board = board("a1", "f7"); put(board, Rook.class, WHITE, "e2"); put(board, Rook.class, WHITE, "d2");
         put(board, Knight.class, BLACK, "h3");
         Game game = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK));
-        assertEquals(MoveResult.SUCCESS, swallow(game, "e2", "d2"));
-        assertEquals(MoveResult.SUCCESS, move(game, "e2", "f2")); game.endTurn(game.getCurrentPlayer());
+        assertEquals(Success.SUCCESS, swallow(game, "e2", "d2"));
+        assertEquals(Success.SUCCESS, move(game, "e2", "f2")); game.endTurn(game.getCurrentPlayer());
         assertTrue(game.isInCheck());
-        reject(game, MoveResult.KING_IN_CHECK, () -> move(game, "h3", "f2"));
+        reject(game, MovementRejection.KING_IN_CHECK, () -> move(game, "h3", "f2"));
         assertFalse(game.getLegalMoves(pos("h3")).getCanAttack().contains(pos("f2"))); assertConsistent(game);
     }
     @Test public void twoLoadedPudgesResolveBothCounterCapturesExactlyOnce() {
@@ -294,10 +300,10 @@ public class MobaGameTest {
         put(board, Rook.class, BLACK, "f8"); put(board, Knight.class, BLACK, "g8");
         Game game = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK, pos("f8"), HeroType.PUDGE_ROOK));
         long whitePassenger = game.getPieceState(pos("d2")).id(), blackPassenger = game.getPieceState(pos("g8")).id();
-        assertEquals(MoveResult.SUCCESS, swallow(game, "e2", "d2"));
-        assertEquals(MoveResult.SUCCESS, move(game, "e2", "f2")); game.endTurn(game.getCurrentPlayer());
-        assertEquals(MoveResult.SUCCESS, swallow(game, "f8", "g8"));
-        assertEquals(MoveResult.SUCCESS, move(game, "f8", "f2"));
+        assertEquals(Success.SUCCESS, swallow(game, "e2", "d2"));
+        assertEquals(Success.SUCCESS, move(game, "e2", "f2")); game.endTurn(game.getCurrentPlayer());
+        assertEquals(Success.SUCCESS, swallow(game, "f8", "g8"));
+        assertEquals(Success.SUCCESS, move(game, "f8", "f2"));
         assertEquals(blackPassenger, game.getPieceState(pos("f2")).id());
         assertEquals(PieceState.Status.CAPTURED, game.getPieceState(whitePassenger).status());
         assertEquals(2, game.getBlackPlayer().getAttackedFigures().size()); assertEquals(1, game.getWhitePlayer().getAttackedFigures().size());
@@ -307,41 +313,41 @@ public class MobaGameTest {
     @Test public void hookCooldownTicksOnlyAtOwnersTurnStart() {
         var board = board("a1", "h8"); put(board, Rook.class, WHITE, "e2"); put(board, Knight.class, BLACK, "e5");
         Game game = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK), new PudgeRules(2, 0, true, false), () -> 0L);
-        assertEquals(MoveResult.SUCCESS, hook(game, "e2", "e5")); assertEquals(2, game.getPieceState(pos("e2")).cooldown());
+        assertEquals(Success.SUCCESS, hook(game, "e2", "e5")); assertEquals(2, game.getPieceState(pos("e2")).cooldown());
         move(game, "e2", "f2"); game.endTurn(game.getCurrentPlayer());
         assertEquals(2, game.getPieceState(pos("f2")).cooldown());
         move(game, "h8", "h7"); game.endTurn(game.getCurrentPlayer());
         assertEquals(1, game.getPieceState(pos("f2")).cooldown());
-        reject(game, MoveResult.ABILITY_COOLDOWN, () -> hook(game, "f2", "e3"));
+        reject(game, AbilityRejection.ABILITY_COOLDOWN, () -> hook(game, "f2", "e3"));
         move(game, "f2", "f3"); game.endTurn(game.getCurrentPlayer());
         move(game, "h7", "h8"); game.endTurn(game.getCurrentPlayer());
-        assertEquals(0, game.getPieceState(pos("f3")).cooldown()); assertEquals(MoveResult.SUCCESS, hook(game, "f3", "e3"));
+        assertEquals(0, game.getPieceState(pos("f3")).cooldown()); assertEquals(Success.SUCCESS, hook(game, "f3", "e3"));
         assertConsistent(game);
     }
     @Test public void ultimateChargesFromPudgesOwnCapturesAndIsSpentOnlyOnSuccess() {
         var board = board("a1", "h8"); put(board, Rook.class, WHITE, "e2"); put(board, Knight.class, WHITE, "d5");
         for (String square : List.of("e3", "e4", "e5")) put(board, Pawn.class, BLACK, square);
         Game game = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK), new PudgeRules(0, 3, true, false), () -> 0L);
-        reject(game, MoveResult.ULTIMATE_NOT_READY, () -> swallow(game, "e2", "d5"));
-        assertEquals(MoveResult.SUCCESS, move(game, "e2", "e3")); assertEquals(1, game.getPieceState(pos("e3")).ultimateCharge());
+        reject(game, AbilityRejection.ULTIMATE_NOT_READY, () -> swallow(game, "e2", "d5"));
+        assertEquals(Success.SUCCESS, move(game, "e2", "e3")); assertEquals(1, game.getPieceState(pos("e3")).ultimateCharge());
         game.endTurn(game.getCurrentPlayer()); move(game, "h8", "g8"); game.endTurn(game.getCurrentPlayer());
         move(game, "e3", "e4"); game.endTurn(game.getCurrentPlayer()); move(game, "g8", "h8"); game.endTurn(game.getCurrentPlayer());
-        assertEquals(MoveResult.SUCCESS, move(game, "e4", "e5")); assertEquals(3, game.getPieceState(pos("e5")).ultimateCharge());
-        assertEquals(MoveResult.SUCCESS, swallow(game, "e5", "d5")); assertEquals(0, game.getPieceState(pos("e5")).ultimateCharge());
+        assertEquals(Success.SUCCESS, move(game, "e4", "e5")); assertEquals(3, game.getPieceState(pos("e5")).ultimateCharge());
+        assertEquals(Success.SUCCESS, swallow(game, "e5", "d5")); assertEquals(0, game.getPieceState(pos("e5")).ultimateCharge());
         assertEquals(3, game.getWhitePlayer().getPoints()); assertTrue(game.getTurnState().moveUsed()); assertConsistent(game);
     }
     @Test public void swallowCannotRemoveOwnKingsShield() {
         var board = board("e1", "h8"); put(board, Rook.class, WHITE, "d2"); put(board, Knight.class, WHITE, "e2");
         put(board, Rook.class, BLACK, "e8");
         Game game = create(board, Map.of(pos("d2"), HeroType.PUDGE_ROOK));
-        reject(game, MoveResult.KING_IN_CHECK, () -> swallow(game, "d2", "e2"));
+        reject(game, MovementRejection.KING_IN_CHECK, () -> swallow(game, "d2", "e2"));
         assertConsistent(game);
     }
     @Test public void promotionPreservesPawnIdAndThreeSlots() {
         var board = board("a1", "h8"); put(board, Pawn.class, WHITE, "b7");
         Game game = create(board, Map.of()); long pawn = game.getPieceState(pos("b7")).id();
-        reject(game, MoveResult.PROMOTION_REQUIRED, () -> move(game, "b7", "b8"));
-        assertEquals(MoveResult.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos("b7"), pos("b8"), Promotion.ROOK));
+        reject(game, MovementRejection.PROMOTION_REQUIRED, () -> move(game, "b7", "b8"));
+        assertEquals(Success.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos("b7"), pos("b8"), Promotion.ROOK));
         assertEquals(pawn, game.getPieceState(pos("b8")).id()); assertEquals(Rook.class, game.getPieceState(pawn).type());
         assertEquals(3, game.getPieceState(pawn).inventory().size()); assertConsistent(game);
     }
@@ -349,10 +355,10 @@ public class MobaGameTest {
         var board = board("h1", "h8"); put(board, Rook.class, WHITE, "c1"); put(board, Pawn.class, WHITE, "c4");
         Game game = create(board, Map.of(pos("c1"), HeroType.PUDGE_ROOK));
         // Three-step vertical pull lands on c2. Horizontal pull by a Pudge on e1 can land a pawn on d1.
-        assertEquals(MoveResult.SUCCESS, hook(game, "c1", "c4")); assertConsistent(game);
+        assertEquals(Success.SUCCESS, hook(game, "c1", "c4")); assertConsistent(game);
         var edge = board("h1", "h8"); put(edge, Rook.class, WHITE, "e1"); put(edge, Pawn.class, WHITE, "b1");
         Game edgeGame = create(edge, Map.of(pos("e1"), HeroType.PUDGE_ROOK));
-        assertEquals(MoveResult.SUCCESS, hook(edgeGame, "e1", "b1"));
+        assertEquals(Success.SUCCESS, hook(edgeGame, "e1", "b1"));
         assertEquals(Pawn.class, edgeGame.getPieceState(pos("d1")).type());
         assertThrows(IllegalArgumentException.class, () -> Field.fromPosition(edgeGame.getGameField().getGameField()));
         assertConsistent(edgeGame);
@@ -362,7 +368,7 @@ public class MobaGameTest {
         var board = board("a1", "h8"); put(board, Rook.class, WHITE, "e2");
         Game game = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK), free, time::get); game.startClock(1);
         move(game, "e2", "f2"); time.set(1_000_000_000L);
-        assertEquals(MoveResult.GAME_OVER, game.endTurn(game.getCurrentPlayer()));
+        assertEquals(TurnRejection.GAME_OVER, game.endTurn(game.getCurrentPlayer()));
         assertEquals(Termination.TIMEOUT, game.getOutcome().reason()); assertEquals(BLACK, game.getOutcome().winner());
         assertFalse(game.getClockSnapshot().running());
     }
@@ -374,16 +380,16 @@ public class MobaGameTest {
         Game game = Game.fromMobaPosition(position, Map.of(pos("f1"), HeroType.PUDGE_ROOK), free, () -> 0L);
         assertFalse(game.getOutcome().isFinished()); assertTrue(game.isInCheck());
         assertTrue(game.getLegalMoves(pos("f1")).getCanMove().isEmpty());
-        assertEquals(MoveResult.SUCCESS, hook(game, "f1", "h3")); assertFalse(game.isInCheck());
-        assertEquals(MoveResult.SUCCESS, move(game, "f1", "e1"));
-        assertEquals(MoveResult.SUCCESS, game.endTurn(game.getCurrentPlayer())); assertConsistent(game);
+        assertEquals(Success.SUCCESS, hook(game, "f1", "h3")); assertFalse(game.isInCheck());
+        assertEquals(Success.SUCCESS, move(game, "f1", "e1"));
+        assertEquals(Success.SUCCESS, game.endTurn(game.getCurrentPlayer())); assertConsistent(game);
     }
     @Test public void bothSwallowRadiusConfigurationsAreSupportedExplicitly() {
         var board = board("a1", "h8"); put(board, Rook.class, WHITE, "e2"); put(board, Knight.class, WHITE, "d3");
         Game four = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK));
-        reject(four, MoveResult.ABILITY_OUT_OF_RANGE, () -> swallow(four, "e2", "d3"));
+        reject(four, AbilityRejection.ABILITY_OUT_OF_RANGE, () -> swallow(four, "e2", "d3"));
         Game eight = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK), new PudgeRules(0, 0, true, true), () -> 0L);
-        assertEquals(MoveResult.SUCCESS, swallow(eight, "e2", "d3")); assertConsistent(eight);
+        assertEquals(Success.SUCCESS, swallow(eight, "e2", "d3")); assertConsistent(eight);
     }
     @Test public void loadedPudgeKeepsOnlyOnePassengerAcrossSubsequentTurns() {
         var board = board("a1", "h8"); put(board, Rook.class, WHITE, "e2"); put(board, Knight.class, WHITE, "d2");
@@ -391,14 +397,14 @@ public class MobaGameTest {
         Game game = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK));
         swallow(game, "e2", "d2"); move(game, "e2", "f2"); game.endTurn(game.getCurrentPlayer());
         move(game, "h8", "h7"); game.endTurn(game.getCurrentPlayer());
-        reject(game, MoveResult.ALREADY_SWALLOWED, () -> swallow(game, "f2", "g2")); assertConsistent(game);
+        reject(game, AbilityRejection.ALREADY_SWALLOWED, () -> swallow(game, "f2", "g2")); assertConsistent(game);
     }
     @Test public void hookDisplacementOfHomeRookPermanentlyDropsItsCastlingRight() {
         var board = board("e1", "e8"); put(board, Rook.class, WHITE, "a1"); put(board, Rook.class, WHITE, "d1");
         Game game = Game.fromMobaPosition(new GamePosition(board, WHITE, new CastlingRights(false, true, false, false), null, 0),
                 Map.of(pos("d1"), HeroType.PUDGE_ROOK), free, () -> 0L);
         long home = game.getPieceState(pos("a1")).id();
-        assertEquals(MoveResult.SUCCESS, hook(game, "d1", "a1"));
+        assertEquals(Success.SUCCESS, hook(game, "d1", "a1"));
         assertEquals(home, game.getPieceState(pos("c1")).id()); assertFalse(game.getCastlingRights().whiteQueenSide());
         assertConsistent(game);
     }
@@ -407,7 +413,7 @@ public class MobaGameTest {
         put(board, Pawn.class, BLACK, "d5");
         Game game = Game.fromMobaPosition(new GamePosition(board, WHITE, CastlingRights.none(), pos("d6"), 0),
                 Map.of(pos("b5"), HeroType.PUDGE_ROOK), free, () -> 0L);
-        assertEquals(MoveResult.SUCCESS, hook(game, "b5", "d5")); assertNull(game.getEnPassantTarget());
+        assertEquals(Success.SUCCESS, hook(game, "b5", "d5")); assertNull(game.getEnPassantTarget());
         assertFalse(game.getLegalMoves(pos("e5")).getCanAttack().contains(pos("d6"))); assertConsistent(game);
     }
     @Test public void aReturnedPawnRetainsItsTypeEvenOnAnEdgeRank() {
@@ -418,7 +424,7 @@ public class MobaGameTest {
         // Capture along c-file after the Pudge moves there on its next turn.
         move(game, "h8", "h7"); game.endTurn(game.getCurrentPlayer());
         move(game, "b1", "c1"); game.endTurn(game.getCurrentPlayer());
-        assertEquals(MoveResult.SUCCESS, move(game, "c8", "c1"));
+        assertEquals(Success.SUCCESS, move(game, "c8", "c1"));
         assertEquals(pawn, game.getPieceState(pos("c1")).id()); assertEquals(Pawn.class, game.getPieceState(pawn).type()); assertConsistent(game);
     }
     @Test public void onlyOneConcurrentNormalMoveIsAcceptedWithinTheSameMobaTurn() throws Exception {
@@ -430,7 +436,7 @@ public class MobaGameTest {
             var results = pool.invokeAll(requests); int success = 0;
             for (var result : results) {
                 MoveResult value = result.get();
-                if (value == MoveResult.SUCCESS) success++; else assertEquals(MoveResult.MOVE_ALREADY_USED, value);
+                if (value == Success.SUCCESS) success++; else assertEquals(TurnRejection.MOVE_ALREADY_USED, value);
             }
             assertEquals(1, success); assertEquals(1, game.getMoves().size()); assertSame(player, game.getCurrentPlayer());
         } finally { pool.shutdownNow(); }
@@ -440,21 +446,21 @@ public class MobaGameTest {
         Game game = Game.fromMobaPosition(new GamePosition(board, WHITE, new CastlingRights(false, true, false, false), null, 0),
                 Map.of(pos("a1"), HeroType.PUDGE_ROOK), free, () -> 0L);
         long king = game.getPieceState(pos("e1")).id(), pudge = game.getPieceState(pos("a1")).id(), ally = game.getPieceState(pos("a2")).id();
-        assertEquals(MoveResult.SUCCESS, swallow(game, "a1", "a2"));
-        assertEquals(MoveResult.SUCCESS, move(game, "e1", "c1"));
+        assertEquals(Success.SUCCESS, swallow(game, "a1", "a2"));
+        assertEquals(Success.SUCCESS, move(game, "e1", "c1"));
         assertEquals(king, game.getPieceState(pos("c1")).id()); assertEquals(pudge, game.getPieceState(pos("d1")).id());
         assertEquals(Long.valueOf(ally), game.getPieceState(pudge).storedPieceId());
         assertFalse(game.getCastlingRights().whiteQueenSide()); assertTrue(game.getTurnState().moveUsed()); assertConsistent(game);
     }
     @Test public void classicModeAlsoHasStableIdsAndCorrectActingTurnEvents() {
         Game game = new Game(8); long pawn = game.getPieceState(pos("e2")).id();
-        assertEquals(MoveResult.SUCCESS, move(game, "e2", "e4"));
+        assertEquals(Success.SUCCESS, move(game, "e2", "e4"));
         assertEquals(pawn, game.getPieceState(pos("e4")).id());
         assertEquals(1, game.getEvents().getFirst().turn()); assertEquals(2, game.getTurnState().number());
         assertConsistent(game);
     }
     @Test public void clockCannotBeConfiguredAfterAnAbilityEvenWithoutNormalMoves() {
-        Game game = game(); assertEquals(MoveResult.SUCCESS, swallow(game, "e2", "d2"));
+        Game game = game(); assertEquals(Success.SUCCESS, swallow(game, "e2", "d2"));
         assertTrue(game.getMoves().isEmpty());
         assertThrows(IllegalStateException.class, () -> game.startClock(10));
     }
@@ -464,11 +470,11 @@ public class MobaGameTest {
         put(board, Rook.class, BLACK, "b5"); put(board, Queen.class, BLACK, "c2");
         Game game = Game.fromMobaPosition(new GamePosition(board, BLACK, CastlingRights.none(), null, 0),
                 Map.of(pos("a2"), HeroType.PUDGE_ROOK, pos("a5"), HeroType.PUDGE_ROOK), free, () -> 0L);
-        assertEquals(MoveResult.SUCCESS, swallow(game, "a5", "b5"));
-        assertEquals(MoveResult.SUCCESS, move(game, "e8", "f8"));
-        assertEquals(MoveResult.SUCCESS, game.endTurn(game.getCurrentPlayer()));
+        assertEquals(Success.SUCCESS, swallow(game, "a5", "b5"));
+        assertEquals(Success.SUCCESS, move(game, "e8", "f8"));
+        assertEquals(Success.SUCCESS, game.endTurn(game.getCurrentPlayer()));
         assertFalse(game.getLegalMoves(pos("a2")).getCanMove().isEmpty());
-        reject(game, MoveResult.NO_MOVE_AFTER_ABILITY, () -> hook(game, "a2", "a5"));
+        reject(game, TurnRejection.NO_MOVE_AFTER_ABILITY, () -> hook(game, "a2", "a5"));
         assertFalse(game.getAbilityTargets(pos("a2"), Ability.HOOK).contains(pos("a5")));
         assertFalse(game.getTurnState().abilityUsed()); assertConsistent(game);
     }
@@ -477,11 +483,11 @@ public class MobaGameTest {
         put(board, Pawn.class, WHITE, "g3"); put(board, Rook.class, BLACK, "f8");
         Game game = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK, pos("g2"), HeroType.PUDGE_ROOK));
         long inner = game.getPieceState(pos("g2")).id(), pawn = game.getPieceState(pos("g3")).id();
-        assertEquals(MoveResult.SUCCESS, swallow(game, "g2", "g3"));
+        assertEquals(Success.SUCCESS, swallow(game, "g2", "g3"));
         move(game, "e2", "f2"); game.endTurn(game.getCurrentPlayer()); move(game, "h8", "h7"); game.endTurn(game.getCurrentPlayer());
-        assertEquals(MoveResult.SUCCESS, swallow(game, "f2", "g2"));
+        assertEquals(Success.SUCCESS, swallow(game, "f2", "g2"));
         move(game, "f2", "f3"); game.endTurn(game.getCurrentPlayer());
-        assertEquals(MoveResult.SUCCESS, move(game, "f8", "f3"));
+        assertEquals(Success.SUCCESS, move(game, "f8", "f3"));
         assertEquals(inner, game.getPieceState(pos("f3")).id()); assertEquals(Long.valueOf(pawn), game.getPieceState(inner).storedPieceId());
         assertEquals(PieceState.Status.SWALLOWED, game.getPieceState(pawn).status()); assertConsistent(game);
     }

@@ -1,5 +1,9 @@
 package rules.standard;
 
+import game.moves.AbilityRejection;
+import game.moves.MovementRejection;
+import game.moves.StatusRejection;
+import game.moves.Success;
 import game.moves.AvailableMoves;
 import rules.moba.TerrainGeometry;
 import game.moves.MoveResult;
@@ -39,26 +43,26 @@ public final class MoveValidator {
     public static MoveResult validate(Field field, FigureColor color, Position from, Position to,
                                       CastlingRights rights, Position enPassant, Promotion promotion,
                                       Set<Position> blinded, Set<Position> mud, Set<Position> attackMud, boolean finalKingSafety) {
-        if (!inside(field, from) || !inside(field, to)) return MoveResult.OUT_OF_BOUNDS;
-        if (from.equals(to)) return MoveResult.SAME_SQUARE;
+        if (!inside(field, from) || !inside(field, to)) return MovementRejection.OUT_OF_BOUNDS;
+        if (from.equals(to)) return MovementRejection.SAME_SQUARE;
         Figure figure = field.getFigureByPosition(from);
         Figure target = field.getFigureByPosition(to);
-        if (figure == null || target == null) return MoveResult.INVALID_BOARD;
-        if (figure.getColor() == FigureColor.NONE) return MoveResult.EMPTY_SOURCE;
-        if (figure.getColor() != color) return MoveResult.WRONG_FIGURE_COLOR;
-        if (target.getColor() == color) return MoveResult.OWN_PIECE_AT_TARGET;
-        if (target instanceof King) return MoveResult.KING_CAPTURE_NOT_ALLOWED;
+        if (figure == null || target == null) return MovementRejection.INVALID_BOARD;
+        if (figure.getColor() == FigureColor.NONE) return MovementRejection.EMPTY_SOURCE;
+        if (figure.getColor() != color) return MovementRejection.WRONG_FIGURE_COLOR;
+        if (target.getColor() == color) return MovementRejection.OWN_PIECE_AT_TARGET;
+        if (target instanceof King) return MovementRejection.KING_CAPTURE_NOT_ALLOWED;
 
         AvailableMoves candidates = candidates(field, figure, rights, enPassant);
         if (!candidates.getCanMove().contains(to) && !candidates.getCanAttack().contains(to)) {
-            return MoveResult.ILLEGAL_MOVEMENT;
+            return MovementRejection.ILLEGAL_MOVEMENT;
         }
-        if (TerrainGeometry.blocks(from, to, figure.getClass(), mud)) return MoveResult.MUD_BLOCKED;
-        if (figure instanceof King && mud.contains(to)) return MoveResult.KING_IMMUNE;
-        if (isCastling(figure, from, to) && TerrainGeometry.blocksRay(rookSource(from, to), rookDestination(from, to), mud)) return MoveResult.MUD_BLOCKED;
+        if (TerrainGeometry.blocks(from, to, figure.getClass(), mud)) return AbilityRejection.MUD_BLOCKED;
+        if (figure instanceof King && mud.contains(to)) return StatusRejection.KING_IMMUNE;
+        if (isCastling(figure, from, to) && TerrainGeometry.blocksRay(rookSource(from, to), rookDestination(from, to), mud)) return AbilityRejection.MUD_BLOCKED;
         boolean promotes = isPromotion(figure, to, field.getSize());
-        if (promotes && promotion == null) return MoveResult.PROMOTION_REQUIRED;
-        if (!promotes && promotion != null) return MoveResult.INVALID_PROMOTION;
+        if (promotes && promotion == null) return MovementRejection.PROMOTION_REQUIRED;
+        if (!promotes && promotion != null) return MovementRejection.INVALID_PROMOTION;
 
         if (isCastling(figure, from, to)) {
             Map<Position, Figure> board = field.getGameField();
@@ -71,7 +75,7 @@ public final class MoveValidator {
             MoveResult transitSafety = kingSafety(through, color, blinded, attackMud);
             if (!transitSafety.isSuccess()) return transitSafety;
         }
-        return finalKingSafety ? kingSafety(afterMove(field, from, to, enPassant, promotion), color, blinded, attackMud) : MoveResult.SUCCESS;
+        return finalKingSafety ? kingSafety(afterMove(field, from, to, enPassant, promotion), color, blinded, attackMud) : Success.SUCCESS;
     }
 
     public static AvailableMoves candidates(Field field, Figure figure, CastlingRights rights, Position enPassant) {
@@ -174,13 +178,13 @@ public final class MoveValidator {
         return false;
     }
 
-    public static boolean isInCheck(Map<Position, Figure> board, FigureColor color) { return kingSafety(board, color) == MoveResult.KING_IN_CHECK; }
+    public static boolean isInCheck(Map<Position, Figure> board, FigureColor color) { return kingSafety(board, color) == MovementRejection.KING_IN_CHECK; }
 
     public static boolean isInCheck(Map<Position, Figure> board, FigureColor color, Set<Position> blinded) {
-        return kingSafety(board, color, blinded) == MoveResult.KING_IN_CHECK;
+        return kingSafety(board, color, blinded) == MovementRejection.KING_IN_CHECK;
     }
     public static boolean isInCheck(Map<Position, Figure> board, FigureColor color, Set<Position> blinded, Set<Position> mud) {
-        return kingSafety(board, color, blinded, mud) == MoveResult.KING_IN_CHECK;
+        return kingSafety(board, color, blinded, mud) == MovementRejection.KING_IN_CHECK;
     }
     private static MoveResult kingSafety(Map<Position, Figure> board, FigureColor color) {
         return kingSafety(board, color, Set.of());
@@ -192,12 +196,12 @@ public final class MoveValidator {
         Position king = null;
         for (var entry : board.entrySet()) {
             if (entry.getValue() instanceof King && entry.getValue().getColor() == color) {
-                if (king != null) return MoveResult.INVALID_BOARD;
+                if (king != null) return MovementRejection.INVALID_BOARD;
                 king = entry.getKey();
             }
         }
-        if (king == null) return MoveResult.INVALID_BOARD;
-        return isSquareAttacked(board, king, opposite(color), blinded, mud) ? MoveResult.KING_IN_CHECK : MoveResult.SUCCESS;
+        if (king == null) return MovementRejection.INVALID_BOARD;
+        return isSquareAttacked(board, king, opposite(color), blinded, mud) ? MovementRejection.KING_IN_CHECK : Success.SUCCESS;
     }
 
     /** Empty pawn diagonals and attacks of pinned pieces are included. */

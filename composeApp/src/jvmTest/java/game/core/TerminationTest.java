@@ -1,5 +1,9 @@
 package game.core;
 
+import game.moves.DrawRejection;
+import game.moves.MovementRejection;
+import game.moves.Success;
+import game.moves.TurnRejection;
 import game.history.MadeMove;
 import game.moves.MoveResult;
 import game.state.Termination;
@@ -29,7 +33,7 @@ public class TerminationTest {
             for (var request : requests) {
                 MoveResult result = request.get(5, java.util.concurrent.TimeUnit.SECONDS);
                 if (result.isSuccess()) successes++;
-                else assertEquals(MoveResult.WRONG_PLAYER, result);
+                else assertEquals(TurnRejection.WRONG_PLAYER, result);
             }
             assertEquals(1, successes); assertEquals(1, game.getMoves().size());
             assertSame(game.getBlackPlayer(), game.getCurrentPlayer());
@@ -40,7 +44,7 @@ public class TerminationTest {
         assertEquals(Termination.CHECKMATE, game.getOutcome().getReason());
         assertEquals(BLACK, game.getOutcome().getWinner()); assertTrue(game.isInCheck());
         assertTrue(game.getLegalMoves(pos("e1")).getCanMove().isEmpty());
-        rejected(game, MoveResult.GAME_OVER, "a2", "a3");
+        rejected(game, TurnRejection.GAME_OVER, "a2", "a3");
     }
     @Test public void whiteCheckmateAndStalemateAreDistinct() {
         Game mate = game("f6", "h8"); put(mate, Queen.class, WHITE, "g6");
@@ -84,10 +88,10 @@ public class TerminationTest {
         Game game = new Game(8); repeatKnights(game, 2);
         assertEquals(3, game.getRepetitionCount()); assertFalse(game.getOutcome().isFinished());
         assertTrue(game.canClaimDraw(game.getCurrentPlayer()));
-        assertEquals(MoveResult.WRONG_PLAYER, game.claimDraw(game.getBlackPlayer()));
-        assertEquals(MoveResult.SUCCESS, game.claimDraw(game.getWhitePlayer()));
+        assertEquals(TurnRejection.WRONG_PLAYER, game.claimDraw(game.getBlackPlayer()));
+        assertEquals(Success.SUCCESS, game.claimDraw(game.getWhitePlayer()));
         assertEquals(Termination.THREEFOLD_REPETITION, game.getOutcome().getReason());
-        rejected(game, MoveResult.GAME_OVER, "g1", "f3");
+        rejected(game, TurnRejection.GAME_OVER, "g1", "f3");
     }
     @Test public void fivefoldIsAutomatic() {
         Game game = new Game(8); repeatKnights(game, 4);
@@ -100,30 +104,30 @@ public class TerminationTest {
         Player mover = game.getCurrentPlayer(); String key = game.getPositionKey(); int plies = game.getMoves().size();
         assertFalse(game.canClaimDraw(mover));
         assertTrue(game.canClaimDrawAfterMove(mover, pos("f6"), pos("g8"), null));
-        assertEquals(MoveResult.SUCCESS, game.claimDraw(mover, pos("f6"), pos("g8"), null));
+        assertEquals(Success.SUCCESS, game.claimDraw(mover, pos("f6"), pos("g8"), null));
         assertEquals(Termination.THREEFOLD_REPETITION, game.getOutcome().getReason());
         assertEquals(plies, game.getMoves().size()); assertEquals(key, game.getPositionKey());
         assertTrue(game.getFigureByPosition(pos("f6")) instanceof Knight);
     }
     @Test public void invalidClaimsAndProspectiveClaimsDoNotChangeChessState() {
         Game game = new Game(8); State before = new State(game);
-        assertEquals(MoveResult.INVALID_DRAW_CLAIM, game.claimDraw(game.getCurrentPlayer())); before.assertUnchanged(game);
-        assertEquals(MoveResult.INVALID_DRAW_CLAIM, game.claimDraw(game.getCurrentPlayer(), pos("g1"), pos("f3"), null));
+        assertEquals(DrawRejection.INVALID_DRAW_CLAIM, game.claimDraw(game.getCurrentPlayer())); before.assertUnchanged(game);
+        assertEquals(DrawRejection.INVALID_DRAW_CLAIM, game.claimDraw(game.getCurrentPlayer(), pos("g1"), pos("f3"), null));
         before.assertUnchanged(game);
-        assertEquals(MoveResult.ILLEGAL_MOVEMENT, game.claimDraw(game.getCurrentPlayer(), pos("a1"), pos("a3"), null));
+        assertEquals(MovementRejection.ILLEGAL_MOVEMENT, game.claimDraw(game.getCurrentPlayer(), pos("a1"), pos("a3"), null));
         before.assertUnchanged(game);
         assertFalse(game.canClaimDrawAfterMove(game.getBlackPlayer(), pos("g1"), pos("f3"), null)); before.assertUnchanged(game);
     }
     @Test public void fiftyMoveRuleRequiresClaimAndCountsBothSides() {
         Game game = new Game(8); set(game, "halfmoveClock", 99); play(game, "g1f3");
         assertEquals(100, game.getHalfmoveClock()); assertFalse(game.getOutcome().isFinished());
-        assertEquals(MoveResult.SUCCESS, game.claimDraw(game.getCurrentPlayer()));
+        assertEquals(Success.SUCCESS, game.claimDraw(game.getCurrentPlayer()));
         assertEquals(Termination.FIFTY_MOVE_RULE, game.getOutcome().getReason());
     }
     @Test public void intendedFiftiethMoveCanBeClaimedWithoutApplyingIt() {
         Game game = new Game(8); set(game, "halfmoveClock", 99);
         assertTrue(game.canClaimDrawAfterMove(game.getCurrentPlayer(), pos("g1"), pos("f3"), null));
-        assertEquals(MoveResult.SUCCESS, game.claimDraw(game.getCurrentPlayer(), pos("g1"), pos("f3"), null));
+        assertEquals(Success.SUCCESS, game.claimDraw(game.getCurrentPlayer(), pos("g1"), pos("f3"), null));
         assertTrue(game.getMoves().isEmpty()); assertEquals(99, game.getHalfmoveClock());
         assertEquals(Termination.FIFTY_MOVE_RULE, game.getOutcome().getReason());
     }
@@ -144,39 +148,39 @@ public class TerminationTest {
         assertEquals(150, game.getHalfmoveClock()); assertEquals(Termination.CHECKMATE, game.getOutcome().getReason());
     }
     @Test public void resignationEndsGameAndCannotBeOverwritten() {
-        Game game = new Game(8); assertEquals(MoveResult.SUCCESS, game.resign(game.getWhitePlayer()));
+        Game game = new Game(8); assertEquals(Success.SUCCESS, game.resign(game.getWhitePlayer()));
         assertEquals(Termination.RESIGNATION, game.getOutcome().getReason()); assertEquals(BLACK, game.getOutcome().getWinner());
         State ended = new State(game);
-        assertEquals(MoveResult.GAME_OVER, game.resign(game.getBlackPlayer()));
-        assertEquals(MoveResult.GAME_OVER, game.offerDraw(game.getWhitePlayer()));
-        assertEquals(MoveResult.GAME_OVER, game.acceptDraw(game.getBlackPlayer()));
-        assertEquals(MoveResult.GAME_OVER, game.declineDraw(game.getBlackPlayer()));
-        assertEquals(MoveResult.GAME_OVER, game.claimDraw(game.getWhitePlayer()));
-        assertEquals(MoveResult.GAME_OVER, game.claimDraw(game.getWhitePlayer(), pos("g1"), pos("f3"), null));
+        assertEquals(TurnRejection.GAME_OVER, game.resign(game.getBlackPlayer()));
+        assertEquals(TurnRejection.GAME_OVER, game.offerDraw(game.getWhitePlayer()));
+        assertEquals(TurnRejection.GAME_OVER, game.acceptDraw(game.getBlackPlayer()));
+        assertEquals(TurnRejection.GAME_OVER, game.declineDraw(game.getBlackPlayer()));
+        assertEquals(TurnRejection.GAME_OVER, game.claimDraw(game.getWhitePlayer()));
+        assertEquals(TurnRejection.GAME_OVER, game.claimDraw(game.getWhitePlayer(), pos("g1"), pos("f3"), null));
         ended.assertUnchanged(game);
     }
     @Test public void resigningAgainstBareKingIsDraw() {
         Game game = game("a1", "h8"); put(game, Queen.class, WHITE, "d1");
-        assertEquals(MoveResult.SUCCESS, game.resign(game.getWhitePlayer()));
+        assertEquals(Success.SUCCESS, game.resign(game.getWhitePlayer()));
         assertEquals(Termination.RESIGNATION_DRAW, game.getOutcome().getReason()); assertEquals(NONE, game.getOutcome().getWinner());
     }
     @Test public void offerAcceptAndDeclineValidateParticipantsAndAgreementTiming() {
         Game game = new Game(8); State before = new State(game);
-        assertEquals(MoveResult.WRONG_PLAYER, game.offerDraw(new Player(true)));
-        assertEquals(MoveResult.WRONG_PLAYER, game.resign(null));
-        assertEquals(MoveResult.NO_DRAW_OFFER, game.acceptDraw(game.getBlackPlayer())); before.assertUnchanged(game);
-        assertEquals(MoveResult.SUCCESS, game.offerDraw(game.getWhitePlayer()));
-        assertEquals(MoveResult.DRAW_OFFER_PENDING, game.offerDraw(game.getBlackPlayer()));
-        assertEquals(MoveResult.NO_DRAW_OFFER, game.acceptDraw(game.getWhitePlayer()));
-        assertEquals(MoveResult.DRAW_AGREEMENT_TOO_EARLY, game.acceptDraw(game.getBlackPlayer()));
-        assertEquals(MoveResult.SUCCESS, game.declineDraw(game.getBlackPlayer())); assertNull(game.getDrawOffer());
+        assertEquals(TurnRejection.WRONG_PLAYER, game.offerDraw(new Player(true)));
+        assertEquals(TurnRejection.WRONG_PLAYER, game.resign(null));
+        assertEquals(DrawRejection.NO_DRAW_OFFER, game.acceptDraw(game.getBlackPlayer())); before.assertUnchanged(game);
+        assertEquals(Success.SUCCESS, game.offerDraw(game.getWhitePlayer()));
+        assertEquals(DrawRejection.DRAW_OFFER_PENDING, game.offerDraw(game.getBlackPlayer()));
+        assertEquals(DrawRejection.NO_DRAW_OFFER, game.acceptDraw(game.getWhitePlayer()));
+        assertEquals(DrawRejection.DRAW_AGREEMENT_TOO_EARLY, game.acceptDraw(game.getBlackPlayer()));
+        assertEquals(Success.SUCCESS, game.declineDraw(game.getBlackPlayer())); assertNull(game.getDrawOffer());
         play(game, "e2e4", "e7e5");
-        assertEquals(MoveResult.SUCCESS, game.offerDraw(game.getWhitePlayer()));
-        assertEquals(MoveResult.SUCCESS, game.acceptDraw(game.getBlackPlayer()));
+        assertEquals(Success.SUCCESS, game.offerDraw(game.getWhitePlayer()));
+        assertEquals(Success.SUCCESS, game.acceptDraw(game.getBlackPlayer()));
         assertEquals(Termination.DRAW_AGREEMENT, game.getOutcome().getReason());
     }
     @Test public void opponentsMoveDeclinesDrawButOfferSurvivesOfferersOwnMove() {
-        Game game = new Game(8); assertEquals(MoveResult.SUCCESS, game.offerDraw(game.getWhitePlayer()));
+        Game game = new Game(8); assertEquals(Success.SUCCESS, game.offerDraw(game.getWhitePlayer()));
         play(game, "e2e4"); assertSame(game.getWhitePlayer(), game.getDrawOffer());
         play(game, "e7e5"); assertNull(game.getDrawOffer());
     }

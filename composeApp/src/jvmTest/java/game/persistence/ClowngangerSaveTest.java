@@ -1,9 +1,9 @@
 package game.persistence;
+import game.moves.TurnRejection;
 import game.core.*;
 import game.heroes.*;
 import game.heroes.clownganger.ClowngangerTest;
 import game.draft.*;
-import game.moves.MoveResult;
 import org.junit.Test;
 import java.nio.charset.StandardCharsets;
 import static game.core.Positions.pos;
@@ -15,7 +15,7 @@ public class ClowngangerSaveTest {
     private Game load(String s)throws Exception{return Game.fromSnapshot(GameSaveFile.decode(s.getBytes(StandardCharsets.UTF_8)),()->0L);}
     private void invalid(String s){assertThrows(java.io.IOException.class,()->load(s));}
     @Test public void midTurnSavePreservesTheRemainingMoveOfTheOtherBody()throws Exception{
-        Game g=withIllusion();move(g,"c2","e3");String s=xml(g);assertTrue(s.contains("formatVersion=\"10\""));g=load(s);assertEquals(s,xml(g));move(g,"d2","f3");String both=xml(g);g=load(both);assertEquals(both,xml(g));assertEquals(MoveResult.MOVE_ALREADY_USED,g.moveFigure(g.getCurrentPlayer(),pos("e3"),pos("c2")));end(g);assertEquals(xml(g),xml(load(xml(g))));
+        Game g=withIllusion();move(g,"c2","e3");String s=xml(g);assertTrue(s.contains("formatVersion=\"10\""));g=load(s);assertEquals(s,xml(g));move(g,"d2","f3");String both=xml(g);g=load(both);assertEquals(both,xml(g));assertEquals(TurnRejection.MOVE_ALREADY_USED,g.moveFigure(g.getCurrentPlayer(),pos("e3"),pos("c2")));end(g);assertEquals(xml(g),xml(load(xml(g))));
     }
     @Test public void boxRulesExpiryOriginAndFormatCannotBeForged()throws Exception{
         Game g=basic();cast(g,"c2","a1",Ability.BOX);String s=xml(g);assertEquals(s,xml(load(s)));invalid(s.replace("boxedThroughTurn=\"3\"","boxedThroughTurn=\"5\""));invalid(s.replace("boxedThroughTurn=\"3\"","boxedThroughTurn=\"0\""));invalid(s.replace("formatVersion=\"10\"","formatVersion=\"9\""));invalid(s.replaceAll("(?s)<clowngangerRules [^>]*/>",""));invalid(s.replace("boxTurns=\"1\"","boxTurns=\"2\""));invalid(s.replaceAll(" boxedThroughTurn=\"0\"",""));

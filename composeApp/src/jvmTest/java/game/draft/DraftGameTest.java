@@ -1,9 +1,9 @@
 package game.draft;
 
+import game.moves.Success;
 import game.core.Game;
 import game.heroes.*;
 import game.state.*;
-import game.moves.MoveResult;
 import model.FigureColor;
 import model.Position;
 import org.junit.Test;
@@ -75,8 +75,8 @@ public class DraftGameTest {
         Draft d=new Draft(new DraftRules(1,6,1));d.ban(WHITE,PUDGE_ROOK);d.ban(BLACK,LUMESHARD_BISHOP);d.finishPicks(WHITE);d.finishPicks(BLACK);
         Game g=Game.mobaFromDraft(d.getSnapshot(),HeroRules.prototype(),600,()->0L);
         assertEquals(GameMode.MOBA,g.getMode());assertTrue(g.getSnapshot().pieces().values().stream().allMatch(p->p.hero()==NONE));
-        assertEquals(MoveResult.SUCCESS,g.moveFigure(g.getCurrentPlayer(),pos("e2"),pos("e4")));
-        assertEquals(MoveResult.SUCCESS,g.endTurn(g.getCurrentPlayer()));assertEquals(BLACK,g.getSnapshot().active());
+        assertEquals(Success.SUCCESS,g.moveFigure(g.getCurrentPlayer(),pos("e2"),pos("e4")));
+        assertEquals(Success.SUCCESS,g.endTurn(g.getCurrentPlayer()));assertEquals(BLACK,g.getSnapshot().active());
         assertEquals(d.getSnapshot(),g.getDraft());
     }
     @Test public void originalRosterSurvivesCapturesAndRestoration() {
@@ -100,7 +100,7 @@ public class DraftGameTest {
         return new GameSnapshot(s.version(),s.mode(),s.field(),pieces,s.turn(),s.active(),s.castlingRights(),s.enPassantTarget(),s.halfmoveClock(),s.repetitions(),s.clock(),s.outcome(),s.moves(),s.events(),s.whitePoints(),s.blackPoints(),s.whiteCaptures(),s.blackCaptures(),s.drawOffer(),s.heroRules(),s.economy(),s.terrain(),draft);
     }
     private static void play(Game g,String from,String to) {
-        assertEquals(MoveResult.SUCCESS,g.moveFigure(g.getCurrentPlayer(),pos(from),pos(to)));
-        assertEquals(MoveResult.SUCCESS,g.endTurn(g.getCurrentPlayer()));
+        assertEquals(Success.SUCCESS,g.moveFigure(g.getCurrentPlayer(),pos(from),pos(to)));
+        assertEquals(Success.SUCCESS,g.endTurn(g.getCurrentPlayer()));
     }
 }

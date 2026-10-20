@@ -1,11 +1,12 @@
 package game.scenarios;
 
+import game.moves.AbilityRejection;
+import game.moves.Success;
 import game.core.Game;
 import game.heroes.Ability;
 import game.heroes.HeroType;
 import game.heroes.pudge.PudgeRules;
 import game.history.GameEvent;
-import game.moves.MoveResult;
 import game.state.CastlingRights;
 import game.state.GamePosition;
 import game.state.PieceState;
@@ -22,12 +23,12 @@ import static org.junit.Assert.*;
 public class PudgeScenarioTest {
     private Game create(PudgeScenario scenario) { return scenario.createGame(() -> 0L); }
     private void move(Game game, String from, String to) {
-        assertEquals(MoveResult.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos(from), pos(to)));
+        assertEquals(Success.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos(from), pos(to)));
     }
     private void ability(Game game, String from, String target, Ability ability) {
-        assertEquals(MoveResult.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos(from), pos(target), ability));
+        assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos(from), pos(target), ability));
     }
-    private void end(Game game) { assertEquals(MoveResult.SUCCESS, game.endTurn(game.getCurrentPlayer())); }
+    private void end(Game game) { assertEquals(Success.SUCCESS, game.endTurn(game.getCurrentPlayer())); }
 
     @Test public void diagonalHookFollowsTheDisplayedInstructions() {
         Game game = create(PudgeScenario.DIAGONAL_HOOK);
@@ -64,9 +65,9 @@ public class PudgeScenarioTest {
     }
     @Test public void twoCapturesChargeUltimateAndSuccessfulSwallowSpendsBoth() {
         Game game = create(PudgeScenario.ULTIMATE_CHARGE);
-        assertEquals(MoveResult.ULTIMATE_NOT_READY, game.getAbilityAvailability(pos("e2"), Ability.SWALLOW));
+        assertEquals(AbilityRejection.ULTIMATE_NOT_READY, game.getAbilityAvailability(pos("e2"), Ability.SWALLOW));
         move(game, "e2", "e3"); assertEquals(1, game.getPieceState(pos("e3")).ultimateCharge());
-        assertEquals(MoveResult.ULTIMATE_NOT_READY, game.getAbilityAvailability(pos("e3"), Ability.SWALLOW));
+        assertEquals(AbilityRejection.ULTIMATE_NOT_READY, game.getAbilityAvailability(pos("e3"), Ability.SWALLOW));
         end(game); move(game, "h8", "g8"); end(game);
         move(game, "e3", "f3"); assertEquals(2, game.getPieceState(pos("f3")).ultimateCharge());
         assertTrue(game.getAbilityTargets(pos("f3"), Ability.SWALLOW).contains(pos("g4")));
@@ -79,8 +80,8 @@ public class PudgeScenarioTest {
         ability(game, "e2", "e3", Ability.HOOK); move(game, "e2", "e3"); end(game);
         move(game, "h8", "g8"); end(game);
         move(game, "e3", "f3"); assertEquals(1, game.getPieceState(pos("f3")).cooldown());
-        assertEquals(MoveResult.ABILITY_COOLDOWN, game.getAbilityAvailability(pos("f3"), Ability.HOOK));
-        assertEquals(MoveResult.SUCCESS, game.getAbilityAvailability(pos("f3"), Ability.SWALLOW));
+        assertEquals(AbilityRejection.ABILITY_COOLDOWN, game.getAbilityAvailability(pos("f3"), Ability.HOOK));
+        assertEquals(Success.SUCCESS, game.getAbilityAvailability(pos("f3"), Ability.SWALLOW));
         ability(game, "f3", "g4", Ability.SWALLOW);
         assertEquals(1, game.getPieceState(pos("f3")).cooldown());
         assertEquals(2, game.getPudgeRules().ultimateCaptures());
@@ -95,7 +96,7 @@ public class PudgeScenarioTest {
             Game game = Game.fromMobaPosition(new GamePosition(board, WHITE, CastlingRights.none(), null, 0),
                     Map.of(pos("e2"), HeroType.PUDGE_ROOK), PudgeRules.sandbox(), () -> 0L);
             assertTrue(game.getAbilityTargets(pos("e2"), Ability.SWALLOW).contains(target));
-            assertEquals(MoveResult.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("e2"), target, Ability.SWALLOW));
+            assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("e2"), target, Ability.SWALLOW));
         }
     }
     @Test public void restartingEveryScenarioCreatesAnIndependentCleanUntimedGame() {

@@ -51,8 +51,7 @@ class ClowngangerUiTest {
         SwingUtilities.invokeAndWait{
             val d=Draft(DraftRules(1,6,6));d.ban(model.FigureColor.WHITE,HeroType.PUDGE_ROOK);d.ban(model.FigureColor.BLACK,HeroType.IZBA_ROOK)
             ImageComposeScene(1200,800){MaterialTheme{DraftScreen(d,{}, {})}}.use{
-                it.render().close();it.sendPointerEvent(PointerEventType.Scroll,Offset(300f,500f),scrollDelta=Offset(0f,8f))
-                val t=System.nanoTime();repeat(40){f->it.render(t+f*16_000_000L).close()};save(it,"clown-draft-scroll")
+                it.render().close();it.scrollDraftToLastHero();save(it,"clown-draft-scroll")
                 click(it,150f,580f);click(it,1056f,435f);click(it,100f,677f)
                 assertEquals(HeroType.CLOWNGANGER_KNIGHT,d.snapshot.assignments()[pos("g1")]);save(it,"clown-draft-picked")
             }

@@ -1,4 +1,7 @@
 package game.heroes.zeus;
+import game.moves.AbilityRejection;
+import game.moves.MovementRejection;
+import game.moves.Success;
 import game.heroes.*;
 import game.moves.*;
 import game.state.PieceState;
@@ -10,11 +13,11 @@ public final class ZeusAbilities{
     private ZeusAbilities(){}
     public static List<Ability> abilities(){return List.of(Ability.CHAIN_LIGHTNING,Ability.THUNDERSTORM);}
     public static MoveResult availability(PieceState actor,Ability ability,ZeusRules rules){
-        if(actor==null || actor.position()==null)return MoveResult.EMPTY_SOURCE;
-        if(actor.hero()!=HeroType.ZEUS_ROOK || !abilities().contains(ability))return MoveResult.NO_ABILITY;
-        if(ability==Ability.CHAIN_LIGHTNING && actor.cooldown()>0)return MoveResult.ABILITY_COOLDOWN;
-        if(ability==Ability.THUNDERSTORM && actor.ultimateCharge()<rules.ultimateCaptures())return MoveResult.ULTIMATE_NOT_READY;
-        return MoveResult.SUCCESS;
+        if(actor==null || actor.position()==null)return MovementRejection.EMPTY_SOURCE;
+        if(actor.hero()!=HeroType.ZEUS_ROOK || !abilities().contains(ability))return AbilityRejection.NO_ABILITY;
+        if(ability==Ability.CHAIN_LIGHTNING && actor.cooldown()>0)return AbilityRejection.ABILITY_COOLDOWN;
+        if(ability==Ability.THUNDERSTORM && actor.ultimateCharge()<rules.ultimateCaptures())return AbilityRejection.ULTIMATE_NOT_READY;
+        return Success.SUCCESS;
     }
     public static List<PieceState> charged(Map<Long,PieceState> pieces,LightningState lightning,PieceState actor){return pieces.values().stream().filter(p->eligible(p,actor) && lightning.count(actor.id(),p.id())>0).sorted(Comparator.comparingLong(PieceState::id)).toList();}
     public record Result(HeroEffect effect,LightningState lightning,SummonState summons,List<Long> illusionHits){}
@@ -22,13 +25,13 @@ public final class ZeusAbilities{
     public static Result cast(Field factory,Map<Long,PieceState> pieces,PieceState actor,PieceState first,Ability ability,LightningState lightning,SummonState summons,long turn,HeroRules rules,boolean borrowed){
         var states=new HashMap<>(pieces);var updates=new HashMap<Long,PieceState>();var captures=new ArrayList<Capture>();var illusions=new ArrayList<Long>();
         if(ability==Ability.CHAIN_LIGHTNING){
-            if(first==null || !eligible(first,actor))return rejected(MoveResult.INVALID_ABILITY_TARGET,lightning,summons);
-            if(distance(actor.position(),first.position())>3)return rejected(MoveResult.ABILITY_OUT_OF_RANGE,lightning,summons);
-        }else if(ability!=Ability.THUNDERSTORM)return rejected(MoveResult.NO_ABILITY,lightning,summons);
+            if(first==null || !eligible(first,actor))return rejected(AbilityRejection.INVALID_ABILITY_TARGET,lightning,summons);
+            if(distance(actor.position(),first.position())>3)return rejected(AbilityRejection.ABILITY_OUT_OF_RANGE,lightning,summons);
+        }else if(ability!=Ability.THUNDERSTORM)return rejected(AbilityRejection.NO_ABILITY,lightning,summons);
         var nextActor=actor.withAbilityState(borrowed?actor.cooldown():ability==Ability.CHAIN_LIGHTNING?rules.zeus().lightningCooldown():actor.cooldown(),borrowed || ability!=Ability.THUNDERSTORM?actor.ultimateCharge():actor.ultimateCharge()-rules.zeus().ultimateCaptures(),actor.storedPieceId());states.put(actor.id(),nextActor);updates.put(actor.id(),nextActor);
         PieceState target=first;
         if(ability==Ability.THUNDERSTORM){
-            var candidates=charged(states,lightning,actor);if(candidates.isEmpty())return rejected(MoveResult.NO_CHARGED_TARGETS,lightning,summons);
+            var candidates=charged(states,lightning,actor);if(candidates.isEmpty())return rejected(AbilityRejection.NO_CHARGED_TARGETS,lightning,summons);
             int pick=0;if(candidates.size()>1){var choice=summons.choose(candidates.size());pick=choice.index();summons=new SummonState(true,choice.nextState(),summons.records());}target=candidates.get(pick);
         }
         var seen=new HashSet<Long>();
@@ -53,7 +56,7 @@ public final class ZeusAbilities{
             var tied=candidates.stream().filter(p->distance(previous,p.position())==nearest).sorted(Comparator.comparingLong(PieceState::id)).toList();int pick=0;
             if(tied.size()>1){var choice=summons.choose(tied.size());pick=choice.index();summons=new SummonState(true,choice.nextState(),summons.records());}target=tied.get(pick);
         }
-        return new Result(new HeroEffect(MoveResult.SUCCESS,updates,captures),lightning.clean(states),summons,List.copyOf(illusions));
+        return new Result(new HeroEffect(Success.SUCCESS,updates,captures),lightning.clean(states),summons,List.copyOf(illusions));
     }
     private static int distance(Position a,Position b){return Math.max(Math.abs(a.getRow()-b.getRow()),Math.abs(a.getColumn()-b.getColumn()));}
     private static Result rejected(MoveResult result,LightningState state,SummonState summons){return new Result(HeroEffect.rejected(result),state,summons,List.of());}

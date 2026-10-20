@@ -1,5 +1,8 @@
 package game.core;
 
+import game.moves.MovementRejection;
+import game.moves.Success;
+import game.moves.TurnRejection;
 import game.history.MadeMove;
 import game.moves.AvailableMoves;
 import game.moves.MoveResult;
@@ -27,7 +30,7 @@ public class GameTest {
         Game game = new Game(8);
         Figure pawn = game.getFigureByPosition(pos("e2"));
         Figure empty = game.getFigureByPosition(pos("e4"));
-        assertEquals(MoveResult.SUCCESS, move(game, "e2", "e4"));
+        assertEquals(Success.SUCCESS, move(game, "e2", "e4"));
         assertNotSame(pawn, game.getFigureByPosition(pos("e4")));
         assertTrue(game.getFigureByPosition(pos("e4")) instanceof Pawn);
         assertNotSame(empty, game.getFigureByPosition(pos("e2")));
@@ -45,27 +48,27 @@ public class GameTest {
     @Test
     public void captureRecordsVictimAndAwardsPointsOnce() {
         Game game = new Game(8);
-        assertEquals(MoveResult.SUCCESS, move(game, "e2", "e4"));
-        assertEquals(MoveResult.SUCCESS, move(game, "d7", "d5"));
+        assertEquals(Success.SUCCESS, move(game, "e2", "e4"));
+        assertEquals(Success.SUCCESS, move(game, "d7", "d5"));
         Figure pawn = game.getFigureByPosition(pos("e4"));
         Figure victim = game.getFigureByPosition(pos("d5"));
-        assertEquals(MoveResult.SUCCESS, move(game, "e4", "d5"));
+        assertEquals(Success.SUCCESS, move(game, "e4", "d5"));
         assertNotSame(pawn, game.getFigureByPosition(pos("d5")));
         assertTrue(game.getFigureByPosition(pos("d5")) instanceof Pawn);
         assertTrue(game.getFigureByPosition(pos("e4")) instanceof Empty);
         assertEquals(List.of(victim), game.getWhitePlayer().getAttackedFigures());
         assertEquals(1L, game.getWhitePlayer().getPoints());
         assertEquals(2, game.getWhitePlayer().getMadeMoves().size());
-        reject(game, MoveResult.WRONG_PLAYER, game.getWhitePlayer(), pos("d5"), pos("c6"));
-        reject(game, MoveResult.ILLEGAL_MOVEMENT, game.getBlackPlayer(), pos("a8"), pos("a5"));
+        reject(game, TurnRejection.WRONG_PLAYER, game.getWhitePlayer(), pos("d5"), pos("c6"));
+        reject(game, MovementRejection.ILLEGAL_MOVEMENT, game.getBlackPlayer(), pos("a8"), pos("a5"));
     }
 
     @Test
     public void wrongNullAndForeignPlayersCannotMove() {
         Game game = new Game(8);
-        reject(game, MoveResult.WRONG_PLAYER, game.getBlackPlayer(), pos("e7"), pos("e5"));
-        reject(game, MoveResult.WRONG_PLAYER, null, pos("e2"), pos("e4"));
-        reject(game, MoveResult.WRONG_PLAYER, new Player(true), pos("e2"), pos("e4"));
+        reject(game, TurnRejection.WRONG_PLAYER, game.getBlackPlayer(), pos("e7"), pos("e5"));
+        reject(game, TurnRejection.WRONG_PLAYER, null, pos("e2"), pos("e4"));
+        reject(game, TurnRejection.WRONG_PLAYER, new Player(true), pos("e2"), pos("e4"));
     }
 
     @Test
@@ -73,37 +76,37 @@ public class GameTest {
         Game game = new Game(8);
         for (Position invalid : new Position[]{null, new Position(-1, 0), new Position(8, 0),
                 new Position(0, -1), new Position(0, 8), new Position(Integer.MAX_VALUE, 4)}) {
-            reject(game, MoveResult.OUT_OF_BOUNDS, game.getCurrentPlayer(), invalid, pos("e4"));
-            reject(game, MoveResult.OUT_OF_BOUNDS, game.getCurrentPlayer(), pos("e2"), invalid);
+            reject(game, MovementRejection.OUT_OF_BOUNDS, game.getCurrentPlayer(), invalid, pos("e4"));
+            reject(game, MovementRejection.OUT_OF_BOUNDS, game.getCurrentPlayer(), pos("e2"), invalid);
         }
     }
 
     @Test
     public void emptyEnemyOwnAndUnchangedSquaresAreRejected() {
         Game game = new Game(8);
-        reject(game, MoveResult.EMPTY_SOURCE, "e3", "e4");
-        reject(game, MoveResult.WRONG_FIGURE_COLOR, "e7", "e5");
-        reject(game, MoveResult.OWN_PIECE_AT_TARGET, "e1", "d1");
-        reject(game, MoveResult.SAME_SQUARE, "e2", "e2");
+        reject(game, MovementRejection.EMPTY_SOURCE, "e3", "e4");
+        reject(game, MovementRejection.WRONG_FIGURE_COLOR, "e7", "e5");
+        reject(game, MovementRejection.OWN_PIECE_AT_TARGET, "e1", "d1");
+        reject(game, MovementRejection.SAME_SQUARE, "e2", "e2");
     }
 
     @Test
     public void movementGeometryAndBlockersAreValidated() {
         Game game = new Game(8);
-        reject(game, MoveResult.ILLEGAL_MOVEMENT, "a1", "a3");
-        reject(game, MoveResult.ILLEGAL_MOVEMENT, "c1", "d3");
-        assertEquals(MoveResult.SUCCESS, move(game, "g1", "f3"));
-        assertEquals(MoveResult.SUCCESS, move(game, "b8", "c6"));
+        reject(game, MovementRejection.ILLEGAL_MOVEMENT, "a1", "a3");
+        reject(game, MovementRejection.ILLEGAL_MOVEMENT, "c1", "d3");
+        assertEquals(Success.SUCCESS, move(game, "g1", "f3"));
+        assertEquals(Success.SUCCESS, move(game, "b8", "c6"));
     }
 
     @Test
     public void pawnDoubleStepIsAvailableOnlyFromStartingRankForBothColors() {
         Game game = new Game(8);
-        assertEquals(MoveResult.SUCCESS, move(game, "e2", "e4"));
-        assertEquals(MoveResult.SUCCESS, move(game, "e7", "e5"));
-        reject(game, MoveResult.ILLEGAL_MOVEMENT, "e4", "e6");
-        assertEquals(MoveResult.SUCCESS, move(game, "a2", "a3"));
-        reject(game, MoveResult.ILLEGAL_MOVEMENT, "e5", "e3");
+        assertEquals(Success.SUCCESS, move(game, "e2", "e4"));
+        assertEquals(Success.SUCCESS, move(game, "e7", "e5"));
+        reject(game, MovementRejection.ILLEGAL_MOVEMENT, "e4", "e6");
+        assertEquals(Success.SUCCESS, move(game, "a2", "a3"));
+        reject(game, MovementRejection.ILLEGAL_MOVEMENT, "e5", "e3");
     }
 
     @Test
@@ -116,8 +119,8 @@ public class GameTest {
                 String to = pawnColor == WHITE ? "e4" : "e5";
                 put(game, Pawn.class, pawnColor, from);
                 put(game, Knight.class, blockerColor, blocker);
-                if (pawnColor == BLACK) assertEquals(MoveResult.SUCCESS, move(game, "a1", "a2"));
-                reject(game, MoveResult.ILLEGAL_MOVEMENT, from, to);
+                if (pawnColor == BLACK) assertEquals(Success.SUCCESS, move(game, "a1", "a2"));
+                reject(game, MovementRejection.ILLEGAL_MOVEMENT, from, to);
                 assertTrue(game.getLegalMoves(pos(from)).getCanMove().isEmpty());
             }
         }
@@ -128,8 +131,8 @@ public class GameTest {
         Game game = emptyGame("a1", "h8");
         put(game, Pawn.class, WHITE, "e2");
         put(game, Knight.class, BLACK, "e3");
-        reject(game, MoveResult.ILLEGAL_MOVEMENT, "e2", "e3");
-        reject(game, MoveResult.ILLEGAL_MOVEMENT, "e2", "d3");
+        reject(game, MovementRejection.ILLEGAL_MOVEMENT, "e2", "e3");
+        reject(game, MovementRejection.ILLEGAL_MOVEMENT, "e2", "d3");
     }
 
     @Test
@@ -137,15 +140,15 @@ public class GameTest {
         Game game = emptyGame("a1", "h8");
         put(game, Pawn.class, WHITE, "e2");
         put(game, Knight.class, BLACK, "e4");
-        reject(game, MoveResult.ILLEGAL_MOVEMENT, "e2", "e4");
-        assertEquals(MoveResult.SUCCESS, move(game, "e2", "e3"));
+        reject(game, MovementRejection.ILLEGAL_MOVEMENT, "e2", "e4");
+        assertEquals(Success.SUCCESS, move(game, "e2", "e3"));
     }
 
     @Test
     public void rookHistoryUsesRookName() {
         Game game = emptyGame("e1", "h8");
         put(game, Rook.class, WHITE, "a1");
-        assertEquals(MoveResult.SUCCESS, move(game, "a1", "a4"));
+        assertEquals(Success.SUCCESS, move(game, "a1", "a4"));
         assertEquals("Rook: (1, a) -> (4, a)", game.getLastMoveAsString());
     }
 
@@ -153,7 +156,7 @@ public class GameTest {
     public void kingCannotMoveOntoEmptyPawnAttackSquare() {
         Game game = emptyGame("e1", "h8");
         put(game, Pawn.class, BLACK, "d3");
-        reject(game, MoveResult.KING_IN_CHECK, "e1", "e2");
+        reject(game, MovementRejection.KING_IN_CHECK, "e1", "e2");
         assertFalse(game.getLegalMoves(pos("e1")).getCanMove().contains(pos("e2")));
     }
 
@@ -161,22 +164,22 @@ public class GameTest {
     public void pawnForwardSquareDoesNotCountAsAttack() {
         Game game = emptyGame("e1", "h8");
         put(game, Pawn.class, BLACK, "e3");
-        assertEquals(MoveResult.SUCCESS, move(game, "e1", "e2"));
+        assertEquals(Success.SUCCESS, move(game, "e1", "e2"));
     }
 
     @Test
     public void whitePawnAlsoProtectsEmptyDiagonal() {
         Game game = emptyGame("a1", "e8");
         put(game, Pawn.class, WHITE, "d6");
-        assertEquals(MoveResult.SUCCESS, move(game, "a1", "a2"));
-        reject(game, MoveResult.KING_IN_CHECK, "e8", "e7");
+        assertEquals(Success.SUCCESS, move(game, "a1", "a2"));
+        reject(game, MovementRejection.KING_IN_CHECK, "e8", "e7");
     }
 
     @Test
     public void kingCannotMoveIntoKnightAttack() {
         Game game = emptyGame("e1", "h8");
         put(game, Knight.class, BLACK, "f4");
-        reject(game, MoveResult.KING_IN_CHECK, "e1", "e2");
+        reject(game, MovementRejection.KING_IN_CHECK, "e1", "e2");
     }
 
     @Test
@@ -184,7 +187,7 @@ public class GameTest {
         for (Class<? extends Figure> type : List.of(Bishop.class, Rook.class, Queen.class)) {
             Game game = emptyGame("e1", "h8");
             put(game, type, BLACK, type == Bishop.class ? "a6" : "e8");
-            reject(game, MoveResult.KING_IN_CHECK, "e1", "e2");
+            reject(game, MovementRejection.KING_IN_CHECK, "e1", "e2");
         }
     }
 
@@ -193,20 +196,20 @@ public class GameTest {
         Game game = emptyGame("e1", "h8");
         put(game, Rook.class, BLACK, "e8");
         put(game, Pawn.class, BLACK, "e4");
-        assertEquals(MoveResult.SUCCESS, move(game, "e1", "e2"));
+        assertEquals(Success.SUCCESS, move(game, "e1", "e2"));
     }
 
     @Test
     public void kingsCannotBecomeAdjacent() {
         Game game = emptyGame("e1", "e3");
-        reject(game, MoveResult.KING_IN_CHECK, "e1", "e2");
+        reject(game, MovementRejection.KING_IN_CHECK, "e1", "e2");
     }
 
     @Test
     public void kingOriginDoesNotShieldItsDestinationDuringValidation() {
         Game game = emptyGame("e2", "h8");
         put(game, Rook.class, BLACK, "e8");
-        reject(game, MoveResult.KING_IN_CHECK, "e2", "e1");
+        reject(game, MovementRejection.KING_IN_CHECK, "e2", "e1");
     }
 
     @Test
@@ -214,11 +217,11 @@ public class GameTest {
         Game game = emptyGame("e1", "h8");
         put(game, Rook.class, WHITE, "e2");
         put(game, Rook.class, BLACK, "e8");
-        reject(game, MoveResult.KING_IN_CHECK, "e2", "d2");
+        reject(game, MovementRejection.KING_IN_CHECK, "e2", "d2");
         AvailableMoves legal = game.getLegalMoves(pos("e2"));
         assertFalse(legal.getCanMove().contains(pos("d2")));
         assertTrue(legal.getCanMove().contains(pos("e3")));
-        assertEquals(MoveResult.SUCCESS, move(game, "e2", "e3"));
+        assertEquals(Success.SUCCESS, move(game, "e2", "e3"));
     }
 
     @Test
@@ -227,7 +230,7 @@ public class GameTest {
         put(game, Rook.class, WHITE, "e2");
         put(game, Rook.class, BLACK, "e8");
         put(game, Bishop.class, BLACK, "d2");
-        reject(game, MoveResult.KING_IN_CHECK, "e2", "d2");
+        reject(game, MovementRejection.KING_IN_CHECK, "e2", "d2");
         assertFalse(game.getLegalMoves(pos("e2")).getCanAttack().contains(pos("d2")));
     }
 
@@ -236,7 +239,7 @@ public class GameTest {
         Game game = emptyGame("e1", "h8");
         put(game, Rook.class, BLACK, "e8");
         put(game, Rook.class, WHITE, "a1");
-        reject(game, MoveResult.KING_IN_CHECK, "a1", "a2");
+        reject(game, MovementRejection.KING_IN_CHECK, "a1", "a2");
     }
 
     @Test
@@ -244,7 +247,7 @@ public class GameTest {
         Game game = emptyGame("e1", "h8");
         put(game, Rook.class, BLACK, "e8");
         put(game, Rook.class, WHITE, "a2");
-        assertEquals(MoveResult.SUCCESS, move(game, "a2", "e2"));
+        assertEquals(Success.SUCCESS, move(game, "a2", "e2"));
     }
 
     @Test
@@ -252,7 +255,7 @@ public class GameTest {
         Game game = emptyGame("e1", "h8");
         put(game, Rook.class, BLACK, "e8");
         put(game, Bishop.class, WHITE, "d7");
-        assertEquals(MoveResult.SUCCESS, move(game, "d7", "e8"));
+        assertEquals(Success.SUCCESS, move(game, "d7", "e8"));
         assertEquals(3L, game.getWhitePlayer().getPoints());
     }
 
@@ -260,7 +263,7 @@ public class GameTest {
     public void checkCanBeResolvedByKingEscape() {
         Game game = emptyGame("e1", "h8");
         put(game, Rook.class, BLACK, "e8");
-        assertEquals(MoveResult.SUCCESS, move(game, "e1", "d1"));
+        assertEquals(Success.SUCCESS, move(game, "e1", "d1"));
     }
 
     @Test
@@ -269,7 +272,7 @@ public class GameTest {
         put(game, Rook.class, BLACK, "e8");
         put(game, Bishop.class, BLACK, "b4");
         put(game, Rook.class, WHITE, "a2");
-        reject(game, MoveResult.KING_IN_CHECK, "a2", "e2");
+        reject(game, MovementRejection.KING_IN_CHECK, "a2", "e2");
     }
 
     @Test
@@ -277,14 +280,14 @@ public class GameTest {
         Game game = emptyGame("e1", "h8");
         put(game, Knight.class, BLACK, "e2");
         put(game, Rook.class, BLACK, "e8");
-        reject(game, MoveResult.KING_IN_CHECK, "e1", "e2");
+        reject(game, MovementRejection.KING_IN_CHECK, "e1", "e2");
     }
 
     @Test
     public void kingCanCaptureUnprotectedPiece() {
         Game game = emptyGame("e1", "h8");
         put(game, Rook.class, BLACK, "e2");
-        assertEquals(MoveResult.SUCCESS, move(game, "e1", "e2"));
+        assertEquals(Success.SUCCESS, move(game, "e1", "e2"));
         assertTrue(game.getFigureByPosition(pos("e2")) instanceof King);
     }
 
@@ -292,7 +295,7 @@ public class GameTest {
     public void kingCaptureIsExplicitlyRejectedAndNotHighlighted() {
         Game game = emptyGame("a1", "e8");
         put(game, Rook.class, WHITE, "e2");
-        reject(game, MoveResult.KING_CAPTURE_NOT_ALLOWED, "e2", "e8");
+        reject(game, MovementRejection.KING_CAPTURE_NOT_ALLOWED, "e2", "e8");
         assertFalse(game.getLegalMoves(pos("e2")).getCanAttack().contains(pos("e8")));
     }
 
@@ -301,7 +304,7 @@ public class GameTest {
         Game game = emptyGame("d4", "f8");
         put(game, Rook.class, WHITE, "f1");
         put(game, Knight.class, BLACK, "f7");
-        reject(game, MoveResult.KING_IN_CHECK, "d4", "e5");
+        reject(game, MovementRejection.KING_IN_CHECK, "d4", "e5");
     }
 
     @Test
@@ -322,7 +325,7 @@ public class GameTest {
         Figure pawn = game.getFigureByPosition(pos("e2"));
         game.getGameField().compute(pawn);
         assertThrows(UnsupportedOperationException.class, () -> pawn.getCanMove().add(pos("e5")));
-        reject(game, MoveResult.ILLEGAL_MOVEMENT, "e2", "e5");
+        reject(game, MovementRejection.ILLEGAL_MOVEMENT, "e2", "e5");
     }
 
     @Test
@@ -330,7 +333,7 @@ public class GameTest {
         Game game = new Game(8);
         Position from = pos("e2");
         Position to = pos("e4");
-        assertEquals(MoveResult.SUCCESS, game.moveFigure(game.getCurrentPlayer(), from, to));
+        assertEquals(Success.SUCCESS, game.moveFigure(game.getCurrentPlayer(), from, to));
         assertEquals(pos("e2"), from);
         assertEquals(pos("e4"), to);
         assertTrue(game.getFigureByPosition(pos("e2")) instanceof Empty);

@@ -1,7 +1,9 @@
 package game.core;
 
+import game.moves.MovementRejection;
+import game.moves.Success;
+import game.moves.TurnRejection;
 import game.moves.MoveKind;
-import game.moves.MoveResult;
 import game.moves.Promotion;
 import game.state.CastlingRights;
 import game.state.GamePosition;
@@ -128,7 +130,7 @@ public class ApiIntegrityTest {
         assertNotSame(factory.getFigureByPosition(pos("e2")), game.getFigureByPosition(pos("e2")));
         assertTrue(game.getMoves().isEmpty()); assertEquals(0L, game.getWhitePlayer().getPoints());
         assertFalse(game.getClockSnapshot().isEnabled()); assertEquals(1, game.getRepetitionCount());
-        assertEquals(MoveResult.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos("e2"), pos("e4")));
+        assertEquals(Success.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos("e2"), pos("e4")));
         assertTrue(input.board().get(pos("e2")) instanceof Pawn);
     }
     @Test public void nullBoardCellsAndIncompleteMapsAreRejected() {
@@ -194,14 +196,14 @@ public class ApiIntegrityTest {
         var board = board("e1", "h8"); put(board, Rook.class, BLACK, "e8");
         Game checked = load(board, WHITE, CastlingRights.none(), null, 0);
         assertTrue(checked.isInCheck());
-        assertEquals(MoveResult.SUCCESS, checked.moveFigure(checked.getCurrentPlayer(), pos("e1"), pos("d1")));
+        assertEquals(Success.SUCCESS, checked.moveFigure(checked.getCurrentPlayer(), pos("e1"), pos("d1")));
         assertThrows(IllegalArgumentException.class, () -> load(board, BLACK, CastlingRights.none(), null, 0));
         put(board, Rook.class, WHITE, "h1"); invalid(board); // Both kings in check.
     }
     @Test public void loadedTerminalPositionsAreEvaluatedImmediately() {
         Game bare = load(board("e1", "e8"), WHITE, CastlingRights.none(), null, 0);
         assertEquals(Termination.INSUFFICIENT_MATERIAL, bare.getOutcome().reason());
-        assertEquals(MoveResult.GAME_OVER, bare.moveFigure(bare.getCurrentPlayer(), pos("e1"), pos("e2")));
+        assertEquals(TurnRejection.GAME_OVER, bare.moveFigure(bare.getCurrentPlayer(), pos("e1"), pos("e2")));
         Game mate = new Game(8); play(mate, "f2f3", "e7e5", "g2g4", "d8h4");
         assertEquals(mate.getOutcome(), Game.fromPosition(mate.getPosition()).getOutcome());
         var board = board("e1", "e8"); put(board, Rook.class, WHITE, "a1");
@@ -251,7 +253,7 @@ public class ApiIntegrityTest {
     @Test public void loadedPromotionPreservesOriginalPawnSnapshot() {
         var board = board("h1", "h8"); put(board, Pawn.class, WHITE, "b7");
         Game game = load(board, WHITE, CastlingRights.none(), null, 0); Field before = game.getGameField();
-        assertEquals(MoveResult.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos("b7"), pos("b8"), Promotion.QUEEN));
+        assertEquals(Success.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos("b7"), pos("b8"), Promotion.QUEEN));
         assertTrue(before.getFigureByPosition(pos("b7")) instanceof Pawn);
         assertTrue(before.getFigureByPosition(pos("b8")) instanceof Empty);
         assertTrue(game.getFigureByPosition(pos("b8")) instanceof Queen);
@@ -261,7 +263,7 @@ public class ApiIntegrityTest {
         var before = new Positions.State(game); Field field = game.getGameField();
         var bad = new HashMap<>(field.getGameField()); bad.remove(pos("e1")); invalid(bad);
         before.assertUnchanged(game); assertSame(field, game.getGameField());
-        assertEquals(MoveResult.ILLEGAL_MOVEMENT, game.moveFigure(game.getCurrentPlayer(), pos("e4"), pos("e6")));
+        assertEquals(MovementRejection.ILLEGAL_MOVEMENT, game.moveFigure(game.getCurrentPlayer(), pos("e4"), pos("e6")));
         before.assertUnchanged(game); assertSame(field, game.getGameField());
     }
 

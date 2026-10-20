@@ -34,7 +34,7 @@ class KikimoraUiTest{
     @Test fun thirteenthHeroCanBePickedIntoABishopHome(){SwingUtilities.invokeAndWait{
         val d=Draft();d.ban(model.FigureColor.WHITE,HeroType.PUDGE_ROOK);d.ban(model.FigureColor.BLACK,HeroType.IZBA_ROOK)
         ImageComposeScene(1200,800){MaterialTheme{DraftScreen(d,{}, {})}}.use{
-            it.render().close();it.sendPointerEvent(PointerEventType.Scroll,Offset(300f,500f),scrollDelta=Offset(0f,28f));val t=System.nanoTime();repeat(40){f->it.render(t+f*16_000_000L).close()};save(it,"kikimora-draft");click(it,150f,580f);click(it,912f,435f);click(it,100f,677f);assertEquals(HeroType.KIKIMORA_BISHOP,d.snapshot.assignments()[pos("c1")]);save(it,"kikimora-picked")
+            it.render().close();it.scrollDraftToLastHero();save(it,"kikimora-draft");click(it,150f,580f);click(it,912f,435f);click(it,100f,677f);assertEquals(HeroType.KIKIMORA_BISHOP,d.snapshot.assignments()[pos("c1")]);save(it,"kikimora-picked")
         }
     }}
     private fun click(s:ImageComposeScene,x:Float,y:Float){s.sendPointerEvent(PointerEventType.Press,Offset(x,y),button=PointerButton.Primary);s.sendPointerEvent(PointerEventType.Release,Offset(x,y),button=PointerButton.Primary);s.render().close()}

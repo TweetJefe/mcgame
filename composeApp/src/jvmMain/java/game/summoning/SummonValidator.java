@@ -52,8 +52,8 @@ public final class SummonValidator {
             if (r.cause() == SummonRecord.Cause.ULTIMATE)
                 require(s.events().stream().anyMatch(e -> e.kind() == GameEvent.Kind.SUMMON_YAGA && e.turn() == r.bornTurn() && e.actorId() == r.sourceId()), "Birth without ultimate");
             else
-                require(source.status() == PieceState.Status.CAPTURED && s.events().stream().anyMatch(e -> e.targetId() != null && e.targetId() == r.sourceId() && e.turn() == r.bornTurn()
-                        && Set.of(GameEvent.Kind.MOVE, GameEvent.Kind.COUNTER_CAPTURE, GameEvent.Kind.BOG_CAPTURE, GameEvent.Kind.ARES_REVENGE).contains(e.kind())
+                require(source.isRemoved() && s.events().stream().anyMatch(e -> e.targetId() != null && e.targetId() == r.sourceId() && e.turn() == r.bornTurn()
+                        && Set.of(GameEvent.Kind.MOVE, GameEvent.Kind.COUNTER_CAPTURE, GameEvent.Kind.BOG_CAPTURE, GameEvent.Kind.ARES_REVENGE,GameEvent.Kind.MINE_CAPTURE,GameEvent.Kind.LIGHTNING_CAPTURE,GameEvent.Kind.BLAST_CAPTURE,GameEvent.Kind.BLAST_DEATH).contains(e.kind())
                         && Math.max(Math.abs(e.to().getRow() - r.bornAt().getRow()), Math.abs(e.to().getColumn() - r.bornAt().getColumn())) == 1), "Birth without nearby death");
             if (r.cause() == SummonRecord.Cause.ULTIMATE)
                 require(p.color() == FigureColor.WHITE ? r.bornAt().getRow() < 2 : r.bornAt().getRow() > 5, "Ultimate birth outside home ranks");
@@ -61,7 +61,7 @@ public final class SummonValidator {
             require(r.transformed() == (mature != null), "Missing or unexpected transformation event");
             if (r.transformed())
                 require(mature.turn() == r.transformsAfterTurn() && mature.color() == p.color() && mature.targetId() == p.id() && r.transformsAfterTurn() < s.turn().number() && p.type() == Rook.class, "Invalid transformation");
-            else require(p.isRemoved() || r.transformsAfterTurn() >= s.turn().number(), "Overdue living Baba Yaga");
+            else require(p.isRemoved() || p.isPotted() || r.transformsAfterTurn() >= s.turn().number(), "Overdue living Baba Yaga");
         }
         for (PieceState p : s.pieces().values()) {
             require(p.hero() != HeroType.BABA_YAGA_PAWN || state.records().containsKey(p.id()), "Baba Yaga was not summoned");

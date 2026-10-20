@@ -1,5 +1,7 @@
 package org.chess
 
+import game.moves.MovementRejection
+import game.moves.TurnRejection
 import game.core.Game
 import game.economy.GoldRules
 import game.terrain.MudCell
@@ -79,7 +81,7 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
     fun submitMove(from: Position, to: Position, promotion: Promotion? = null) {
         val result = if (claimWithMove) game.claimDraw(currentPlayer, from, to, promotion)
             else game.moveFigure(currentPlayer, from, to, promotion)
-        if (result == MoveResult.PROMOTION_REQUIRED) pendingPromotion = from to to
+        if (result == MovementRejection.PROMOTION_REQUIRED) pendingPromotion = from to to
         else {
             pendingPromotion = null
             claimWithMove = false
@@ -299,8 +301,8 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                             Button(enabled = ultReady.isSuccess, onClick = { if (ult == Ability.STEAL || ult == Ability.AMBUSH) { selectedAbility = null; updateView(game.useAbility(currentPlayer, selectedPos, null, ult)) } else chooseAbility(ult) }) { Text(ultName) }
                         }
                         if (selectedAbility != null) Text("Выберите подсвеченную цель", color = Color(0xFF6A5ACD))
-                        if (!skillReady.isSuccess && skillReady != MoveResult.ABILITY_ALREADY_USED) Text(skillReady.message, fontSize = 12.sp, color = Color.Gray)
-                        if (!ultReady.isSuccess && ultReady != MoveResult.ABILITY_ALREADY_USED) Text(ultReady.message, fontSize = 12.sp, color = Color.Gray)
+                        if (!skillReady.isSuccess && skillReady != TurnRejection.ABILITY_ALREADY_USED) Text(skillReady.message, fontSize = 12.sp, color = Color.Gray)
+                        if (!ultReady.isSuccess && ultReady != TurnRejection.ABILITY_ALREADY_USED) Text(ultReady.message, fontSize = 12.sp, color = Color.Gray)
                     }
                     Row {
                         selected.inventory().forEachIndexed { slot, item ->

@@ -1,5 +1,6 @@
 package game.heroes;
 
+import game.moves.Success;
 import game.moves.Capture;
 import game.moves.MoveResult;
 import game.state.PieceState;
@@ -21,7 +22,7 @@ public record HeroEffect(MoveResult result, Map<Long, PieceState> updates, List<
     }
 
     public static HeroEffect success(Map<Long, PieceState> updates) {
-        return new HeroEffect(MoveResult.SUCCESS, updates, List.of());
+        return new HeroEffect(Success.SUCCESS, updates, List.of());
     }
 
     public static HeroEffect empty() {

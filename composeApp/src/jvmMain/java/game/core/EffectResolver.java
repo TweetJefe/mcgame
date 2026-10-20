@@ -1,4 +1,6 @@
 package game.core;
+import game.moves.MovementRejection;
+import game.moves.Success;
 import game.heroes.*;
 import game.heroes.moleminer.*;
 import game.moves.*;
@@ -29,9 +31,9 @@ final class EffectResolver {
             var summoned=SummonResolver.resolve(factory,states,summons,terrain,captures,turn,side,rules,handled);
             if(!summoned.result().isSuccess())return new Result(summoned.result(),before,terrain,summons,mines,captures,List.of());
             states=summoned.pieces();terrain=summoned.terrain();summons=summoned.summons();captures=summoned.captures();hits.addAll(summoned.illusionHits());
-            if(states.equals(old) && mines.equals(oldMines) && terrain.equals(oldTerrain) && summons.equals(oldSummons))return new Result(MoveResult.SUCCESS,states,terrain,summons,mines,captures,List.copyOf(hits));
+            if(states.equals(old) && mines.equals(oldMines) && terrain.equals(oldTerrain) && summons.equals(oldSummons))return new Result(Success.SUCCESS,states,terrain,summons,mines,captures,List.copyOf(hits));
             entryBefore=old;
         }
-        return new Result(MoveResult.INVALID_BOARD,before,terrain,summons,mines,captures,List.of());
+        return new Result(MovementRejection.INVALID_BOARD,before,terrain,summons,mines,captures,List.of());
     }
 }

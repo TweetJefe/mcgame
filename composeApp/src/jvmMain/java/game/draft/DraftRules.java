@@ -5,11 +5,11 @@ package game.draft;
  */
 public record DraftRules(int bansPerSide, int maxPicksPerSide, int catalogVersion) {
     public DraftRules(int bansPerSide, int maxPicksPerSide) {
-        this(bansPerSide, maxPicksPerSide, 5);
+        this(bansPerSide, maxPicksPerSide,10);
     }
 
     public DraftRules {
-        if (catalogVersion < 1 || catalogVersion > 5)
+        if (catalogVersion < 1 || catalogVersion >10)
             throw new IllegalArgumentException("Unknown hero catalog version");
         if (bansPerSide < 0 || bansPerSide > 10 || maxPicksPerSide < 1 || maxPicksPerSide > 14)
             throw new IllegalArgumentException("Invalid draft limits");

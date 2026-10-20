@@ -1,5 +1,9 @@
 package game.heroes.ginseng;
 
+import game.moves.AbilityRejection;
+import game.moves.MovementRejection;
+import game.moves.StatusRejection;
+import game.moves.Success;
 import game.heroes.*;
 import game.moves.MoveResult;
 import game.state.PieceState;
@@ -17,26 +21,26 @@ public final class GinsengAbilities {
     }
 
     public static MoveResult availability(PieceState actor, Ability ability, GinsengRules rules, boolean borrowed) {
-        if (ability == null) return MoveResult.INVALID_ABILITY;
-        if (actor == null || actor.status() != PieceState.Status.BOARD) return MoveResult.EMPTY_SOURCE;
-        if (actor.hero() != HeroType.GINSENG_BISHOP || !abilities().contains(ability)) return MoveResult.NO_ABILITY;
-        if (!borrowed && ability == Ability.DISPLACE && actor.cooldown() > 0) return MoveResult.ABILITY_COOLDOWN;
+        if (ability == null) return AbilityRejection.INVALID_ABILITY;
+        if (actor == null || actor.status() != PieceState.Status.BOARD) return MovementRejection.EMPTY_SOURCE;
+        if (actor.hero() != HeroType.GINSENG_BISHOP || !abilities().contains(ability)) return AbilityRejection.NO_ABILITY;
+        if (!borrowed && ability == Ability.DISPLACE && actor.cooldown() > 0) return AbilityRejection.ABILITY_COOLDOWN;
         if (!borrowed && ability == Ability.COPY_SPELL && actor.ultimateCharge() < rules.ultimateCaptures())
-            return MoveResult.ULTIMATE_NOT_READY;
-        return MoveResult.SUCCESS;
+            return AbilityRejection.ULTIMATE_NOT_READY;
+        return Success.SUCCESS;
     }
 
     public static HeroEffect displace(Field field, PieceState actor, PieceState target, Position destination, GinsengRules rules, boolean borrowed) {
         MoveResult ready = availability(actor, Ability.DISPLACE, rules, borrowed);
         if (!ready.isSuccess()) return HeroEffect.rejected(ready);
-        if (target == null) return HeroEffect.rejected(MoveResult.INVALID_ABILITY_TARGET);
-        if (target.type() == King.class) return HeroEffect.rejected(MoveResult.KING_IMMUNE);
+        if (target == null) return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
+        if (target.type() == King.class) return HeroEffect.rejected(StatusRejection.KING_IMMUNE);
         if (distance(actor.position(), target.position()) > 3)
-            return HeroEffect.rejected(MoveResult.ABILITY_OUT_OF_RANGE);
+            return HeroEffect.rejected(AbilityRejection.ABILITY_OUT_OF_RANGE);
         if (destination == null || destination.getRow() < 0 || destination.getRow() > 7 || destination.getColumn() < 0 || destination.getColumn() > 7)
-            return HeroEffect.rejected(MoveResult.OUT_OF_BOUNDS);
+            return HeroEffect.rejected(MovementRejection.OUT_OF_BOUNDS);
         if (distance(target.position(), destination) != 1 || !(field.getFigureByPosition(destination) instanceof Empty))
-            return HeroEffect.rejected(MoveResult.INVALID_ABILITY_TARGET);
+            return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
         var updates = new HashMap<Long, PieceState>();
         PieceState next = actor.withAbilityState(borrowed ? actor.cooldown() : rules.displacementCooldown(), actor.ultimateCharge(), actor.storedPieceId());
         updates.put(actor.id(), next);
@@ -48,8 +52,8 @@ public final class GinsengAbilities {
         MoveResult ready = availability(actor, Ability.COPY_SPELL, rules, borrowed);
         if (!ready.isSuccess()) return HeroEffect.rejected(ready);
         if (source == null || source.hero() == HeroType.NONE || source.type() == King.class)
-            return HeroEffect.rejected(MoveResult.INVALID_ABILITY_TARGET);
-        if (last == null) return HeroEffect.rejected(MoveResult.NO_USED_ABILITY);
+            return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
+        if (last == null && source.hero()!=HeroType.ILLUSION) return HeroEffect.rejected(AbilityRejection.NO_USED_ABILITY);
         return HeroEffect.success(Map.of(actor.id(), actor.withAbilityState(actor.cooldown(),
                 borrowed ? actor.ultimateCharge() : actor.ultimateCharge() - rules.ultimateCaptures(), actor.storedPieceId())));
     }

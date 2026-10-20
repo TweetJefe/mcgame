@@ -1,5 +1,10 @@
 package game.heroes.lumeshard;
 
+import game.moves.AbilityRejection;
+import game.moves.MovementRejection;
+import game.moves.StatusRejection;
+import game.moves.Success;
+import game.moves.TurnRejection;
 import game.core.Game;
 import game.heroes.*;
 import game.heroes.pudge.PudgeRules;
@@ -34,9 +39,9 @@ public class LumeshardTest {
         return Game.fromMobaPosition(new GamePosition(board, WHITE, CastlingRights.none(), null, 0), heroes, rules, () -> 0L);
     }
     private MoveResult move(Game game, String from, String to) { return game.moveFigure(game.getCurrentPlayer(), pos(from), pos(to)); }
-    private void play(Game game, String from, String to) { assertEquals(MoveResult.SUCCESS, move(game, from, to)); }
+    private void play(Game game, String from, String to) { assertEquals(Success.SUCCESS, move(game, from, to)); }
     private MoveResult ability(Game game, String actor, String target, Ability ability) { return game.useAbility(game.getCurrentPlayer(), pos(actor), pos(target), ability); }
-    private void end(Game game) { assertEquals(MoveResult.SUCCESS, game.endTurn(game.getCurrentPlayer())); }
+    private void end(Game game) { assertEquals(Success.SUCCESS, game.endTurn(game.getCurrentPlayer())); }
     private void reject(Game game, MoveResult expected, java.util.function.Supplier<MoveResult> command) {
         var before = game.getSnapshot(); assertEquals(expected, command.get()); assertEquals(before, game.getSnapshot());
     }
@@ -70,48 +75,48 @@ public class LumeshardTest {
     }
     @Test public void laserReachesTheWholeRadiusThreeAreaAndIgnoresBlockers() {
         Game game = laserPosition();
-        assertEquals(MoveResult.SUCCESS, ability(game, "d2", "g5", Ability.LASER));
+        assertEquals(Success.SUCCESS, ability(game, "d2", "g5", Ability.LASER));
         assertTrue(game.getPieceState(pos("g5")).isBlinded()); assertEquals(3, game.getPieceState(pos("d2")).cooldown());
         assertTrue(game.getTurnState().abilityUsed()); assertFalse(game.getTurnState().moveUsed());
         assertEquals(0, game.getWhitePlayer().getPoints()); assertEquals(0, game.getPieceState(pos("d2")).ultimateCharge());
-        reject(game, MoveResult.MOVE_REQUIRED, () -> game.endTurn(game.getCurrentPlayer()));
+        reject(game, TurnRejection.MOVE_REQUIRED, () -> game.endTurn(game.getCurrentPlayer()));
         var board = board("a1", "h8"); put(board, Bishop.class, WHITE, "d2"); put(board, Rook.class, BLACK, "f3");
-        Game nonRay = create(board, "d2"); assertEquals(MoveResult.SUCCESS, ability(nonRay, "d2", "f3", Ability.LASER));
+        Game nonRay = create(board, "d2"); assertEquals(Success.SUCCESS, ability(nonRay, "d2", "f3", Ability.LASER));
     }
     @Test public void invalidLaserTargetsAndAnotherHerosAbilitiesDoNotSpendTheTurn() {
         var board = board("a1", "h8"); put(board, Bishop.class, WHITE, "d2"); put(board, Rook.class, BLACK, "h5"); put(board, Pawn.class, WHITE, "e2");
         Game game = create(board, "d2");
-        reject(game, MoveResult.ABILITY_OUT_OF_RANGE, () -> ability(game, "d2", "h5", Ability.LASER));
-        reject(game, MoveResult.INVALID_ABILITY_TARGET, () -> ability(game, "d2", "e2", Ability.LASER));
-        reject(game, MoveResult.INVALID_ABILITY_TARGET, () -> ability(game, "d2", "e3", Ability.LASER));
-        reject(game, MoveResult.KING_IMMUNE, () -> ability(game, "d2", "h8", Ability.LASER));
-        reject(game, MoveResult.NO_ABILITY, () -> ability(game, "d2", "h5", Ability.HOOK));
+        reject(game, AbilityRejection.ABILITY_OUT_OF_RANGE, () -> ability(game, "d2", "h5", Ability.LASER));
+        reject(game, AbilityRejection.INVALID_ABILITY_TARGET, () -> ability(game, "d2", "e2", Ability.LASER));
+        reject(game, AbilityRejection.INVALID_ABILITY_TARGET, () -> ability(game, "d2", "e3", Ability.LASER));
+        reject(game, StatusRejection.KING_IMMUNE, () -> ability(game, "d2", "h8", Ability.LASER));
+        reject(game, AbilityRejection.NO_ABILITY, () -> ability(game, "d2", "h5", Ability.HOOK));
     }
     @Test public void blindnessBlocksCapturesButAllowsQuietMovesAndExpiresAtOwnersEnd() {
-        Game game = laserPosition(); assertEquals(MoveResult.SUCCESS, ability(game, "d2", "g5", Ability.LASER));
+        Game game = laserPosition(); assertEquals(Success.SUCCESS, ability(game, "d2", "g5", Ability.LASER));
         play(game, "d2", "c1"); end(game);
         assertTrue(game.getLegalMoves(pos("g5")).getCanAttack().isEmpty());
         assertTrue(game.getLegalMoves(pos("g5")).getCanMove().contains(pos("g4")));
-        reject(game, MoveResult.BLINDED_CANNOT_CAPTURE, () -> move(game, "g5", "g2"));
+        reject(game, StatusRejection.BLINDED_CANNOT_CAPTURE, () -> move(game, "g5", "g2"));
         play(game, "g5", "g4"); assertTrue(game.getPieceState(pos("g4")).isBlinded());
         end(game); assertFalse(game.getPieceState(pos("g4")).isBlinded());
     }
     @Test public void blindnessBlocksEnPassantEvenThoughTheDestinationIsEmpty() {
         var board = board("a1", "h8"); put(board, Bishop.class, WHITE, "d2"); put(board, Pawn.class, WHITE, "e2"); put(board, Pawn.class, BLACK, "d4");
-        Game game = create(board, "d2"); assertEquals(MoveResult.SUCCESS, ability(game, "d2", "d4", Ability.LASER));
+        Game game = create(board, "d2"); assertEquals(Success.SUCCESS, ability(game, "d2", "d4", Ability.LASER));
         play(game, "e2", "e4"); end(game); assertEquals(pos("e3"), game.getEnPassantTarget());
-        reject(game, MoveResult.BLINDED_CANNOT_CAPTURE, () -> move(game, "d4", "e3"));
+        reject(game, StatusRejection.BLINDED_CANNOT_CAPTURE, () -> move(game, "d4", "e3"));
         assertFalse(game.getLegalMoves(pos("d4")).getCanAttack().contains(pos("e3"))); play(game, "d4", "d3");
     }
     @Test public void blindedAttackerStopsCheckingButRemainsABlockerForOtherAttackers() throws Exception {
         var board = board("e1", "h8"); put(board, Bishop.class, WHITE, "c2"); put(board, Rook.class, BLACK, "e4"); put(board, Rook.class, BLACK, "e8");
         Game game = create(board, "c2"); assertTrue(game.isInCheck());
-        assertEquals(MoveResult.SUCCESS, ability(game, "c2", "e4", Ability.LASER)); assertFalse(game.isInCheck());
+        assertEquals(Success.SUCCESS, ability(game, "c2", "e4", Ability.LASER)); assertFalse(game.isInCheck());
         game = copy(game); assertFalse(game.isInCheck()); play(game, "c2", "b3"); end(game);
     }
     @Test public void restoredAttacksCanGiveCheckWhenBlindnessExpires() {
         var board = board("f1", "h8"); put(board, Bishop.class, WHITE, "d2"); put(board, Rook.class, BLACK, "g5");
-        Game game = create(board, "d2"); assertEquals(MoveResult.SUCCESS, ability(game, "d2", "g5", Ability.LASER));
+        Game game = create(board, "d2"); assertEquals(Success.SUCCESS, ability(game, "d2", "g5", Ability.LASER));
         play(game, "f1", "g1"); end(game); play(game, "h8", "h7");
         assertTrue(game.getPieceState(pos("g5")).isBlinded()); end(game); assertTrue(game.isInCheck());
     }
@@ -119,22 +124,22 @@ public class LumeshardTest {
         var board = board("e1", "a8"); put(board, Rook.class, WHITE, "h1"); put(board, Bishop.class, WHITE, "d2"); put(board, Rook.class, BLACK, "f4");
         Game game = Game.fromMobaPosition(new GamePosition(board, WHITE, new CastlingRights(true, false, false, false), null, 0),
                 Map.of(pos("d2"), HeroType.LUMESHARD_BISHOP), HeroRules.prototype(), () -> 0L);
-        assertEquals(MoveResult.SUCCESS, ability(game, "d2", "f4", Ability.LASER)); play(game, "e1", "g1");
+        assertEquals(Success.SUCCESS, ability(game, "d2", "f4", Ability.LASER)); play(game, "e1", "g1");
     }
     @Test public void blindedPudgeCanUseASkillButSharesTheSameGlobalAbilityBudget() {
         var board = board("a1", "h8"); put(board, Bishop.class, WHITE, "d2"); put(board, Rook.class, BLACK, "g5"); put(board, Pawn.class, BLACK, "g4");
         Game game = create(board, Map.of(pos("d2"), HeroType.LUMESHARD_BISHOP, pos("g5"), HeroType.PUDGE_ROOK),
                 new HeroRules(PudgeRules.sandbox(), LumeshardRules.prototype()));
-        assertEquals(MoveResult.SUCCESS, ability(game, "d2", "g5", Ability.LASER)); play(game, "d2", "c1"); end(game);
-        assertEquals(MoveResult.SUCCESS, ability(game, "g5", "g4", Ability.SWALLOW));
-        reject(game, MoveResult.ABILITY_ALREADY_USED, () -> ability(game, "g5", "c3", Ability.HOOK));
+        assertEquals(Success.SUCCESS, ability(game, "d2", "g5", Ability.LASER)); play(game, "d2", "c1"); end(game);
+        assertEquals(Success.SUCCESS, ability(game, "g5", "g4", Ability.SWALLOW));
+        reject(game, TurnRejection.ABILITY_ALREADY_USED, () -> ability(game, "g5", "c3", Ability.HOOK));
         play(game, "h8", "h7"); end(game); assertFalse(game.getPieceState(pos("g5")).isBlinded());
     }
     @Test public void laserCooldownReachesZeroAtTheThirdOwnTurnStart() {
-        Game game = laserPosition(); assertEquals(MoveResult.SUCCESS, ability(game, "d2", "g5", Ability.LASER));
+        Game game = laserPosition(); assertEquals(Success.SUCCESS, ability(game, "d2", "g5", Ability.LASER));
         play(game, "d2", "c1"); end(game); play(game, "h8", "h7"); end(game);
         assertEquals(2, game.getPieceState(pos("c1")).cooldown());
-        reject(game, MoveResult.ABILITY_COOLDOWN, () -> ability(game, "c1", "g5", Ability.LASER));
+        reject(game, AbilityRejection.ABILITY_COOLDOWN, () -> ability(game, "c1", "g5", Ability.LASER));
         play(game, "c1", "d2"); end(game); play(game, "h7", "h8"); end(game);
         assertEquals(1, game.getPieceState(pos("d2")).cooldown());
         play(game, "d2", "c1"); end(game); play(game, "h8", "h7"); end(game);
@@ -143,53 +148,53 @@ public class LumeshardTest {
     @Test public void twoPawnCapturesChargeTheUltimateAndTeleportSpendsBoth() throws Exception {
         Game game = ready(false); assertEquals(2, game.getPieceState(pos("f4")).ultimateCharge()); assertEquals(2, game.getWhitePlayer().getPoints());
         game = copy(game); long id = game.getPieceState(pos("f4")).id();
-        assertEquals(MoveResult.SUCCESS, ability(game, "f4", "a3", Ability.TELEPORT));
+        assertEquals(Success.SUCCESS, ability(game, "f4", "a3", Ability.TELEPORT));
         assertEquals(id, game.getPieceState(pos("a3")).id()); assertEquals(0, game.getPieceState(id).ultimateCharge());
         assertTrue(game.getTurnState().moveUsed()); end(game);
     }
     @Test public void teleportBeforeMovementStillRequiresOneOrdinaryMoveByTheSameOrAnotherPiece() {
         Game game = ready(false); end(game); play(game, "g8", "h8"); end(game);
-        assertEquals(MoveResult.SUCCESS, ability(game, "f4", "a3", Ability.TELEPORT));
-        reject(game, MoveResult.MOVE_REQUIRED, () -> game.endTurn(game.getCurrentPlayer()));
+        assertEquals(Success.SUCCESS, ability(game, "f4", "a3", Ability.TELEPORT));
+        reject(game, TurnRejection.MOVE_REQUIRED, () -> game.endTurn(game.getCurrentPlayer()));
         play(game, "a3", "b4"); end(game);
     }
     @Test public void teleportRejectsWrongColorsOccupiedSquaresAndUnchargedHeroesWithoutCost() {
         Game game = ready(false);
-        reject(game, MoveResult.WRONG_SQUARE_COLOR, () -> ability(game, "f4", "a2", Ability.TELEPORT));
-        reject(game, MoveResult.KING_IMMUNE, () -> ability(game, "f4", "a1", Ability.TELEPORT));
+        reject(game, AbilityRejection.WRONG_SQUARE_COLOR, () -> ability(game, "f4", "a2", Ability.TELEPORT));
+        reject(game, StatusRejection.KING_IMMUNE, () -> ability(game, "f4", "a1", Ability.TELEPORT));
         Game uncharged = laserPosition();
-        reject(uncharged, MoveResult.ULTIMATE_NOT_READY, () -> ability(uncharged, "d2", "a3", Ability.TELEPORT));
+        reject(uncharged, AbilityRejection.ULTIMATE_NOT_READY, () -> ability(uncharged, "d2", "a3", Ability.TELEPORT));
     }
     @Test public void teleportCannotExposeItsOwnKing() {
         var board = board("e1", "h8"); put(board, Bishop.class, WHITE, "e2"); put(board, Rook.class, BLACK, "e8");
         Game game = create(board, Map.of(pos("e2"), HeroType.LUMESHARD_BISHOP), HeroRules.sandbox());
-        reject(game, MoveResult.KING_IN_CHECK, () -> ability(game, "e2", "b1", Ability.TELEPORT));
+        reject(game, MovementRejection.KING_IN_CHECK, () -> ability(game, "e2", "b1", Ability.TELEPORT));
     }
     @Test public void hookDoesNotChangeLumeshardsOriginalColorAndTheGlobalSkillLimitApplies() throws Exception {
         Game game = ready(true); end(game); play(game, "g8", "h8"); end(game);
-        assertEquals(MoveResult.SUCCESS, ability(game, "f2", "f4", Ability.HOOK));
+        assertEquals(Success.SUCCESS, ability(game, "f2", "f4", Ability.HOOK));
         assertEquals(SquareColor.LIGHT, SquareColor.at(game.getPieceState(pos("f3")).position()));
         assertEquals(SquareColor.DARK, game.getPieceState(pos("f3")).startingColor());
-        reject(game, MoveResult.ABILITY_ALREADY_USED, () -> ability(game, "f3", "a3", Ability.TELEPORT));
+        reject(game, TurnRejection.ABILITY_ALREADY_USED, () -> ability(game, "f3", "a3", Ability.TELEPORT));
         play(game, "a1", "b1"); end(game); play(game, "h8", "g8"); end(game);
         Game restored = copy(game);
-        reject(restored, MoveResult.WRONG_SQUARE_COLOR, () -> ability(restored, "f3", "b3", Ability.TELEPORT));
-        assertEquals(MoveResult.SUCCESS, ability(restored, "f3", "a3", Ability.TELEPORT));
+        reject(restored, AbilityRejection.WRONG_SQUARE_COLOR, () -> ability(restored, "f3", "b3", Ability.TELEPORT));
+        assertEquals(Success.SUCCESS, ability(restored, "f3", "a3", Ability.TELEPORT));
     }
     @Test public void returnedLumeshardRetainsColorAndChargesFromTheCounterCapture() throws Exception {
         var board = board("a1", "h8"); put(board, Rook.class, WHITE, "e2"); put(board, Bishop.class, WHITE, "d3"); put(board, Rook.class, BLACK, "f8");
         Game game = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK, pos("d3"), HeroType.LUMESHARD_BISHOP),
                 new HeroRules(PudgeRules.sandbox(), LumeshardRules.prototype()));
-        long id = game.getPieceState(pos("d3")).id(); assertEquals(MoveResult.SUCCESS, ability(game, "e2", "d3", Ability.SWALLOW));
+        long id = game.getPieceState(pos("d3")).id(); assertEquals(Success.SUCCESS, ability(game, "e2", "d3", Ability.SWALLOW));
         play(game, "e2", "f2"); end(game); game = copy(game); play(game, "f8", "f2");
         assertEquals(id, game.getPieceState(pos("f2")).id()); assertEquals(SquareColor.LIGHT, game.getPieceState(id).startingColor());
         assertEquals(1, game.getPieceState(id).ultimateCharge()); copy(game);
     }
     @Test public void blindedPawnCanPromoteQuietlyButAttacksResumeOnlyAtTurnEnd() {
         var board = board("h1", "h8"); put(board, Bishop.class, WHITE, "c4"); put(board, Pawn.class, BLACK, "a2");
-        Game game = create(board, "c4"); assertEquals(MoveResult.SUCCESS, ability(game, "c4", "a2", Ability.LASER));
+        Game game = create(board, "c4"); assertEquals(Success.SUCCESS, ability(game, "c4", "a2", Ability.LASER));
         play(game, "h1", "g1"); end(game);
-        assertEquals(MoveResult.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos("a2"), pos("a1"), Promotion.QUEEN));
+        assertEquals(Success.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos("a2"), pos("a1"), Promotion.QUEEN));
         assertTrue(game.getPieceState(pos("a1")).isBlinded()); end(game); assertTrue(game.isInCheck());
     }
     @Test public void assigningLumeshardToANonBishopIsRejected() {
@@ -201,8 +206,8 @@ public class LumeshardTest {
         Game game = create(board, Map.of(pos("d2"), HeroType.LUMESHARD_BISHOP, pos("g5"), HeroType.PUDGE_ROOK),
                 new HeroRules(PudgeRules.sandbox(), LumeshardRules.prototype()));
         long ally = game.getPieceState(pos("g4")).id();
-        assertEquals(MoveResult.SUCCESS, ability(game, "d2", "g4", Ability.LASER)); play(game, "d2", "c1"); end(game);
-        assertEquals(MoveResult.SUCCESS, ability(game, "g5", "g4", Ability.SWALLOW));
+        assertEquals(Success.SUCCESS, ability(game, "d2", "g4", Ability.LASER)); play(game, "d2", "c1"); end(game);
+        assertEquals(Success.SUCCESS, ability(game, "g5", "g4", Ability.SWALLOW));
         game = copy(game); assertTrue(game.getPieceState(ally).isBlinded()); assertEquals(PieceState.Status.SWALLOWED, game.getPieceState(ally).status());
         play(game, "h8", "h7"); end(game); assertFalse(game.getPieceState(ally).isBlinded()); copy(game);
     }
@@ -212,4 +217,3 @@ public class LumeshardTest {
         assertEquals(0, game.getPieceState(pos("d2")).ultimateCharge()); assertEquals(1, game.getWhitePlayer().getPoints());
     }
 }
-
