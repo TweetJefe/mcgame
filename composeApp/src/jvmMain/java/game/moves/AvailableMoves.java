@@ -5,7 +5,9 @@ import model.Position;
 
 import java.util.List;
 
-/** Legal targets for the player whose turn it is. */
+/**
+ * Legal targets for the player whose turn it is.
+ */
 public final class AvailableMoves {
     private final List<Position> canMove;
     private final List<Position> canAttack;

@@ -14,10 +14,9 @@ public final class Knight extends Figure {
         fillMoves();
     }
 
-    public Knight( FigureColor color){
+    public Knight(FigureColor color) {
         super(null, color, null, "Knight", 3);
     }
-
 
 
     @Override
@@ -38,12 +37,12 @@ public final class Knight extends Figure {
     public synchronized void computeFutureMovesAndAttacks() {
         canMove = new ArrayList<>();
         canAttack = new ArrayList<>();
-        for(var move : moves){
-            if(!checkMovePosition(color, move, field)) continue;
+        for (var move : moves) {
+            if (!checkMovePosition(color, move, field)) continue;
             var cellColor = field.getFigureByPosition(move).getColor();
-            if(cellColor.equals(FigureColor.NONE)){
+            if (cellColor.equals(FigureColor.NONE)) {
                 canMove.add(move);
-            }else{
+            } else {
                 canAttack.add(move);
             }
         }

@@ -1,8 +1,5 @@
 package game.core;
 
-import game.heroes.clownganger.*;
-import game.heroes.zeus.*;
-import game.heroes.moleminer.*;
 import game.heroes.Ability;
 import game.heroes.AbilityRequest;
 import game.heroes.ginseng.*;
@@ -59,12 +56,9 @@ public final class Game {
     private EconomyState economy = EconomyState.disabled();
     private TerrainState terrain = TerrainState.empty();
     private DraftSnapshot draft;
-    private SummonState summons=SummonState.empty();
-    private SpellState spells=SpellState.empty();
-    private FaunState faun=FaunState.empty();
-    private ClownState clown=ClownState.empty();
-    private MineState mines=MineState.empty();
-    private LightningState lightning=LightningState.empty();
+    private SummonState summons = SummonState.empty();
+    private SpellState spells = SpellState.empty();
+    private FaunState faun = FaunState.empty();
     private Map<Long, PieceState> pieces = Map.of();
     private Field pieceStateField;
     private long nextPieceId = 1, version, turnNumber = 1;
@@ -82,9 +76,17 @@ public final class Game {
     private Position enPassantTarget;
     private int halfmoveClock;
 
-    /** Untimed game. The UI starts the clock when the user starts playing. */
-    public Game(int n) { this(n, System::nanoTime); }
-    public Game(int n, LongSupplier nanoTime) { this(n, GameMode.CLASSIC, nanoTime, HeroRules.withPudge(new PudgeRules(0, 0, true, false))); }
+    /**
+     * Untimed game. The UI starts the clock when the user starts playing.
+     */
+    public Game(int n) {
+        this(n, System::nanoTime);
+    }
+
+    public Game(int n, LongSupplier nanoTime) {
+        this(n, GameMode.CLASSIC, nanoTime, HeroRules.withPudge(new PudgeRules(0, 0, true, false)));
+    }
+
     private Game(int n, GameMode mode, LongSupplier nanoTime, HeroRules rules) {
         gameField = new Field(n);
         this.mode = java.util.Objects.requireNonNull(mode);
@@ -95,10 +97,13 @@ public final class Game {
         repetitions.put(positionKey(gameField.getGameField(), currentPlayer.color(), castlingRights, null), 1);
     }
 
-    /** Standard prototype: Pudge on a1/a8, Lumeshard on c1/c8; other pieces retain their normal type. */
+    /**
+     * Standard prototype: Pudge on a1/a8, Lumeshard on c1/c8; other pieces retain their normal type.
+     */
     public static Game mobaPrototype(PudgeRules rules, int seconds) {
         return mobaPrototype(HeroRules.withPudge(rules), seconds);
     }
+
     public static Game mobaPrototype(HeroRules rules, int seconds) {
         Game game = new Game(8, GameMode.MOBA, System::nanoTime, rules);
         game.rebuildPieces(Map.of(new Position(0, 0), HeroType.PUDGE_ROOK, new Position(7, 0), HeroType.PUDGE_ROOK,
@@ -109,15 +114,19 @@ public final class Game {
         return game;
     }
 
-    /** Create the initial board from an audited completed draft, then start the game clock. */
+    /**
+     * Create the initial board from an audited completed draft, then start the game clock.
+     */
     public static Game mobaFromDraft(DraftSnapshot draft, HeroRules rules, int seconds) {
         return mobaFromDraft(draft, rules, seconds, System::nanoTime);
     }
+
     public static Game mobaFromDraft(DraftSnapshot draft, HeroRules rules, int seconds, LongSupplier time) {
         DraftSnapshot verified = Draft.fromSnapshot(draft).getSnapshot();
         if (!verified.isComplete()) throw new IllegalArgumentException("Complete the draft before starting the game");
         Game game = new Game(8, GameMode.MOBA, time, rules);
-        game.rebuildPieces(verified.assignments()); game.draft = verified;
+        game.rebuildPieces(verified.assignments());
+        game.draft = verified;
         game.startClock(seconds);
         return game;
     }
@@ -125,47 +134,77 @@ public final class Game {
     public static Game fromMobaPosition(GamePosition position, Map<Position, HeroType> heroes, PudgeRules rules) {
         return fromMobaPosition(position, heroes, rules, System::nanoTime);
     }
+
     public static Game fromMobaPosition(GamePosition position, Map<Position, HeroType> heroes, PudgeRules rules, LongSupplier time) {
         return fromMobaPosition(position, heroes, HeroRules.withPudge(rules), time);
     }
+
     public static Game fromMobaPosition(GamePosition position, Map<Position, HeroType> heroes, HeroRules rules) {
         return fromMobaPosition(position, heroes, rules, System::nanoTime);
     }
+
     public static Game fromMobaPosition(GamePosition position, Map<Position, HeroType> heroes, HeroRules rules, LongSupplier time) {
-        if (position == null || heroes == null) throw new IllegalArgumentException("Position and hero assignments are required");
+        if (position == null || heroes == null)
+            throw new IllegalArgumentException("Position and hero assignments are required");
         Field field = Field.fromMobaPosition(position.board());
-        for(FigureColor color:List.of(FigureColor.WHITE,FigureColor.BLACK))
-            if(field.getGameField().values().stream().filter(p->p.getColor()==color).count()>16)
+        for (FigureColor color : List.of(FigureColor.WHITE, FigureColor.BLACK))
+            if (field.getGameField().values().stream().filter(p -> p.getColor() == color).count() > 16)
                 throw new IllegalArgumentException("Extra pieces require a snapshot with summon origins");
         PositionValidator.validateState(field, position.sideToMove(), position.castlingRights(), position.enPassantTarget(), position.halfmoveClock());
         Game game = new Game(8, GameMode.MOBA, time, rules);
         game.gameField = field;
         game.currentPlayer = position.sideToMove() == FigureColor.WHITE ? game.whitePlayer : game.blackPlayer;
-        game.castlingRights = position.castlingRights(); game.enPassantTarget = position.enPassantTarget();
-        game.halfmoveClock = position.halfmoveClock(); game.rebuildPieces(new HashMap<>(heroes));
-        game.repetitions.clear(); game.repetitions.put(game.getPositionKey(), 1);
+        game.castlingRights = position.castlingRights();
+        game.enPassantTarget = position.enPassantTarget();
+        game.halfmoveClock = position.halfmoveClock();
+        game.rebuildPieces(new HashMap<>(heroes));
+        game.repetitions.clear();
+        game.repetitions.put(game.getPositionKey(), 1);
         game.evaluateOutcome();
         return game;
     }
-    public Game(int n, int seconds) { this(n); startClock(seconds); }
 
-    /** Restore a complete validated local game. Time spent outside this Game is not charged. */
-    public static Game fromSnapshot(GameSnapshot saved) { return fromSnapshot(saved, System::nanoTime); }
+    public Game(int n, int seconds) {
+        this(n);
+        startClock(seconds);
+    }
+
+    /**
+     * Restore a complete validated local game. Time spent outside this Game is not charged.
+     */
+    public static Game fromSnapshot(GameSnapshot saved) {
+        return fromSnapshot(saved, System::nanoTime);
+    }
+
     public static Game fromSnapshot(GameSnapshot saved, LongSupplier time) {
         SnapshotValidator.validate(saved);
         Game game = new Game(8, saved.mode(), time, saved.heroRules());
         game.gameField = saved.mode() == GameMode.MOBA ? Field.fromMobaPosition(saved.field().getGameField())
                 : Field.fromPosition(saved.field().getGameField());
-        game.pieces = saved.pieces(); game.pieceStateField = game.gameField; game.economy = saved.economy(); game.terrain = saved.terrain(); game.draft = saved.draft(); game.summons=saved.summons(); game.spells=saved.spells(); game.faun=saved.faun(); game.clown=saved.clown();game.mines=saved.mines();game.lightning=saved.lightning();
+        game.pieces = saved.pieces();
+        game.pieceStateField = game.gameField;
+        game.economy = saved.economy();
+        game.terrain = saved.terrain();
+        game.draft = saved.draft();
+        game.summons = saved.summons();
+        game.spells = saved.spells();
+        game.faun = saved.faun();
         game.nextPieceId = saved.pieces().keySet().stream().mapToLong(Long::longValue).max().orElse(0L) + 1;
-        game.version = saved.version(); game.turnNumber = saved.turn().number();
-        game.moveUsed = saved.turn().moveUsed(); game.abilityUsed = saved.turn().abilityUsed();
+        game.version = saved.version();
+        game.turnNumber = saved.turn().number();
+        game.moveUsed = saved.turn().moveUsed();
+        game.abilityUsed = saved.turn().abilityUsed();
         game.currentPlayer = saved.active() == FigureColor.WHITE ? game.whitePlayer : game.blackPlayer;
-        game.castlingRights = saved.castlingRights(); game.enPassantTarget = saved.enPassantTarget();
-        game.halfmoveClock = saved.halfmoveClock(); game.outcome = saved.outcome();
-        game.repetitions.clear(); game.repetitions.putAll(saved.repetitions());
-        game.moves.addAll(saved.moves()); game.events.addAll(saved.events());
-        for (MadeMove move : saved.moves()) (move.getColor() == FigureColor.WHITE ? game.whitePlayer : game.blackPlayer).recordMove(move);
+        game.castlingRights = saved.castlingRights();
+        game.enPassantTarget = saved.enPassantTarget();
+        game.halfmoveClock = saved.halfmoveClock();
+        game.outcome = saved.outcome();
+        game.repetitions.clear();
+        game.repetitions.putAll(saved.repetitions());
+        game.moves.addAll(saved.moves());
+        game.events.addAll(saved.events());
+        for (MadeMove move : saved.moves())
+            (move.getColor() == FigureColor.WHITE ? game.whitePlayer : game.blackPlayer).recordMove(move);
         saved.whiteCaptures().forEach(game.whitePlayer::recordCapture);
         saved.blackCaptures().forEach(game.blackPlayer::recordCapture);
         game.drawOffer = saved.drawOffer() == FigureColor.NONE ? null
@@ -174,8 +213,13 @@ public final class Game {
         return game;
     }
 
-    /** Starts a new untimed game from a validated position, with empty history. */
-    public static Game fromPosition(GamePosition position) { return fromPosition(position, System::nanoTime); }
+    /**
+     * Starts a new untimed game from a validated position, with empty history.
+     */
+    public static Game fromPosition(GamePosition position) {
+        return fromPosition(position, System::nanoTime);
+    }
+
     public static Game fromPosition(GamePosition position, LongSupplier nanoTime) {
         if (position == null) throw new IllegalArgumentException("Position is required");
         Field field = Field.fromPosition(position.board());
@@ -194,13 +238,16 @@ public final class Game {
         return game;
     }
 
-    /** One coherent position snapshot. Histories and clocks are not a saved-game format. */
+    /**
+     * One coherent position snapshot. Histories and clocks are not a saved-game format.
+     */
     public synchronized GamePosition getPosition() {
         return new GamePosition(gameField.getGameField(), currentPlayer.color(), castlingRights, enPassantTarget, halfmoveClock);
     }
 
     public synchronized void startClock(int seconds) {
-        if (outcome.isFinished() || !moves.isEmpty() || !events.isEmpty()) throw new IllegalStateException("Configure the clock before playing");
+        if (outcome.isFinished() || !moves.isEmpty() || !events.isEmpty())
+            throw new IllegalStateException("Configure the clock before playing");
         clock.start(seconds, currentPlayer.color(), nanoTime.getAsLong());
         version++;
     }
@@ -209,17 +256,21 @@ public final class Game {
         return moveFigure(player, from, to, null);
     }
 
-    /** Rejections preserve chess state; elapsed real time is still charged. */
+    /**
+     * Rejections preserve chess state; elapsed real time is still charged.
+     */
     public synchronized MoveResult moveFigure(Player player, Position from, Position to, Promotion promotion) {
         MoveResult guard = commandGuard(player);
         if (!guard.isSuccess()) return guard;
-        if (mode == GameMode.MOBA && moveUsed && (getPieceState(from)==null || !clown.canMove(getPieceState(from).id(),turnNumber,true,pieces))) return MoveResult.MOVE_ALREADY_USED;
+        if (mode == GameMode.MOBA && moveUsed) return MoveResult.MOVE_ALREADY_USED;
         ensurePieces();
         ActionEngine.Context before = context();
-        from = copy(from); to = copy(to);
+        from = copy(from);
+        to = copy(to);
         ActionEngine.Preview preview = ActionEngine.move(before, player.color(), from, to, promotion, mode, heroRules);
         if (!preview.result().isSuccess()) return preview.result();
-        if (mode == GameMode.MOBA && !ActionEngine.canFinishAfterMove(preview.next(), player.color(), !abilityUsed, heroRules)) return MoveResult.NO_TURN_CONTINUATION;
+        if (mode == GameMode.MOBA && !ActionEngine.canFinishAfterMove(preview.next(), player.color(), !abilityUsed, heroRules))
+            return MoveResult.NO_TURN_CONTINUATION;
         updateTime();
         if (outcome.isFinished()) return MoveResult.GAME_OVER;
         Figure figure = gameField.getFigureByPosition(from);
@@ -229,35 +280,39 @@ public final class Game {
         boolean ep = MoveValidator.isEnPassant(gameField.getGameField(), player.color(), from, to, enPassantTarget);
         Capture firstCapture = preview.captures().stream().filter(c -> c.cause() == Capture.Cause.MOVE && c.actorId() == actor.id()).findFirst().orElse(null);
         if (moves.isEmpty() && events.isEmpty()) {
-            repetitions.clear(); repetitions.put(getPositionKey(), 1);
+            repetitions.clear();
+            repetitions.put(getPositionKey(), 1);
         }
-        publish(preview);if(mode==GameMode.CLASSIC)clown=clown.move(actor.id(),actingTurn);
+        publish(preview);
         halfmoveClock = figure instanceof Pawn || !preview.captures().isEmpty() ? 0 : halfmoveClock + 1;
         if (drawOffer != null && drawOffer != player) drawOffer = null;
         if (mode == GameMode.CLASSIC) {
-            advanceTurn(); repetitions.merge(getPositionKey(), 1, Integer::sum); evaluateOutcome();
+            advanceTurn();
+            repetitions.merge(getPositionKey(), 1, Integer::sum);
+            evaluateOutcome();
         } else moveUsed = true;
         MoveKind kind = castle ? MoveKind.CASTLING : ep ? MoveKind.EN_PASSANT
-                : promotion != null ? MoveKind.PROMOTION : firstCapture != null ? MoveKind.CAPTURE : MoveKind.NORMAL;
+                                                     : promotion != null ? MoveKind.PROMOTION : firstCapture != null ? MoveKind.CAPTURE : MoveKind.NORMAL;
         String name = actor.hero() == HeroType.NONE ? figure.getName() : actor.hero().getName();
         MadeMove made = new MadeMove(name, player.color(), from, to, kind, promotion,
                 firstCapture == null ? null : firstCapture.victim().getName(), firstCapture == null ? null : firstCapture.square(),
                 moves.size() + 1, clock.snapshot());
-        player.recordMove(made); moves.add(made);
+        player.recordMove(made);
+        moves.add(made);
         addEvent(GameEvent.Kind.MOVE, player.color(), actor.id(), firstCapture == null ? null : firstCapture.victimId(), from, to, made.toString(), actingTurn);
-        var illusion=before.at(to);
-        if(illusion!=null && illusion.hero()==HeroType.ILLUSION)addEvent(GameEvent.Kind.ILLUSION_HIT,player.color(),actor.id(),illusion.id(),from,to,"Попытка взять иллюзию: фигура вернулась назад");
-        addActionEffects(before,preview);
+        addActionEffects(before, preview);
         version++;
         return MoveResult.SUCCESS;
     }
 
     public synchronized MoveResult useAbility(Player player, Position actorSquare, Position target, Ability ability) {
-        return useAbility(player,new AbilityRequest(actorSquare,ability,target));
+        return useAbility(player, new AbilityRequest(actorSquare, ability, target));
     }
-    public synchronized MoveResult useAbility(Player player,AbilityRequest request) {
-        if(request==null)return MoveResult.INVALID_ABILITY;
-        Position actorSquare=request.actor(),target=request.target();Ability ability=request.ability();
+
+    public synchronized MoveResult useAbility(Player player, AbilityRequest request) {
+        if (request == null) return MoveResult.INVALID_ABILITY;
+        Position actorSquare = request.actor(), target = request.target();
+        Ability ability = request.ability();
         MoveResult guard = commandGuard(player);
         if (!guard.isSuccess()) return guard;
         if (mode != GameMode.MOBA) return MoveResult.UNSUPPORTED_ACTION;
@@ -268,42 +323,37 @@ public final class Game {
         if (!moveUsed && !ActionEngine.hasMove(preview.next(), player.color(), mode, heroRules))
             return MoveResult.NO_MOVE_AFTER_ABILITY;
         if (moveUsed && !ActionEngine.canEnd(preview.next(), player.color())) return MoveResult.NO_TURN_CONTINUATION;
-        updateTime(); if (outcome.isFinished()) return MoveResult.GAME_OVER;
+        updateTime();
+        if (outcome.isFinished()) return MoveResult.GAME_OVER;
         PieceState actor = before.at(actorSquare), victim = before.at(target);
-        publish(preview); abilityUsed = true;
+        publish(preview);
+        abilityUsed = true;
         if (!preview.captures().isEmpty()) halfmoveClock = 0;
         if (drawOffer != null && drawOffer != player) drawOffer = null;
         String message = switch (ability) {
-            case YARN -> "Kikimora: пряжа на "+cell(target);
-            case CLAY_POT -> "Kikimora: глиняный горшок на "+cell(target);
-            case GRAPPLE -> "Chronomlin: притяжение к "+cell(target);
-            case EVOLVE -> "Chronomlin: улучшение фигуры";
-            case CHAIN_LIGHTNING -> "Zeus: цепная молния на "+cell(target);
-            case THUNDERSTORM -> "Zeus: разряд по заряженной цели";
-            case PLANT_MINE -> "Moleminer: заложил мину";
-            case DETONATE -> "Moleminer: прыжок и взрыв на "+cell(target);
-            case BOX -> "Clownganger: коробка на "+cell(target);
-            case ILLUSION -> "Clownganger: двойник на "+cell(target);
-            case SPEAR -> "Ares: копьё в направлении "+cell(target);
-            case CLOUD -> "Faun: туча с центром "+cell(target);
+            case SPEAR -> "Ares: копьё в направлении " + cell(target);
+            case CLOUD -> "Faun: туча с центром " + cell(target);
             case INVISIBILITY -> "Faun: стал невидимым";
-            case COPY_SPELL -> victim.hero()==HeroType.ILLUSION?"Ginseng: потратил ульту на пустышку":"Ginseng: скопировал "+before.spells().lastUsed().get(victim.id()).getDisplayName()+" у "+victim.hero().getName();
-            case DISPLACE -> "Ginseng: сдвиг "+cell(target)+" → "+cell(request.destination());
+            case COPY_SPELL ->
+                    "Ginseng: скопировал " + before.spells().lastUsed().get(victim.id()).getDisplayName() + " у " + victim.hero().getName();
+            case DISPLACE -> "Ginseng: сдвиг " + cell(target) + " → " + cell(request.destination());
             case SUMMON_YAGA -> "Изба: призвала Бабу-ягу";
             case HOOK -> "Пудж: хук " + cell(target) + " → " + cell(pieces.get(victim.id()).position());
             case SWALLOW -> "Пудж: проглотил " + victim.type().getSimpleName() + " на " + cell(target);
             case LASER -> "Lumeshard: ослепил " + victim.type().getSimpleName() + " на " + cell(target);
             case TELEPORT -> "Lumeshard: телепорт " + cell(actorSquare) + " → " + cell(target);
-            case BOUNTY -> "Bounty Crow: награда +1,5 золота за " + victim.type().getSimpleName() + " на " + cell(target);
+            case BOUNTY ->
+                    "Bounty Crow: награда +1,5 золота за " + victim.type().getSimpleName() + " на " + cell(target);
             case MUD -> "Bolotnik: грязь на " + cell(target);
             case AMBUSH -> "Bolotnik: спрятался в болоте у " + cell(actorSquare);
-            case STEAL -> "Bounty Crow: украл " + GoldRules.format(economy.history().getLast().totalHalves()) + " золота";
+            case STEAL ->
+                    "Bounty Crow: украл " + GoldRules.format(economy.history().getLast().totalHalves()) + " золота";
         };
-        if(request.borrowed())message="Ginseng, копия: "+message;
-        Position eventTo=ability==Ability.ILLUSION?clown.illusions().values().stream().filter(i->i.sourceId()==actor.id() && i.bornTurn()==turnNumber).findFirst().orElseThrow().bornAt():ability==Ability.DISPLACE?request.destination():(ability==Ability.STEAL || ability==Ability.AMBUSH || ability==Ability.SUMMON_YAGA || ability==Ability.INVISIBILITY || ability==Ability.PLANT_MINE || ability==Ability.THUNDERSTORM || ability==Ability.EVOLVE)?actorSquare:target;
-        events.add(new GameEvent(events.size()+1L,turnNumber,GameEvent.Kind.valueOf(ability.name()),player.color(),actor.id(),ability==Ability.ILLUSION?clown.illusions().values().stream().filter(i->i.sourceId()==actor.id() && i.bornTurn()==turnNumber).findFirst().map(i->Long.valueOf(i.id())).orElseThrow():victim==null || ability==Ability.CLOUD || ability==Ability.SPEAR || ability==Ability.PLANT_MINE || ability==Ability.DETONATE || ability==Ability.THUNDERSTORM || ability==Ability.EVOLVE?null:victim.id(),actorSquare,eventTo,message,
-                ability==Ability.COPY_SPELL?before.spells().lastUsed().get(victim.id()):null,request.borrowed()));
-        addActionEffects(before,preview);
+        if (request.borrowed()) message = "Ginseng, копия: " + message;
+        Position eventTo = ability == Ability.DISPLACE ? request.destination() : (ability == Ability.STEAL || ability == Ability.AMBUSH || ability == Ability.SUMMON_YAGA || ability == Ability.INVISIBILITY) ? actorSquare : target;
+        events.add(new GameEvent(events.size() + 1L, turnNumber, GameEvent.Kind.valueOf(ability.name()), player.color(), actor.id(), victim == null || ability == Ability.CLOUD || ability == Ability.SPEAR ? null : victim.id(), actorSquare, eventTo, message,
+                ability == Ability.COPY_SPELL ? before.spells().lastUsed().get(victim.id()) : null, request.borrowed()));
+        addActionEffects(before, preview);
         version++;
         return MoveResult.SUCCESS;
     }
@@ -314,30 +364,36 @@ public final class Game {
         if (mode != GameMode.MOBA) return MoveResult.UNSUPPORTED_ACTION;
         if (!moveUsed) return MoveResult.MOVE_REQUIRED;
         if (!ActionEngine.canEnd(context(), player.color())) return MoveResult.KING_IN_CHECK;
-        var before=context();
-        pieces=clown.clean(pieces,turnNumber);
-        pieces=AttackRules.expireStuns(pieces,turnNumber);
-        var matured=SummonResolver.mature(pieces,summons,turnNumber,player.color(),terrain);
-        pieces=matured.pieces();summons=matured.summons();
-        var board=new HashMap<Position,Figure>();
-        for(Position p:gameField.getGameField().keySet())board.put(p,gameField.createFigure(Empty.class,p,FigureColor.NONE));
-        for(PieceState p:pieces.values())if(p.position()!=null)board.put(p.position(),gameField.createFigure(p.type(),p.position(),p.color()));
-        gameField=Field.fromMobaPosition(board);pieceStateField=gameField;
-        addSummonChanges(before,context());
+        var before = context();
+        var matured = SummonResolver.mature(pieces, summons, turnNumber, player.color(), terrain);
+        pieces = matured.pieces();
+        summons = matured.summons();
+        var board = new HashMap<Position, Figure>();
+        for (Position p : gameField.getGameField().keySet())
+            board.put(p, gameField.createFigure(Empty.class, p, FigureColor.NONE));
+        for (PieceState p : pieces.values())
+            if (p.position() != null)
+                board.put(p.position(), gameField.createFigure(p.type(), p.position(), p.color()));
+        gameField = Field.fromMobaPosition(board);
+        pieceStateField = gameField;
+        addSummonChanges(before, context());
         terrain = terrain.expire(turnNumber);
         faun = faun.expire(turnNumber);
-        lightning=lightning.expire(turnNumber).clean(pieces);
-        pieces = AttackRules.expireStuns(pieces,turnNumber);
+        pieces = AttackRules.expireStuns(pieces, turnNumber);
         expireBlindness(player.color());
         economy = economy.expire(turnNumber);
-        for(var p:pieces.values())if(p.isRemoved())economy=economy.removeMark(p.id());
         addEvent(GameEvent.Kind.END_TURN, player.color(), null, null, null, null, "Ход завершён");
         if (drawOffer != null && drawOffer != player) drawOffer = null;
-        advanceTurn(); repetitions.merge(getPositionKey(), 1, Integer::sum); evaluateOutcome(); version++;
+        advanceTurn();
+        repetitions.merge(getPositionKey(), 1, Integer::sum);
+        evaluateOutcome();
+        version++;
         return MoveResult.SUCCESS;
     }
 
-    /** Independent from move/skill budgets. Actual item effects await a designed catalog. */
+    /**
+     * Independent from move/skill budgets. Actual item effects await a designed catalog.
+     */
     public synchronized MoveResult useItem(Player player, long pieceId, int slot) {
         MoveResult guard = commandGuard(player);
         if (!guard.isSuccess()) return guard;
@@ -349,41 +405,64 @@ public final class Game {
         return piece.inventory().get(slot).isEmpty() ? MoveResult.EMPTY_ITEM_SLOT : MoveResult.ITEM_NOT_AVAILABLE;
     }
 
-    public synchronized List<Position> getAbilityTargets(Position actorSquare, Ability ability) { return getAbilityTargets(actorSquare,ability,false); }
-    public synchronized List<Position> getAbilityTargets(Position actorSquare,Ability ability,boolean borrowed) {
+    public synchronized List<Position> getAbilityTargets(Position actorSquare, Ability ability) {
+        return getAbilityTargets(actorSquare, ability, false);
+    }
+
+    public synchronized List<Position> getAbilityTargets(Position actorSquare, Ability ability, boolean borrowed) {
         updateTime();
-        if(mode!=GameMode.MOBA || outcome.isFinished() || abilityUsed)return List.of();
-        var before=context();var targets=new java.util.LinkedHashSet<Position>();
-        for(var request:ActionEngine.requests(before,currentPlayer.color(),actorSquare,ability,borrowed,heroRules)) {
-            if(request.target()==null || targets.contains(request.target()))continue;
-            var preview=ActionEngine.ability(before,currentPlayer.color(),request,heroRules);
-            if(canCompleteAbility(preview))targets.add(request.target());
+        if (mode != GameMode.MOBA || outcome.isFinished() || abilityUsed) return List.of();
+        var before = context();
+        var targets = new java.util.LinkedHashSet<Position>();
+        for (var request : ActionEngine.requests(before, currentPlayer.color(), actorSquare, ability, borrowed, heroRules)) {
+            if (request.target() == null || targets.contains(request.target())) continue;
+            var preview = ActionEngine.ability(before, currentPlayer.color(), request, heroRules);
+            if (canCompleteAbility(preview)) targets.add(request.target());
         }
         return List.copyOf(targets);
     }
-    public synchronized List<Position> getDisplacementDestinations(Position actor,Position target,boolean borrowed) {
-        updateTime();if(mode!=GameMode.MOBA || outcome.isFinished() || abilityUsed)return List.of();
-        var before=context();var result=new ArrayList<Position>();
-        for(var request:ActionEngine.requests(before,currentPlayer.color(),actor,Ability.DISPLACE,borrowed,heroRules))if(java.util.Objects.equals(request.target(),target)) {
-            if(canCompleteAbility(ActionEngine.ability(before,currentPlayer.color(),request,heroRules)))result.add(request.destination());
-        }
+
+    public synchronized List<Position> getDisplacementDestinations(Position actor, Position target, boolean borrowed) {
+        updateTime();
+        if (mode != GameMode.MOBA || outcome.isFinished() || abilityUsed) return List.of();
+        var before = context();
+        var result = new ArrayList<Position>();
+        for (var request : ActionEngine.requests(before, currentPlayer.color(), actor, Ability.DISPLACE, borrowed, heroRules))
+            if (java.util.Objects.equals(request.target(), target)) {
+                if (canCompleteAbility(ActionEngine.ability(before, currentPlayer.color(), request, heroRules)))
+                    result.add(request.destination());
+            }
         return List.copyOf(result);
     }
+
     private boolean canCompleteAbility(ActionEngine.Preview preview) {
-        return preview.result().isSuccess() && (moveUsed?ActionEngine.canEnd(preview.next(),currentPlayer.color()):ActionEngine.hasMove(preview.next(),currentPlayer.color(),mode,heroRules));
+        return preview.result().isSuccess() && (moveUsed ? ActionEngine.canEnd(preview.next(), currentPlayer.color()) : ActionEngine.hasMove(preview.next(), currentPlayer.color(), mode, heroRules));
     }
-    public synchronized MoveResult getAbilityAvailability(Position actorSquare, Ability ability) { return getAbilityAvailability(actorSquare,ability,false); }
-    public synchronized MoveResult getAbilityAvailability(Position actorSquare,Ability ability,boolean borrowed) {
-        updateTime();if(outcome.isFinished())return MoveResult.GAME_OVER;
-        if(mode!=GameMode.MOBA)return MoveResult.UNSUPPORTED_ACTION;
-        if(abilityUsed)return MoveResult.ABILITY_ALREADY_USED;
-        return ActionEngine.abilityReady(context(),currentPlayer.color(),actorSquare,ability,heroRules,borrowed);
+
+    public synchronized MoveResult getAbilityAvailability(Position actorSquare, Ability ability) {
+        return getAbilityAvailability(actorSquare, ability, false);
     }
-    public synchronized SpellState getSpells() { return spells; }
-    public synchronized FaunState getFaun() { return faun; }
+
+    public synchronized MoveResult getAbilityAvailability(Position actorSquare, Ability ability, boolean borrowed) {
+        updateTime();
+        if (outcome.isFinished()) return MoveResult.GAME_OVER;
+        if (mode != GameMode.MOBA) return MoveResult.UNSUPPORTED_ACTION;
+        if (abilityUsed) return MoveResult.ABILITY_ALREADY_USED;
+        return ActionEngine.abilityReady(context(), currentPlayer.color(), actorSquare, ability, heroRules, borrowed);
+    }
+
+    public synchronized SpellState getSpells() {
+        return spells;
+    }
+
+    public synchronized FaunState getFaun() {
+        return faun;
+    }
+
     public synchronized AvailableMoves getLegalMoves(Position from) {
         updateTime();
-        if (outcome.isFinished() || (mode == GameMode.MOBA && moveUsed && (getPieceState(from)==null || !clown.canMove(getPieceState(from).id(),turnNumber,true,pieces)))) return new AvailableMoves(List.of(), List.of());
+        if (outcome.isFinished() || (mode == GameMode.MOBA && moveUsed))
+            return new AvailableMoves(List.of(), List.of());
         return legalMoves(copy(from), currentPlayer.color());
     }
 
@@ -416,7 +495,8 @@ public final class Game {
             if (figure.getColor() != color) continue;
             AvailableMoves candidates = MoveValidator.candidates(gameField, figure, castlingRights, enPassantTarget);
             for (Position to : candidates.getCanMove()) if (legalTarget(figure, entry.getKey(), to, color)) return true;
-            for (Position to : candidates.getCanAttack()) if (legalTarget(figure, entry.getKey(), to, color)) return true;
+            for (Position to : candidates.getCanAttack())
+                if (legalTarget(figure, entry.getKey(), to, color)) return true;
         }
         return false;
     }
@@ -482,7 +562,8 @@ public final class Game {
         if (outcome.isFinished()) return MoveResult.GAME_OVER;
         if (!isParticipant(player)) return MoveResult.WRONG_PLAYER;
         if (drawOffer == null || drawOffer == player) return MoveResult.NO_DRAW_OFFER;
-        if (whitePlayer.getMadeMoves().isEmpty() || blackPlayer.getMadeMoves().isEmpty()) return MoveResult.DRAW_AGREEMENT_TOO_EARLY;
+        if (whitePlayer.getMadeMoves().isEmpty() || blackPlayer.getMadeMoves().isEmpty())
+            return MoveResult.DRAW_AGREEMENT_TOO_EARLY;
         finish(Termination.DRAW_AGREEMENT, FigureColor.NONE);
         return MoveResult.SUCCESS;
     }
@@ -512,7 +593,9 @@ public final class Game {
         return MoveResult.SUCCESS;
     }
 
-    /** Declares an intended legal move; a successful claim ends the game without applying it. */
+    /**
+     * Declares an intended legal move; a successful claim ends the game without applying it.
+     */
     public synchronized MoveResult claimDraw(Player player, Position from, Position to, Promotion promotion) {
         updateTime();
         if (outcome.isFinished()) return MoveResult.GAME_OVER;
@@ -580,13 +663,14 @@ public final class Game {
             for (int column = 0; column < gameField.getSize(); column++) {
                 Figure figure = board.get(new Position(row, column));
                 char symbol = figure instanceof Pawn ? 'p' : figure instanceof Knight ? 'n'
-                        : figure instanceof Bishop ? 'b' : figure instanceof Rook ? 'r'
-                        : figure instanceof Queen ? 'q' : figure instanceof King ? 'k' : '.';
+                                                             : figure instanceof Bishop ? 'b' : figure instanceof Rook ? 'r'
+                                                                                                : figure instanceof Queen ? 'q' : figure instanceof King ? 'k' : '.';
                 key.append(figure != null && figure.getColor() == FigureColor.WHITE ? Character.toUpperCase(symbol) : symbol);
             }
         }
         key.append('|').append(turn).append('|').append(rights);
-        if (MoveValidator.hasLegalEnPassant(board, turn, ep)) key.append('|').append(ep.getRow()).append(',').append(ep.getColumn());
+        if (MoveValidator.hasLegalEnPassant(board, turn, ep))
+            key.append('|').append(ep.getRow()).append(',').append(ep.getColumn());
         return key.toString();
     }
 
@@ -595,28 +679,42 @@ public final class Game {
         if (outcome.isFinished()) return MoveResult.GAME_OVER;
         return player == currentPlayer ? MoveResult.SUCCESS : MoveResult.WRONG_PLAYER;
     }
+
     private ActionEngine.Context context() {
         ensurePieces();
-        return new ActionEngine.Context(gameField, pieces, castlingRights, enPassantTarget, economy, turnNumber, terrain,summons,spells,faun,clown,mines,lightning);
+        return new ActionEngine.Context(gameField, pieces, castlingRights, enPassantTarget, economy, turnNumber, terrain, summons, spells, faun);
     }
+
     private void publish(ActionEngine.Preview preview) {
-        gameField = preview.next().field(); pieces = preview.next().pieces(); pieceStateField = gameField;
-        castlingRights = preview.next().rights(); enPassantTarget = preview.next().ep(); economy = preview.next().economy(); terrain = preview.next().terrain(); summons=preview.next().summons(); spells=preview.next().spells(); faun=preview.next().faun();clown=preview.next().clown();mines=preview.next().mines();lightning=preview.next().lightning();
+        gameField = preview.next().field();
+        pieces = preview.next().pieces();
+        pieceStateField = gameField;
+        castlingRights = preview.next().rights();
+        enPassantTarget = preview.next().ep();
+        economy = preview.next().economy();
+        terrain = preview.next().terrain();
+        summons = preview.next().summons();
+        spells = preview.next().spells();
+        faun = preview.next().faun();
         for (var capture : preview.captures()) {
-            if(!capture.rewarded())continue;
             Player credited = capture.creditedSide() == FigureColor.WHITE ? whitePlayer : blackPlayer;
             credited.recordCapture(capture.victim());
         }
     }
+
     private void expireBlindness(FigureColor owner) {
         var next = new HashMap<>(pieces);
-        for (PieceState piece : pieces.values()) if (piece.color() == owner && !piece.isRemoved() && piece.isBlinded())
-            next.put(piece.id(), piece.withBlindness(piece.blindTurns() - 1));
+        for (PieceState piece : pieces.values())
+            if (piece.color() == owner && !piece.isRemoved() && piece.isBlinded())
+                next.put(piece.id(), piece.withBlindness(piece.blindTurns() - 1));
         pieces = Map.copyOf(next);
     }
+
     private void advanceTurn() {
         currentPlayer = currentPlayer == whitePlayer ? blackPlayer : whitePlayer;
-        clock.switchTo(currentPlayer.color()); turnNumber++; moveUsed = abilityUsed = false;
+        clock.switchTo(currentPlayer.color());
+        turnNumber++;
+        moveUsed = abilityUsed = false;
         if (mode == GameMode.MOBA) {
             var next = new HashMap<>(pieces);
             pieces.values().stream().filter(piece -> piece.color() == currentPlayer.color() && piece.cooldown() > 0
@@ -625,173 +723,265 @@ public final class Game {
             pieces = Map.copyOf(next);
         }
     }
+
     public static Game mobaHeroesSandbox(int seconds) {
-        var base=HeroRules.sandbox();
-        Game g=mobaPrototype(new HeroRules(base.pudge(),base.lumeshard(),base.crow(),base.gold(),base.bolotnik(),game.heroes.izba.IzbaRules.sandbox(),GinsengRules.sandbox(),FaunRules.sandbox(),AresRules.sandbox(),ClowngangerRules.sandbox(),MoleminerRules.sandbox(),ZeusRules.sandbox(),game.heroes.chronomlin.ChronomlinRules.sandbox(),game.heroes.kikimora.KikimoraRules.sandbox()),seconds);
-        var sandboxBoard=new HashMap<>(g.gameField.getGameField());
-        for(Position p:List.of(new Position(1,3),new Position(6,3)))sandboxBoard.put(p,g.gameField.createFigure(Bishop.class,p,p.getRow()==1?FigureColor.WHITE:FigureColor.BLACK));
-        for(Position p:List.of(new Position(1,2),new Position(6,2)))sandboxBoard.put(p,g.gameField.createFigure(Knight.class,p,p.getRow()==1?FigureColor.WHITE:FigureColor.BLACK));
-        sandboxBoard.put(new Position(1,4),g.gameField.createFigure(Rook.class,new Position(1,4),FigureColor.WHITE));
-        sandboxBoard.put(new Position(1,6),g.gameField.createFigure(Bishop.class,new Position(1,6),FigureColor.WHITE));
-        g.gameField=Field.fromMobaPosition(sandboxBoard);
-        var heroes=new HashMap<Position,HeroType>();for(PieceState p:g.pieces.values())if(p.hero()!=HeroType.NONE)heroes.put(p.position(),p.hero());
-        heroes.put(new Position(1,6),HeroType.KIKIMORA_BISHOP);
-        heroes.put(new Position(1,5),HeroType.CHRONOMLIN_PAWN);
-        heroes.put(new Position(1,4),HeroType.ZEUS_ROOK);
-        heroes.put(new Position(1,0),HeroType.MOLEMINER_PAWN);heroes.put(new Position(6,0),HeroType.MOLEMINER_PAWN);
-        heroes.put(new Position(1,2),HeroType.CLOWNGANGER_KNIGHT);heroes.put(new Position(6,2),HeroType.CLOWNGANGER_KNIGHT);
-        heroes.put(new Position(1,3),HeroType.ARES_BISHOP);heroes.put(new Position(6,3),HeroType.ARES_BISHOP);
-        heroes.put(new Position(0,1),HeroType.FAUN_KNIGHT);heroes.put(new Position(7,1),HeroType.FAUN_KNIGHT);
-        heroes.put(new Position(0,5),HeroType.GINSENG_BISHOP);heroes.put(new Position(7,5),HeroType.GINSENG_BISHOP);
-        heroes.put(new Position(0,7),HeroType.IZBA_ROOK);heroes.put(new Position(7,7),HeroType.IZBA_ROOK);g.rebuildPieces(heroes);return g;
+        var base = HeroRules.sandbox();
+        Game g = mobaPrototype(new HeroRules(base.pudge(), base.lumeshard(), base.crow(), base.gold(), base.bolotnik(), game.heroes.izba.IzbaRules.sandbox(), GinsengRules.sandbox(), FaunRules.sandbox(), AresRules.sandbox()), seconds);
+        var sandboxBoard = new HashMap<>(g.gameField.getGameField());
+        for (Position p : List.of(new Position(1, 3), new Position(6, 3)))
+            sandboxBoard.put(p, g.gameField.createFigure(Bishop.class, p, p.getRow() == 1 ? FigureColor.WHITE : FigureColor.BLACK));
+        g.gameField = Field.fromMobaPosition(sandboxBoard);
+        var heroes = new HashMap<Position, HeroType>();
+        for (PieceState p : g.pieces.values()) if (p.hero() != HeroType.NONE) heroes.put(p.position(), p.hero());
+        heroes.put(new Position(1, 3), HeroType.ARES_BISHOP);
+        heroes.put(new Position(6, 3), HeroType.ARES_BISHOP);
+        heroes.put(new Position(0, 1), HeroType.FAUN_KNIGHT);
+        heroes.put(new Position(7, 1), HeroType.FAUN_KNIGHT);
+        heroes.put(new Position(0, 5), HeroType.GINSENG_BISHOP);
+        heroes.put(new Position(7, 5), HeroType.GINSENG_BISHOP);
+        heroes.put(new Position(0, 7), HeroType.IZBA_ROOK);
+        heroes.put(new Position(7, 7), HeroType.IZBA_ROOK);
+        g.rebuildPieces(heroes);
+        return g;
     }
+
     private void rebuildPieces(Map<Position, HeroType> heroes) {
-        if(heroes.values().stream().filter(h->h==HeroType.ZEUS_ROOK).count()>1)throw new IllegalArgumentException("Only one Zeus per match");
-        if(heroes.containsValue(HeroType.BABA_YAGA_PAWN) || heroes.containsValue(HeroType.ILLUSION))throw new IllegalArgumentException("Baba Yaga can only be summoned");
-        if((heroes.containsValue(HeroType.IZBA_ROOK) || heroes.containsValue(HeroType.GINSENG_BISHOP) || heroes.containsValue(HeroType.CLOWNGANGER_KNIGHT) || heroes.containsValue(HeroType.MOLEMINER_PAWN) || heroes.containsValue(HeroType.ZEUS_ROOK)) && !summons.enabled())summons=SummonState.initial(java.util.concurrent.ThreadLocalRandom.current().nextLong());
+        if (heroes.containsValue(HeroType.BABA_YAGA_PAWN))
+            throw new IllegalArgumentException("Baba Yaga can only be summoned");
+        if ((heroes.containsValue(HeroType.IZBA_ROOK) || heroes.containsValue(HeroType.GINSENG_BISHOP)) && !summons.enabled())
+            summons = SummonState.initial(java.util.concurrent.ThreadLocalRandom.current().nextLong());
         for (var entry : heroes.entrySet()) {
             Figure piece = gameField.getFigureByPosition(entry.getKey());
             if (entry.getValue() == null || piece == null || !entry.getValue().supports(piece.getClass()))
                 throw new IllegalArgumentException("Hero must be assigned to its matching base piece");
         }
         var next = new HashMap<Long, PieceState>();
-        for (int row = 0; row < 8; row++) for (int column = 0; column < 8; column++) {
-            Position square = new Position(row, column); Figure figure = gameField.getFigureByPosition(square);
-            if (figure.getColor() == FigureColor.NONE) continue;
-            PieceState piece = PieceState.initial(nextPieceId++, figure, heroes.getOrDefault(square, HeroType.NONE));
-            next.put(piece.id(), piece);
-        }
-        pieces = Map.copyOf(next); pieceStateField = gameField;
+        for (int row = 0; row < 8; row++)
+            for (int column = 0; column < 8; column++) {
+                Position square = new Position(row, column);
+                Figure figure = gameField.getFigureByPosition(square);
+                if (figure.getColor() == FigureColor.NONE) continue;
+                PieceState piece = PieceState.initial(nextPieceId++, figure, heroes.getOrDefault(square, HeroType.NONE));
+                next.put(piece.id(), piece);
+            }
+        pieces = Map.copyOf(next);
+        pieceStateField = gameField;
     }
+
     private void ensurePieces() {
         // Legacy test-only fixtures replace the private Field through reflection.
         // Production boards are always published together with matching piece states.
         if (pieceStateField != gameField) rebuildPieces(Map.of());
     }
+
     private void addEvent(GameEvent.Kind kind, FigureColor color, Long actor, Long target, Position from, Position to, String message) {
         addEvent(kind, color, actor, target, from, to, message, turnNumber);
     }
+
     private void addEvent(GameEvent.Kind kind, FigureColor color, Long actor, Long target, Position from, Position to, String message, long actingTurn) {
         events.add(new GameEvent(events.size() + 1L, actingTurn, kind, color, actor, target, from, to, message));
     }
-    private void addSummonChanges(ActionEngine.Context before,ActionEngine.Context after) {
-        for(var r:after.summons().records().values().stream().sorted(java.util.Comparator.comparingLong(SummonRecord::id)).toList()) {
-            if(before.summons().records().containsKey(r.id()) && !before.summons().records().get(r.id()).transformed() && r.transformed()) {
-                PieceState p=after.pieces().get(r.id());Position square=p.position()==null?r.bornAt():p.position();
-                addEvent(GameEvent.Kind.YAGA_MATURE,p.color(),p.id(),p.id(),square,square,"Баба-яга превратилась в Избу");
+
+    private void addSummonChanges(ActionEngine.Context before, ActionEngine.Context after) {
+        for (var r : after.summons().records().values().stream().sorted(java.util.Comparator.comparingLong(SummonRecord::id)).toList()) {
+            if (before.summons().records().containsKey(r.id()) && !before.summons().records().get(r.id()).transformed() && r.transformed()) {
+                PieceState p = after.pieces().get(r.id());
+                Position square = p.position() == null ? r.bornAt() : p.position();
+                addEvent(GameEvent.Kind.YAGA_MATURE, p.color(), p.id(), p.id(), square, square, "Баба-яга превратилась в Избу");
             }
         }
-        Long summoner=after.summons().records().values().stream().filter(r->!before.summons().records().containsKey(r.id()) && r.cause()==SummonRecord.Cause.ULTIMATE).map(SummonRecord::sourceId).findFirst().orElse(null);
-        for(PieceState p:after.pieces().values().stream().sorted(java.util.Comparator.comparingLong(PieceState::id)).toList()) {
-            PieceState old=before.pieces().get(p.id());
-            if(p.status()==PieceState.Status.REPLACED && old!=null && old.status()!=PieceState.Status.REPLACED) {
-                Position square=old.position()==null?before.pieces().get(summoner).position():old.position();
-                addEvent(GameEvent.Kind.REPLACE,currentPlayer.color(),summoner,p.id(),square,square,"Фигура заменена призывом без взятия");
+        Long summoner = after.summons().records().values().stream().filter(r -> !before.summons().records().containsKey(r.id()) && r.cause() == SummonRecord.Cause.ULTIMATE).map(SummonRecord::sourceId).findFirst().orElse(null);
+        for (PieceState p : after.pieces().values().stream().sorted(java.util.Comparator.comparingLong(PieceState::id)).toList()) {
+            PieceState old = before.pieces().get(p.id());
+            if (p.status() == PieceState.Status.REPLACED && old != null && old.status() != PieceState.Status.REPLACED) {
+                Position square = old.position() == null ? before.pieces().get(summoner).position() : old.position();
+                addEvent(GameEvent.Kind.REPLACE, currentPlayer.color(), summoner, p.id(), square, square, "Фигура заменена призывом без взятия");
             }
         }
     }
-    private void addActionEffects(ActionEngine.Context before,ActionEngine.Preview preview) {
-        var after=preview.next();addSummonChanges(before,after);
-        for(var pulse:after.lightning().pulses().subList(before.lightning().pulses().size(),after.lightning().pulses().size())){
-            var source=after.pieces().get(pulse.casterId());var oldSource=before.pieces().get(pulse.casterId());
-            var kind=switch(pulse.kind()){case HIT->GameEvent.Kind.LIGHTNING_HIT;case RESET->GameEvent.Kind.LIGHTNING_RESET;case DISCHARGE->GameEvent.Kind.LIGHTNING_DISCHARGE;};
-            addEvent(kind,source.color(),source.id(),pulse.targetId(),oldSource.position(),pulse.square(),switch(pulse.kind()){case HIT->"Заряд молнии на "+cell(pulse.square());case RESET->"Заряды применившего молнию героя сброшены";case DISCHARGE->"Разряд не уничтожил иллюзию";});
-        }
-        for(var t:after.mines().triggers().subList(before.mines().triggers().size(),after.mines().triggers().size())){
-            var owner=after.pieces().get(t.ownerId());addEvent(GameEvent.Kind.MINE_TRIGGER,owner.color(),owner.id(),t.victimId(),t.square(),t.square(),"Мина взорвалась на "+cell(t.square()));
-        }
-        for(var b:after.mines().blasts().subList(before.mines().blasts().size(),after.mines().blasts().size())){
-            var owner=after.pieces().get(b.ownerId());addEvent(GameEvent.Kind.BLAST_AREA,owner.color(),owner.id(),owner.id(),b.corner(),b.end(),"Область взрыва: "+cell(b.corner())+" — "+cell(b.end()));
-        }
-        for(var i:after.clown().illusions().values()){
-            var old=before.clown().illusions().get(i.id());
-            if(i.extended() && (old==null || !old.extended()) && events.stream().noneMatch(e->e.turn()==turnNumber && e.kind()==GameEvent.Kind.ILLUSION_HIT && java.util.Objects.equals(e.targetId(),i.id()))){
-                var p=after.pieces().get(i.id());var previous=before.pieces().get(i.id());
-                Position square=p.position()!=null?p.position():previous!=null && previous.position()!=null?previous.position():i.bornAt();
-                var trap=after.terrain().cells().get(square);if(trap==null)trap=before.terrain().cells().get(square);
-                if(trap==null){
-                    Long bomber=after.mines().triggers().stream().skip(before.mines().triggers().size()).filter(t->t.victimId()==i.id()).map(MineState.Trigger::ownerId).findFirst().orElse(null);
-                    if(bomber==null)bomber=after.mines().blasts().stream().skip(before.mines().blasts().size()).filter(b->b.contains(square)).map(MineState.Blast::ownerId).findFirst().orElse(null);
-                    if(bomber==null)bomber=after.lightning().pulses().stream().skip(before.lightning().pulses().size()).filter(t->t.kind()==LightningState.Kind.DISCHARGE && t.targetId()==i.id()).map(LightningState.Pulse::casterId).findFirst().orElse(null);
-                    if(bomber!=null){var attacker=after.pieces().get(bomber);addEvent(GameEvent.Kind.ILLUSION_HIT,attacker.color(),bomber,i.id(),square,square,"Воздействие не уничтожило иллюзию; срок продлён");}
-                }
-                if(trap!=null){var attacker=after.pieces().get(trap.ownerId());addEvent(GameEvent.Kind.ILLUSION_HIT,attacker.color(),attacker.id(),i.id(),attacker.position()==null?square:attacker.position(),square,"Болото не взяло иллюзию; её срок продлён");}
+
+    private void addActionEffects(ActionEngine.Context before, ActionEngine.Preview preview) {
+        var after = preview.next();
+        addSummonChanges(before, after);
+        Long spearActor = events.isEmpty() ? null : events.getLast().kind() == GameEvent.Kind.SPEAR ? events.getLast().actorId() : null;
+        if (spearActor != null)
+            for (PieceState p : after.pieces().values().stream().sorted(java.util.Comparator.comparingLong(PieceState::id)).toList()) {
+                var old = before.pieces().get(p.id());
+                if (p.isStunned() && old != null && p.stunnedThroughTurn() > old.stunnedThroughTurn())
+                    addEvent(GameEvent.Kind.STUN, currentPlayer.color(), spearActor, p.id(), p.position(), p.position(), "Копьё оглушило фигуру на " + cell(p.position()));
             }
-        }
-        var yarnEvent=events.isEmpty()?null:events.getLast().kind()==GameEvent.Kind.YARN?events.getLast():null;
-        if(yarnEvent!=null){
-            var actor=before.pieces().get(yarnEvent.actorId());var target=before.pieces().get(yarnEvent.targetId());
-            for(var p:game.heroes.kikimora.KikimoraAbilities.yarnTargets(before.pieces(),actor,target))addEvent(GameEvent.Kind.YARN_STUN,actor.color(),actor.id(),p.id(),actor.position(),p.position(),"Пряжа оглушила фигуру на "+cell(p.position()));
-        }
-        Long spearActor=events.isEmpty()?null:events.getLast().kind()==GameEvent.Kind.SPEAR?events.getLast().actorId():null;
-        if(spearActor!=null)for(PieceState p:after.pieces().values().stream().sorted(java.util.Comparator.comparingLong(PieceState::id)).toList()) {
-            var old=before.pieces().get(p.id());
-            if(p.isStunned() && old!=null && p.stunnedThroughTurn()>old.stunnedThroughTurn())addEvent(GameEvent.Kind.STUN,currentPlayer.color(),spearActor,p.id(),p.position(),p.position(),"Копьё оглушило фигуру на "+cell(p.position()));
-        }
-        var births=after.summons().records().values().stream().filter(r->!before.summons().records().containsKey(r.id()))
+        var births = after.summons().records().values().stream().filter(r -> !before.summons().records().containsKey(r.id()))
                 .sorted(java.util.Comparator.comparingLong(SummonRecord::id)).toList();
-        var logged=new java.util.HashSet<Long>();
-        for(var birth:births)if(birth.cause()==SummonRecord.Cause.ULTIMATE){addBirth(after,birth);logged.add(birth.id());}
-        for(var capture:preview.captures())if(capture.reaction()) {
-            // A fresh pawn can die in mud during its creation action; its birth must precede that capture in the journal.
-            for(var birth:births)if(birth.id()==capture.victimId() && logged.add(birth.id()))addBirth(after,birth);
-            addEvent(capture.cause()==Capture.Cause.LIGHTNING?GameEvent.Kind.LIGHTNING_CAPTURE:capture.cause()==Capture.Cause.MINE?GameEvent.Kind.MINE_CAPTURE:capture.cause()==Capture.Cause.BLAST?(capture.rewarded()?GameEvent.Kind.BLAST_CAPTURE:GameEvent.Kind.BLAST_DEATH):capture.cause()==Capture.Cause.ARES?GameEvent.Kind.ARES_REVENGE:capture.cause()==Capture.Cause.BOG?GameEvent.Kind.BOG_CAPTURE:GameEvent.Kind.COUNTER_CAPTURE,
-                    capture.creditedSide(),capture.actorId(),capture.victimId(),capture.square(),capture.square(),
-                    (capture.cause()==Capture.Cause.LIGHTNING?"Молния уничтожила ":capture.cause()==Capture.Cause.MINE?"Мина взяла ":capture.cause()==Capture.Cause.BLAST?"Взрыв уничтожил ":capture.cause()==Capture.Cause.ARES?"Ares забрал с собой ":capture.cause()==Capture.Cause.BOG?"Bolotnik из болота взял ":"Союзник из Пуджа взял ")+capture.victim().getName()+" на "+cell(capture.square()));
-        }
-        for(var birth:births)if(logged.add(birth.id()))addBirth(after,birth);
+        var logged = new java.util.HashSet<Long>();
+        for (var birth : births)
+            if (birth.cause() == SummonRecord.Cause.ULTIMATE) {
+                addBirth(after, birth);
+                logged.add(birth.id());
+            }
+        for (var capture : preview.captures())
+            if (capture.reaction()) {
+                // A fresh pawn can die in mud during its creation action; its birth must precede that capture in the journal.
+                for (var birth : births)
+                    if (birth.id() == capture.victimId() && logged.add(birth.id())) addBirth(after, birth);
+                addEvent(capture.cause() == Capture.Cause.ARES ? GameEvent.Kind.ARES_REVENGE : capture.cause() == Capture.Cause.BOG ? GameEvent.Kind.BOG_CAPTURE : GameEvent.Kind.COUNTER_CAPTURE,
+                        capture.creditedSide(), capture.actorId(), capture.victimId(), capture.square(), capture.square(),
+                        (capture.cause() == Capture.Cause.ARES ? "Ares забрал с собой " : capture.cause() == Capture.Cause.BOG ? "Bolotnik из болота взял " : "Союзник из Пуджа взял ") + capture.victim().getName() + " на " + cell(capture.square()));
+            }
+        for (var birth : births) if (logged.add(birth.id())) addBirth(after, birth);
     }
-    private void addBirth(ActionEngine.Context after,SummonRecord r) {
-        PieceState source=after.pieces().get(r.sourceId());
-        addEvent(GameEvent.Kind.YAGA_BIRTH,source.color(),r.sourceId(),r.id(),r.bornAt(),r.bornAt(),"Баба-яга призвана на "+cell(r.bornAt()));
+
+    private void addBirth(ActionEngine.Context after, SummonRecord r) {
+        PieceState source = after.pieces().get(r.sourceId());
+        addEvent(GameEvent.Kind.YAGA_BIRTH, source.color(), r.sourceId(), r.id(), r.bornAt(), r.bornAt(), "Баба-яга призвана на " + cell(r.bornAt()));
     }
+
     private static String cell(Position square) {
         return square == null ? "—" : String.valueOf((char) ('a' + square.getColumn())) + (square.getRow() + 1);
     }
+
     public synchronized GameSnapshot getSnapshot() {
-        updateTime(); ensurePieces();
+        updateTime();
+        ensurePieces();
         return new GameSnapshot(version, mode, gameField, pieces, getTurnState(), currentPlayer.color(), castlingRights,
                 enPassantTarget, halfmoveClock, repetitions, clock.snapshot(), outcome, moves, events,
                 whitePlayer.getPoints(), blackPlayer.getPoints(), whitePlayer.getAttackedFigures(), blackPlayer.getAttackedFigures(),
-                drawOffer == null ? FigureColor.NONE : drawOffer.color(), heroRules, economy, terrain, draft, summons,spells,faun,clown,mines,lightning);
+                drawOffer == null ? FigureColor.NONE : drawOffer.color(), heroRules, economy, terrain, draft, summons, spells, faun);
     }
-    public synchronized TurnState getTurnState() { return new TurnState(turnNumber, moveUsed, abilityUsed); }
-    public synchronized PieceState getPieceState(Position square) { return context().at(square); }
-    public synchronized PieceState getPieceState(long id) { ensurePieces(); return pieces.get(id); }
-    public synchronized List<GameEvent> getEvents() { return List.copyOf(events); }
-    public GameMode getMode() { return mode; }
-    public PudgeRules getPudgeRules() { return heroRules.pudge(); }
-    public synchronized EconomyState getEconomy() { return economy; }
-    public synchronized SummonState getSummons() { return summons; }
-    public synchronized DraftSnapshot getDraft() { return draft; }
-    public synchronized TerrainState getTerrain() { return terrain; }
-    public BolotnikRules getBolotnikRules() { return heroRules.bolotnik(); }
-    public BountyCrowRules getCrowRules() { return heroRules.crow(); }
-    public HeroRules getHeroRules() { return heroRules; }
-    public LumeshardRules getLumeshardRules() { return heroRules.lumeshard(); }
 
-    private int currentRepetitionCount() { return repetitions.getOrDefault(positionKey(gameField.getGameField(), currentPlayer.color(), castlingRights, enPassantTarget), 0); }
-    private boolean isParticipant(Player player) { return player == whitePlayer || player == blackPlayer; }
-    private static Position copy(Position position) { return position == null ? null : new Position(position.getRow(), position.getColumn()); }
+    public synchronized TurnState getTurnState() {
+        return new TurnState(turnNumber, moveUsed, abilityUsed);
+    }
 
-    public synchronized Figure getFigureByPosition(Position position) { return gameField.getFigureByPosition(position); }
-    public synchronized Field getGameField() { return gameField; }
-    public Player getWhitePlayer() { return whitePlayer; }
-    public Player getBlackPlayer() { return blackPlayer; }
-    public synchronized Player getCurrentPlayer() { return currentPlayer; }
-    public synchronized GameOutcome getOutcome() { updateTime(); return outcome; }
-    public synchronized ClockSnapshot getClockSnapshot() { updateTime(); return clock.snapshot(); }
-    public synchronized Player getDrawOffer() { return drawOffer; }
-    public synchronized CastlingRights getCastlingRights() { return castlingRights; }
-    public synchronized Position getEnPassantTarget() { return copy(enPassantTarget); }
-    public synchronized int getHalfmoveClock() { return halfmoveClock; }
-    public synchronized int getRepetitionCount() { return currentRepetitionCount(); }
-    public synchronized String getPositionKey() { return positionKey(gameField.getGameField(), currentPlayer.color(), castlingRights, enPassantTarget); }
-    public synchronized List<MadeMove> getMoves() { return List.copyOf(moves); }
+    public synchronized PieceState getPieceState(Position square) {
+        return context().at(square);
+    }
+
+    public synchronized PieceState getPieceState(long id) {
+        ensurePieces();
+        return pieces.get(id);
+    }
+
+    public synchronized List<GameEvent> getEvents() {
+        return List.copyOf(events);
+    }
+
+    public GameMode getMode() {
+        return mode;
+    }
+
+    public PudgeRules getPudgeRules() {
+        return heroRules.pudge();
+    }
+
+    public synchronized EconomyState getEconomy() {
+        return economy;
+    }
+
+    public synchronized SummonState getSummons() {
+        return summons;
+    }
+
+    public synchronized DraftSnapshot getDraft() {
+        return draft;
+    }
+
+    public synchronized TerrainState getTerrain() {
+        return terrain;
+    }
+
+    public BolotnikRules getBolotnikRules() {
+        return heroRules.bolotnik();
+    }
+
+    public BountyCrowRules getCrowRules() {
+        return heroRules.crow();
+    }
+
+    public HeroRules getHeroRules() {
+        return heroRules;
+    }
+
+    public LumeshardRules getLumeshardRules() {
+        return heroRules.lumeshard();
+    }
+
+    private int currentRepetitionCount() {
+        return repetitions.getOrDefault(positionKey(gameField.getGameField(), currentPlayer.color(), castlingRights, enPassantTarget), 0);
+    }
+
+    private boolean isParticipant(Player player) {
+        return player == whitePlayer || player == blackPlayer;
+    }
+
+    private static Position copy(Position position) {
+        return position == null ? null : new Position(position.getRow(), position.getColumn());
+    }
+
+    public synchronized Figure getFigureByPosition(Position position) {
+        return gameField.getFigureByPosition(position);
+    }
+
+    public synchronized Field getGameField() {
+        return gameField;
+    }
+
+    public Player getWhitePlayer() {
+        return whitePlayer;
+    }
+
+    public Player getBlackPlayer() {
+        return blackPlayer;
+    }
+
+    public synchronized Player getCurrentPlayer() {
+        return currentPlayer;
+    }
+
+    public synchronized GameOutcome getOutcome() {
+        updateTime();
+        return outcome;
+    }
+
+    public synchronized ClockSnapshot getClockSnapshot() {
+        updateTime();
+        return clock.snapshot();
+    }
+
+    public synchronized Player getDrawOffer() {
+        return drawOffer;
+    }
+
+    public synchronized CastlingRights getCastlingRights() {
+        return castlingRights;
+    }
+
+    public synchronized Position getEnPassantTarget() {
+        return copy(enPassantTarget);
+    }
+
+    public synchronized int getHalfmoveClock() {
+        return halfmoveClock;
+    }
+
+    public synchronized int getRepetitionCount() {
+        return currentRepetitionCount();
+    }
+
+    public synchronized String getPositionKey() {
+        return positionKey(gameField.getGameField(), currentPlayer.color(), castlingRights, enPassantTarget);
+    }
+
+    public synchronized List<MadeMove> getMoves() {
+        return List.copyOf(moves);
+    }
+
     public synchronized boolean isInCheck() {
         ensurePieces();
         return mode == GameMode.MOBA ? AttackRules.isInCheck(gameField.getGameField(), pieces, currentPlayer.color(), terrain)
                 : MoveValidator.isInCheck(gameField.getGameField(), currentPlayer.color());
     }
-    public synchronized String getLastMoveAsString() { return moves.isEmpty() ? "" : moves.getLast().toString(); }
+
+    public synchronized String getLastMoveAsString() {
+        return moves.isEmpty() ? "" : moves.getLast().toString();
+    }
 }

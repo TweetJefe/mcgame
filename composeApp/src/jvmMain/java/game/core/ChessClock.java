@@ -4,7 +4,9 @@ import game.state.ClockSnapshot;
 
 import model.FigureColor;
 
-/** Owned by Game. Timestamps are supplied by a monotonic source, never by the UI. */
+/**
+ * Owned by Game. Timestamps are supplied by a monotonic source, never by the UI.
+ */
 final class ChessClock {
     private boolean enabled;
     private boolean running;
@@ -31,13 +33,27 @@ final class ChessClock {
         return (active == FigureColor.WHITE ? whiteNanos : blackNanos) == 0 ? active : FigureColor.NONE;
     }
 
-    void switchTo(FigureColor color) { active = color; }
-    /** Resume from saved remaining time; never reuse the old monotonic timestamp. */
-    void restore(ClockSnapshot saved, long now) {
-        enabled = saved.enabled(); running = saved.running();
-        whiteNanos = saved.whiteNanos(); blackNanos = saved.blackNanos();
-        active = saved.activeColor(); lastUpdate = now;
+    void switchTo(FigureColor color) {
+        active = color;
     }
-    void stop() { running = false; }
-    ClockSnapshot snapshot() { return new ClockSnapshot(enabled, running, whiteNanos, blackNanos, active); }
+
+    /**
+     * Resume from saved remaining time; never reuse the old monotonic timestamp.
+     */
+    void restore(ClockSnapshot saved, long now) {
+        enabled = saved.enabled();
+        running = saved.running();
+        whiteNanos = saved.whiteNanos();
+        blackNanos = saved.blackNanos();
+        active = saved.activeColor();
+        lastUpdate = now;
+    }
+
+    void stop() {
+        running = false;
+    }
+
+    ClockSnapshot snapshot() {
+        return new ClockSnapshot(enabled, running, whiteNanos, blackNanos, active);
+    }
 }

@@ -14,10 +14,9 @@ public final class King extends Figure {
         fillMoves();
     }
 
-    public King( FigureColor color){
+    public King(FigureColor color) {
         super(null, color, null, "King", 10);
     }
-
 
 
     @Override
@@ -38,15 +37,15 @@ public final class King extends Figure {
     public synchronized void computeFutureMovesAndAttacks() {
         canMove = new ArrayList<>();
         canAttack = new ArrayList<>();
-        for(var move : moves){
+        for (var move : moves) {
             var positionToUpdate = this.position;
             positionToUpdate = positionToUpdate.addPosition(move);
-            if(!checkMovePosition(this.color, positionToUpdate, this.field)){
+            if (!checkMovePosition(this.color, positionToUpdate, this.field)) {
                 continue;
-            }else{
-                if(field.getFigureByPosition(positionToUpdate).getColor().equals(FigureColor.NONE)){
+            } else {
+                if (field.getFigureByPosition(positionToUpdate).getColor().equals(FigureColor.NONE)) {
                     canMove.add(positionToUpdate);
-                }else{
+                } else {
                     canAttack.add(positionToUpdate);
                     continue;
                 }

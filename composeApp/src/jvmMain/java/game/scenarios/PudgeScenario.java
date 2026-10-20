@@ -8,12 +8,16 @@ import game.state.GamePosition;
 
 import model.*;
 import model.figures.*;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.LongSupplier;
+
 import static model.FigureColor.*;
 
-/** Fresh, untimed teaching positions. Restart creates a new Game, never rewinds a live one. */
+/**
+ * Fresh, untimed teaching positions. Restart creates a new Game, never rewinds a live one.
+ */
 public enum PudgeScenario implements TrainingScenario {
     DIAGONAL_HOOK("Хук по диагонали",
             "Белые: Пудж e2 → Хук → конь h5. Конь окажется на f3. Затем переместите Пуджа e2–d2 и закончите ход."),
@@ -27,18 +31,36 @@ public enum PudgeScenario implements TrainingScenario {
             "Белые: Пудж e2 берёт пешку e3 → Закончить ход. Чёрные: король h8–g8 → Закончить ход. Белые: Пудж e3 берёт пешку f3. Заряд 2/2: Проглотить → союзный конь g4 (по диагонали). Заряд станет 0/2.");
 
     private final String title, instructions;
-    PudgeScenario(String title, String instructions) { this.title = title; this.instructions = instructions; }
-    public String getTitle() { return title; }
-    public String getInstructions() { return instructions; }
-    public boolean requiresCharge() { return this == ULTIMATE_CHARGE; }
-    public Game createGame() { return createGame(System::nanoTime); }
+
+    PudgeScenario(String title, String instructions) {
+        this.title = title;
+        this.instructions = instructions;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getInstructions() {
+        return instructions;
+    }
+
+    public boolean requiresCharge() {
+        return this == ULTIMATE_CHARGE;
+    }
+
+    public Game createGame() {
+        return createGame(System::nanoTime);
+    }
+
     public Game createGame(LongSupplier time) {
         Field factory = new Field(8);
         Map<Position, Figure> board = new HashMap<>();
-        for (int row = 0; row < 8; row++) for (int col = 0; col < 8; col++) {
-            Position square = new Position(row, col);
-            board.put(square, factory.createFigure(Empty.class, square, NONE));
-        }
+        for (int row = 0; row < 8; row++)
+            for (int col = 0; col < 8; col++) {
+                Position square = new Position(row, col);
+                board.put(square, factory.createFigure(Empty.class, square, NONE));
+            }
         String pudge = "e2";
         put(factory, board, King.class, WHITE, "a1");
         put(factory, board, King.class, BLACK, "h8");
@@ -77,10 +99,14 @@ public enum PudgeScenario implements TrainingScenario {
         return Game.fromMobaPosition(new GamePosition(board, WHITE, CastlingRights.none(), null, 0),
                 Map.of(square(pudge), HeroType.PUDGE_ROOK), rules, time);
     }
+
     private static void put(Field factory, Map<Position, Figure> board, Class<? extends Figure> type,
                             FigureColor color, String name) {
         Position square = square(name);
         board.put(square, factory.createFigure(type, square, color));
     }
-    private static Position square(String name) { return new Position(name.charAt(1) - '1', name.charAt(0) - 'a'); }
+
+    private static Position square(String name) {
+        return new Position(name.charAt(1) - '1', name.charAt(0) - 'a');
+    }
 }

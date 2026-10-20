@@ -36,17 +36,49 @@ public class MadeMove {
         this.clock = clock;
     }
 
-    public String getFigure() { return figure; }
-    public FigureColor getColor() { return color; }
-    public Position getFrom() { return copy(from); }
-    public Position getTo() { return copy(to); }
-    public MoveKind getKind() { return kind; }
-    public Promotion getPromotion() { return promotion; }
-    public String getCapturedFigure() { return capturedFigure; }
-    public Position getCaptureSquare() { return copy(captureSquare); }
-    public int getPly() { return ply; }
-    public ClockSnapshot getClock() { return clock; }
-    private static Position copy(Position position) { return position == null ? null : new Position(position.getRow(), position.getColumn()); }
+    public String getFigure() {
+        return figure;
+    }
+
+    public FigureColor getColor() {
+        return color;
+    }
+
+    public Position getFrom() {
+        return copy(from);
+    }
+
+    public Position getTo() {
+        return copy(to);
+    }
+
+    public MoveKind getKind() {
+        return kind;
+    }
+
+    public Promotion getPromotion() {
+        return promotion;
+    }
+
+    public String getCapturedFigure() {
+        return capturedFigure;
+    }
+
+    public Position getCaptureSquare() {
+        return copy(captureSquare);
+    }
+
+    public int getPly() {
+        return ply;
+    }
+
+    public ClockSnapshot getClock() {
+        return clock;
+    }
+
+    private static Position copy(Position position) {
+        return position == null ? null : new Position(position.getRow(), position.getColumn());
+    }
 
     @Override
     public String toString() {
@@ -56,7 +88,7 @@ public class MadeMove {
         return figure + ": (" + (from.getRow() + 1) + ", " + convertColumnToCharacter(from.getColumn()) + ") -> (" + (to.getRow() + 1) + ", " + convertColumnToCharacter(to.getColumn()) + ")" + suffix;
     }
 
-    private char convertColumnToCharacter(int column){
+    private char convertColumnToCharacter(int column) {
         return (char) (column + 97);
     }
 }

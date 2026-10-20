@@ -1,3 +1,3 @@
 package game.draft;
 
-public enum DraftPhase { BANS, PICKS, COMPLETE }
+public enum DraftPhase {BANS, PICKS, COMPLETE}

@@ -14,6 +14,12 @@ public enum Termination {
     TIMEOUT("Время истекло"), TIMEOUT_DRAW("Время истекло: соперник не может поставить мат");
 
     private final String message;
-    Termination(String message) { this.message = message; }
-    public String getMessage() { return message; }
+
+    Termination(String message) {
+        this.message = message;
+    }
+
+    public String getMessage() {
+        return message;
+    }
 }
