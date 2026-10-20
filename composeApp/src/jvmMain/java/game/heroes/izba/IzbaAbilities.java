@@ -14,18 +14,18 @@ public final class IzbaAbilities {
     private IzbaAbilities() {
     }
 
-    public static List<Ability> abilities() {
-        return List.of(Ability.SUMMON_YAGA);
+    public static List<Abilities> abilities() {
+        return IzbaAbility.getAbilities();
     }
 
-    public static MoveResult availability(PieceState actor, Ability ability, IzbaRules rules) {
+    public static MoveResult availability(PieceState actor, Abilities ability, IzbaRules rules) {
         if (ability == null) return AbilityRejection.INVALID_ABILITY;
         if (actor == null || actor.status() != PieceState.Status.BOARD) return MovementRejection.EMPTY_SOURCE;
-        if (actor.hero() != HeroType.IZBA_ROOK || ability != Ability.SUMMON_YAGA) return AbilityRejection.NO_ABILITY;
+        if (actor.hero() != HeroType.IZBA_ROOK || ability != IzbaAbility.SUMMON_YAGA) return AbilityRejection.NO_ABILITY;
         return actor.ultimateCharge() < rules.ultimateCaptures() ? AbilityRejection.ULTIMATE_NOT_READY : Success.SUCCESS;
     }
 
-    public static HeroEffect preview(PieceState actor, Ability ability, IzbaRules rules) {
+    public static HeroEffect preview(PieceState actor, Abilities ability, IzbaRules rules) {
         MoveResult result = availability(actor, ability, rules);
         return result.isSuccess() ? HeroEffect.success(Map.of(actor.id(), actor.withAbilityState(0,
                 actor.ultimateCharge() - rules.ultimateCaptures(), null))) : HeroEffect.rejected(result);

@@ -1,8 +1,9 @@
 package game.persistence;
+
+import game.heroes.moleminer.MoleminerAbility;
 import game.core.*;
 import game.heroes.*;
 import game.heroes.ares.AresTest;
-import game.heroes.moleminer.MoleminerTest;
 import game.draft.*;
 import model.*;
 import model.figures.*;
@@ -22,7 +23,7 @@ public class MoleminerSaveTest{
         var b=board();put(b,Pawn.class,WHITE,"c2");put(b,Rook.class,BLACK,"c8");Game g=createMiner(b,Map.of());plant(g);move(g,"c2","c3");end(g);move(g,"c8","c3");end(g);String s=xml(g);assertTrue(s.contains("formatVersion=\"11\""));g=load(s);assertEquals(s,xml(g));move(g,"b1","a3");end(g);move(g,"c3","c2");assertTrue(g.getSnapshot().mines().cells().isEmpty());AresTest.roundtrip(g);
     }
     @Test public void explosionFootprintFriendlyDeathAndRandomStateRoundtripExactly()throws Exception{
-        var b=board();put(b,Pawn.class,WHITE,"c2");put(b,Rook.class,WHITE,"e4");Game g=AresTest.charge(createMiner(b,Map.of()),"c2",2);cast(g,"c2","e4",Ability.DETONATE);String s=xml(g);assertTrue(s.contains("DESTROYED"));assertEquals(s,xml(load(s)));invalid(s.replace("kind=\"BLAST_AREA\"","kind=\"STUN\""));invalid(s.replace("kind=\"BLAST_DEATH\"","kind=\"BLAST_CAPTURE\""));invalid(s.replace("status=\"DESTROYED\"","status=\"CAPTURED\""));
+        var b=board();put(b,Pawn.class,WHITE,"c2");put(b,Rook.class,WHITE,"e4");Game g=AresTest.charge(createMiner(b,Map.of()),"c2",2);cast(g,"c2","e4",MoleminerAbility.DETONATE);String s=xml(g);assertTrue(s.contains("DESTROYED"));assertEquals(s,xml(load(s)));invalid(s.replace("kind=\"BLAST_AREA\"","kind=\"STUN\""));invalid(s.replace("kind=\"BLAST_DEATH\"","kind=\"BLAST_CAPTURE\""));invalid(s.replace("status=\"DESTROYED\"","status=\"CAPTURED\""));
     }
     @Test public void forgedMineOriginSettingsAndOldFormatAreRejected()throws Exception{
         Game g=basic();plant(g);String s=xml(g);invalid(s.replace("formatVersion=\"11\"","formatVersion=\"10\""));invalid(s.replaceAll("(?s)<moleminerRules [^>]*/>",""));invalid(s.replace("mineCooldown=\"3\"","mineCooldown=\"1\""));invalid(s.replace("kind=\"PLANT_MINE\"","kind=\"INVISIBILITY\""));

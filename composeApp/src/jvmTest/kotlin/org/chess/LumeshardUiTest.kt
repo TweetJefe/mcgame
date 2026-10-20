@@ -10,7 +10,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerButton
 import game.scenarios.LumeshardScenario
-import game.heroes.Ability
+import game.heroes.Abilities
 import model.Position
 import model.FigureColor
 import org.junit.Assert.*

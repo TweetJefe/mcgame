@@ -3,7 +3,6 @@ package game.heroes.pudge;
 import game.moves.Success;
 import game.core.Game;
 import game.core.Player;
-import game.heroes.Ability;
 import game.heroes.HeroAbilities;
 import game.heroes.HeroType;
 import game.scenarios.PudgeScenario;
@@ -17,7 +16,7 @@ import static org.junit.Assert.*;
 public class PudgeAbilitiesTest {
     @Test public void crossPackageHeroPreviewsAreImmutableAndCannotSpendLiveTurnBudgets() {
         Game game = PudgeScenario.DIAGONAL_HOOK.createGame(() -> 0L); var before = game.getSnapshot();
-        var effect = HeroAbilities.preview(before.field(), before.pieceAt(pos("e2")), before.pieceAt(pos("h5")), Ability.HOOK, before.pudgeRules());
+        var effect = HeroAbilities.preview(before.field(), before.pieceAt(pos("e2")), before.pieceAt(pos("h5")), PudgeAbility.HOOK, before.pudgeRules());
         assertEquals(Success.SUCCESS, effect.result());
         assertEquals(pos("f3"), effect.updates().get(before.pieceAt(pos("h5")).id()).position());
         assertEquals(before, game.getSnapshot());

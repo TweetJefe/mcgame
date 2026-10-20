@@ -24,7 +24,7 @@ final class LegacyHeroAbilities {
     private LegacyHeroAbilities() {
     }
 
-    static List<Ability> abilities(HeroType hero) {
+    static List<Abilities> abilities(HeroType hero) {
         return switch (hero) {
             case KIKIMORA_BISHOP -> game.heroes.kikimora.KikimoraAbilities.abilities(); case CHRONOMLIN_PAWN -> game.heroes.chronomlin.ChronomlinAbilities.abilities(); case ZEUS_ROOK -> game.heroes.zeus.ZeusAbilities.abilities(); case MOLEMINER_PAWN -> game.heroes.moleminer.MoleminerAbilities.abilities(); case CLOWNGANGER_KNIGHT -> game.heroes.clownganger.ClowngangerAbilities.abilities(); case ARES_BISHOP -> AresAbilities.abilities();
             case FAUN_KNIGHT -> FaunAbilities.abilities();
@@ -38,7 +38,7 @@ final class LegacyHeroAbilities {
         };
     }
 
-    static MoveResult availability(PieceState actor, Ability ability, HeroRules rules) {
+    static MoveResult availability(PieceState actor, Abilities ability, HeroRules rules) {
         if (ability == null) return AbilityRejection.INVALID_ABILITY;
         if(actor.isPotted())return StatusRejection.POTTED;
         return switch (actor.hero()) { case KIKIMORA_BISHOP -> game.heroes.kikimora.KikimoraAbilities.availability(actor,ability,rules.kikimora(),false); case CHRONOMLIN_PAWN -> game.heroes.chronomlin.ChronomlinAbilities.availability(actor,ability,rules.chronomlin(),false); case ZEUS_ROOK -> game.heroes.zeus.ZeusAbilities.availability(actor,ability,rules.zeus()); case MOLEMINER_PAWN -> game.heroes.moleminer.MoleminerAbilities.availability(actor,ability,rules.moleminer()); case CLOWNGANGER_KNIGHT -> game.heroes.clownganger.ClowngangerAbilities.availability(actor,ability,rules.clownganger()); case ARES_BISHOP -> AresAbilities.availability(actor, ability, rules.ares());
@@ -53,7 +53,7 @@ final class LegacyHeroAbilities {
         };
     }
 
-    static HeroEffect preview(Field field, PieceState actor, PieceState target, Position square, Ability ability, HeroRules rules) {
+    static HeroEffect preview(Field field, PieceState actor, PieceState target, Position square, Abilities ability, HeroRules rules) {
         return switch (actor.hero()) {
             case CHRONOMLIN_PAWN -> game.heroes.chronomlin.ChronomlinAbilities.preview(field,actor,target,ability,rules.chronomlin(),false);
             case FAUN_KNIGHT -> FaunAbilities.preview(actor, square, ability, rules.faun());

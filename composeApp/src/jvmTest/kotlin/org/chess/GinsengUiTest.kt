@@ -1,5 +1,7 @@
 package org.chess
 
+import game.heroes.pudge.PudgeAbility
+
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
@@ -11,7 +13,7 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.use
 import game.draft.Draft
 import game.draft.DraftPhase
-import game.heroes.Ability
+import game.heroes.Abilities
 import game.heroes.HeroType
 import game.core.Positions.pos
 import game.heroes.ginseng.GinsengFixtures
@@ -45,7 +47,7 @@ class GinsengUiTest {
                 assertFalse(game.snapshot.turn().moveUsed())
             }
             val copying=GinsengFixtures.hook()
-            assertTrue(copying.useAbility(copying.currentPlayer,pos("e2"),pos("e5"),Ability.HOOK).isSuccess)
+            assertTrue(copying.useAbility(copying.currentPlayer,pos("e2"),pos("e5"),PudgeAbility.HOOK).isSuccess)
             assertTrue(copying.moveFigure(copying.currentPlayer,pos("b1"),pos("a3")).isSuccess)
             assertTrue(copying.endTurn(copying.currentPlayer).isSuccess)
             assertTrue(copying.moveFigure(copying.currentPlayer,pos("g8"),pos("f6")).isSuccess)
@@ -54,7 +56,7 @@ class GinsengUiTest {
                 it.render().close();click(it,226f,522f);click(it,930f,360f);click(it,346f,522f)
                 val actor=copying.getPieceState(pos("c2"))
                 val copy=copying.spells.borrowed()[actor.id()]!!
-                assertEquals(Ability.HOOK,copy.ability())
+                assertEquals(PudgeAbility.HOOK,copy.ability())
                 assertFalse(copy.isReady(copying.snapshot.turn().number()))
                 assertEquals(0,actor.ultimateCharge())
                 save(it,"ginseng-copy-waiting")
@@ -66,7 +68,7 @@ class GinsengUiTest {
                 click(it,720f,432f);click(it,106f,402f)
                 assertEquals(target,borrowed.getPieceState(pos("b3")).id())
                 assertTrue(borrowed.spells.borrowed().isEmpty())
-                assertEquals(Ability.HOOK,borrowed.spells.lastUsed()[borrowed.getPieceState(pos("c2")).id()])
+                assertEquals(PudgeAbility.HOOK,borrowed.spells.lastUsed()[borrowed.getPieceState(pos("c2")).id()])
                 save(it,"ginseng-hook-used")
             }
         }

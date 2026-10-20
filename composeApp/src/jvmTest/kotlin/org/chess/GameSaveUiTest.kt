@@ -1,8 +1,10 @@
 package org.chess
 
+import game.heroes.pudge.PudgeAbility
+
 import game.moves.Success
 import game.core.Game
-import game.heroes.Ability
+import game.heroes.Abilities
 import game.persistence.GameSaveFile
 import game.scenarios.PudgeScenario
 
@@ -41,7 +43,7 @@ class GameSaveUiTest {
         val broken = temporary.newFile("broken.moba.xml").toPath()
         Files.writeString(broken, "broken")
         val game = PudgeScenario.COUNTER_CAPTURE.createGame()
-        assertEquals(Success.SUCCESS, game.useAbility(game.currentPlayer, Position(1, 4), Position(2, 3), Ability.SWALLOW))
+        assertEquals(Success.SUCCESS, game.useAbility(game.currentPlayer, Position(1, 4), Position(2, 3), PudgeAbility.SWALLOW))
         assertEquals(Success.SUCCESS, game.moveFigure(game.currentPlayer, Position(1, 4), Position(1, 5)))
         GameSaveFile.save(source, game)
         var loads = 0

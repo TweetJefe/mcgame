@@ -1,5 +1,19 @@
 package org.chess
 
+import game.heroes.pudge.PudgeAbility
+import game.heroes.lumeshard.LumeshardAbility
+import game.heroes.bountycrow.BountyCrowAbility
+import game.heroes.bolotnik.BolotnikAbility
+import game.heroes.izba.IzbaAbility
+import game.heroes.ginseng.GinsengAbility
+import game.heroes.faun.FaunAbility
+import game.heroes.ares.AresAbility
+import game.heroes.clownganger.ClowngangerAbility
+import game.heroes.moleminer.MoleminerAbility
+import game.heroes.zeus.ZeusAbility
+import game.heroes.chronomlin.ChronomlinAbility
+import game.heroes.kikimora.KikimoraAbility
+
 import game.moves.MovementRejection
 import game.moves.TurnRejection
 import game.core.Game
@@ -8,7 +22,7 @@ import game.terrain.MudCell
 import game.heroes.faun.FaunView
 import game.heroes.clownganger.ClownView
 import game.heroes.AbilityRequest
-import game.heroes.Ability
+import game.heroes.Abilities
 import game.heroes.HeroType
 import game.moves.AvailableMoves
 import game.moves.MoveResult
@@ -46,7 +60,7 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                onNewGame: () -> Unit = {}) {
     var snapshot by remember(game) { mutableStateOf(game.snapshot) }
     var selectedId by remember(game) { mutableStateOf<Long?>(null) }
-    var selectedAbility by remember(game) { mutableStateOf<Ability?>(null) }
+    var selectedAbility by remember(game) { mutableStateOf<Abilities?>(null) }
     var selectedBorrowed by remember(game) { mutableStateOf(false) }
     var displacementTargetId by remember(game) { mutableStateOf<Long?>(null) }
     var moveError by remember(game) { mutableStateOf<String?>(null) }
@@ -68,7 +82,7 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
     val displaced = displacementTargetId?.let { snapshot.pieces()[it] }?.takeIf { it.position() != null }
     val abilityTargets = remember(snapshot.version(), selectedId, selectedAbility, selectedBorrowed, displacementTargetId) {
         if (selectedPos != null && selectedAbility != null) {
-            if (selectedAbility == Ability.DISPLACE && displaced != null) game.getDisplacementDestinations(selectedPos, displaced.position(), selectedBorrowed)
+            if (selectedAbility == GinsengAbility.DISPLACE && displaced != null) game.getDisplacementDestinations(selectedPos, displaced.position(), selectedBorrowed)
             else game.getAbilityTargets(selectedPos, selectedAbility, selectedBorrowed)
         } else emptyList()
     }
@@ -90,7 +104,7 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
         }
         updateView(result)
     }
-    fun chooseAbility(ability: Ability, borrowed: Boolean = false) {
+    fun chooseAbility(ability: Abilities, borrowed: Boolean = false) {
         val same = selectedAbility == ability && selectedBorrowed == borrowed
         selectedAbility = if (same) null else ability
         selectedBorrowed = borrowed; displacementTargetId = null
@@ -182,12 +196,12 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                                 onClick = {
                                     if (outcome.isFinished || pendingPromotion != null) return@CellView
                                     if (selectedAbility != null && isAbilityTarget && selectedPos != null) {
-                                        if (selectedAbility == Ability.DISPLACE && displaced == null) {
+                                        if (selectedAbility == GinsengAbility.DISPLACE && displaced == null) {
                                             displacementTargetId = piece?.id(); moveError = null
                                         } else {
                                             val request = AbilityRequest(selectedPos, selectedAbility,
-                                                if (selectedAbility == Ability.DISPLACE) displaced!!.position() else square,
-                                                if (selectedAbility == Ability.DISPLACE) square else null, selectedBorrowed)
+                                                if (selectedAbility == GinsengAbility.DISPLACE) displaced!!.position() else square,
+                                                if (selectedAbility == GinsengAbility.DISPLACE) square else null, selectedBorrowed)
                                             val result = game.useAbility(currentPlayer, request)
                                             selectedAbility = null; selectedBorrowed = false; displacementTargetId = null
                                             updateView(result)
@@ -280,8 +294,8 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                         val pudge = selected.hero() == HeroType.PUDGE_ROOK
                         val lume = selected.hero() == HeroType.LUMESHARD_BISHOP
                         val crow = selected.hero() == HeroType.BOUNTY_CROW_PAWN
-                        val skill = if (pudge) Ability.HOOK else if (lume) Ability.LASER else if (crow) Ability.BOUNTY else Ability.MUD
-                        val ult = if (pudge) Ability.SWALLOW else if (lume) Ability.TELEPORT else if (crow) Ability.STEAL else Ability.AMBUSH
+                        val skill = if (pudge) PudgeAbility.HOOK else if (lume) LumeshardAbility.LASER else if (crow) BountyCrowAbility.BOUNTY else BolotnikAbility.MUD
+                        val ult = if (pudge) PudgeAbility.SWALLOW else if (lume) LumeshardAbility.TELEPORT else if (crow) BountyCrowAbility.STEAL else BolotnikAbility.AMBUSH
                         val skillName = if (pudge) "Хук" else if (lume) "Лазер" else if (crow) "Награда" else "Грязь"
                         val ultName = if (pudge) "Проглотить" else if (lume) "Телепорт" else if (crow) "Украсть" else "Засада"
                         val skillReady = game.getAbilityAvailability(selectedPos, skill)
@@ -298,7 +312,7 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                         Row {
                             Button(enabled = skillReady.isSuccess, onClick = { chooseAbility(skill) }) { Text(skillName) }
                             Spacer(Modifier.width(8.dp))
-                            Button(enabled = ultReady.isSuccess, onClick = { if (ult == Ability.STEAL || ult == Ability.AMBUSH) { selectedAbility = null; updateView(game.useAbility(currentPlayer, selectedPos, null, ult)) } else chooseAbility(ult) }) { Text(ultName) }
+                            Button(enabled = ultReady.isSuccess, onClick = { if (ult == BountyCrowAbility.STEAL || ult == BolotnikAbility.AMBUSH) { selectedAbility = null; updateView(game.useAbility(currentPlayer, selectedPos, null, ult)) } else chooseAbility(ult) }) { Text(ultName) }
                         }
                         if (selectedAbility != null) Text("Выберите подсвеченную цель", color = Color(0xFF6A5ACD))
                         if (!skillReady.isSuccess && skillReady != TurnRejection.ABILITY_ALREADY_USED) Text(skillReady.message, fontSize = 12.sp, color = Color.Gray)
@@ -319,104 +333,104 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
             if(moba && selected?.hero()==HeroType.KIKIMORA_BISHOP){
                 Text("Пряжа: КД ${selected.cooldown()}. Горшок: ${selected.ultimateCharge()} / ${snapshot.heroRules().kikimora().ultimateCaptures()}",fontSize=13.sp)
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                    Button(enabled=game.getAbilityAvailability(selectedPos,Ability.YARN).isSuccess,onClick={chooseAbility(Ability.YARN)}){Text("Связать пряжей")}
-                    Button(enabled=game.getAbilityAvailability(selectedPos,Ability.CLAY_POT).isSuccess,onClick={chooseAbility(Ability.CLAY_POT)}){Text("Глиняный горшок")}
+                    Button(enabled=game.getAbilityAvailability(selectedPos,KikimoraAbility.YARN).isSuccess,onClick={chooseAbility(KikimoraAbility.YARN)}){Text("Связать пряжей")}
+                    Button(enabled=game.getAbilityAvailability(selectedPos,KikimoraAbility.CLAY_POT).isSuccess,onClick={chooseAbility(KikimoraAbility.CLAY_POT)}){Text("Глиняный горшок")}
                 }
-                if(selectedAbility==Ability.YARN)Text("Враг в радиусе 2. Другая фигура за целью по направлению броска усиливает стан до 2 ходов.",fontSize=13.sp)
-                if(selectedAbility==Ability.CLAY_POT)Text("Любая соседняя фигура, кроме короля: вечное неуязвимое препятствие. Можно сдвинуть способностью.",fontSize=13.sp)
+                if(selectedAbility==KikimoraAbility.YARN)Text("Враг в радиусе 2. Другая фигура за целью по направлению броска усиливает стан до 2 ходов.",fontSize=13.sp)
+                if(selectedAbility==KikimoraAbility.CLAY_POT)Text("Любая соседняя фигура, кроме короля: вечное неуязвимое препятствие. Можно сдвинуть способностью.",fontSize=13.sp)
             }
             if(moba && selected?.hero()==HeroType.CHRONOMLIN_PAWN){
                 Text("Притяжение: КД ${selected.cooldown()}. Улучшение: ${selected.ultimateCharge()} / ${snapshot.heroRules().chronomlin().ultimateCaptures()}",fontSize=13.sp)
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                    Button(enabled=game.getAbilityAvailability(selectedPos,Ability.GRAPPLE).isSuccess,onClick={chooseAbility(Ability.GRAPPLE)}){Text("Притянуться")}
-                    Button(enabled=game.getAbilityAvailability(selectedPos,Ability.EVOLVE).isSuccess,onClick={val actor=selectedPos;clearSelection();updateView(game.useAbility(currentPlayer,actor,null,Ability.EVOLVE))}){Text("Улучшиться")}
+                    Button(enabled=game.getAbilityAvailability(selectedPos,ChronomlinAbility.GRAPPLE).isSuccess,onClick={chooseAbility(ChronomlinAbility.GRAPPLE)}){Text("Притянуться")}
+                    Button(enabled=game.getAbilityAvailability(selectedPos,ChronomlinAbility.EVOLVE).isSuccess,onClick={val actor=selectedPos;clearSelection();updateView(game.useAbility(currentPlayer,actor,null,ChronomlinAbility.EVOLVE))}){Text("Улучшиться")}
                 }
                 Text("Пешка → слон → конь → ладья. Способности сохраняются.",fontSize=13.sp)
-                if(selectedAbility==Ability.GRAPPLE)Text("Выберите первую фигуру по прямой, включая короля. Приземление перед ней, без взятия.",fontSize=13.sp)
+                if(selectedAbility==ChronomlinAbility.GRAPPLE)Text("Выберите первую фигуру по прямой, включая короля. Приземление перед ней, без взятия.",fontSize=13.sp)
             }
             if(moba && selected?.hero()==HeroType.ZEUS_ROOK){
                 Text("Молния: КД ${selected.cooldown()}. Ульта: ${selected.ultimateCharge()} / ${snapshot.heroRules().zeus().ultimateCaptures()}",fontSize=13.sp)
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                    Button(enabled=game.getAbilityAvailability(selectedPos,Ability.CHAIN_LIGHTNING).isSuccess,onClick={chooseAbility(Ability.CHAIN_LIGHTNING)}){Text("Цепная молния")}
-                    Button(enabled=game.getAbilityAvailability(selectedPos,Ability.THUNDERSTORM).isSuccess,onClick={val actor=selectedPos;clearSelection();updateView(game.useAbility(currentPlayer,actor,null,Ability.THUNDERSTORM))}){Text("Разряд")}
+                    Button(enabled=game.getAbilityAvailability(selectedPos,ZeusAbility.CHAIN_LIGHTNING).isSuccess,onClick={chooseAbility(ZeusAbility.CHAIN_LIGHTNING)}){Text("Цепная молния")}
+                    Button(enabled=game.getAbilityAvailability(selectedPos,ZeusAbility.THUNDERSTORM).isSuccess,onClick={val actor=selectedPos;clearSelection();updateView(game.useAbility(currentPlayer,actor,null,ZeusAbility.THUNDERSTORM))}){Text("Разряд")}
                 }
                 Text("Третий заряд убивает. Разряд выбирает случайного врага с зарядом этого героя. Z и G — разные заряды.",fontSize=13.sp)
-                if(selectedAbility==Ability.CHAIN_LIGHTNING)Text("Выберите врага в радиусе 3; цепь поразит до 3 целей.",fontSize=13.sp)
+                if(selectedAbility==ZeusAbility.CHAIN_LIGHTNING)Text("Выберите врага в радиусе 3; цепь поразит до 3 целей.",fontSize=13.sp)
             }
             if(moba && selected?.hero()==HeroType.MOLEMINER_PAWN){
                 Text("Мина: КД ${selected.cooldown()}. Ульта: ${selected.ultimateCharge()} / ${snapshot.heroRules().moleminer().ultimateCaptures()}",fontSize=13.sp)
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                    Button(enabled=game.getAbilityAvailability(selectedPos,Ability.PLANT_MINE).isSuccess,onClick={val actor=selectedPos;clearSelection();updateView(game.useAbility(currentPlayer,actor,null,Ability.PLANT_MINE))}){Text("Заложить мину")}
-                    Button(enabled=game.getAbilityAvailability(selectedPos,Ability.DETONATE).isSuccess,onClick={chooseAbility(Ability.DETONATE)}){Text("Прыжок и взрыв")}
+                    Button(enabled=game.getAbilityAvailability(selectedPos,MoleminerAbility.PLANT_MINE).isSuccess,onClick={val actor=selectedPos;clearSelection();updateView(game.useAbility(currentPlayer,actor,null,MoleminerAbility.PLANT_MINE))}){Text("Заложить мину")}
+                    Button(enabled=game.getAbilityAvailability(selectedPos,MoleminerAbility.DETONATE).isSuccess,onClick={chooseAbility(MoleminerAbility.DETONATE)}){Text("Прыжок и взрыв")}
                 }
-                if(selectedAbility==Ability.DETONATE)Text("Клетка в радиусе 3. Случайный квадрат 2×2: погибнут герой и все внутри, кроме королей и фигур в коробках.",fontSize=13.sp)
+                if(selectedAbility==MoleminerAbility.DETONATE)Text("Клетка в радиусе 3. Случайный квадрат 2×2: погибнут герой и все внутри, кроме королей и фигур в коробках.",fontSize=13.sp)
             }
             if(moba && selected?.hero()==HeroType.CLOWNGANGER_KNIGHT){
                 Text("Коробка: радиус 3, КД ${selected.cooldown()}. Ульта: ${selected.ultimateCharge()} / ${snapshot.heroRules().clownganger().ultimateCaptures()}",fontSize=13.sp)
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                    Button(enabled=game.getAbilityAvailability(selectedPos,Ability.BOX).isSuccess,onClick={chooseAbility(Ability.BOX)}){Text("Спрятать в коробку")}
-                    Button(enabled=game.getAbilityAvailability(selectedPos,Ability.ILLUSION).isSuccess,onClick={chooseAbility(Ability.ILLUSION)}){Text("Создать иллюзию")}
+                    Button(enabled=game.getAbilityAvailability(selectedPos,ClowngangerAbility.BOX).isSuccess,onClick={chooseAbility(ClowngangerAbility.BOX)}){Text("Спрятать в коробку")}
+                    Button(enabled=game.getAbilityAvailability(selectedPos,ClowngangerAbility.ILLUSION).isSuccess,onClick={chooseAbility(ClowngangerAbility.ILLUSION)}){Text("Создать иллюзию")}
                 }
-                if(selectedAbility==Ability.BOX)Text("Выберите союзника, себя или иллюзию в радиусе 3",fontSize=13.sp)
-                if(selectedAbility==Ability.ILLUSION)Text("Выберите свободную соседнюю клетку",fontSize=13.sp)
+                if(selectedAbility==ClowngangerAbility.BOX)Text("Выберите союзника, себя или иллюзию в радиусе 3",fontSize=13.sp)
+                if(selectedAbility==ClowngangerAbility.ILLUSION)Text("Выберите свободную соседнюю клетку",fontSize=13.sp)
             }
             if(moba && selected?.hero()==HeroType.ILLUSION)Text("Иллюзия: не берёт фигуры. Может сходить вместе с оригиналом.",fontSize=13.sp)
             if(moba && selected?.isBoxed==true)Text("В коробке: защищена и не действует до конца следующего собственного хода",fontSize=13.sp)
             if (moba && selected?.hero() == HeroType.ARES_BISHOP) {
                 Text("Копьё: 3 прямо / 2 по диагонали • КД ${selected.cooldown()}",fontSize=13.sp)
                 Text("Пассивная ульта: ${selected.ultimateCharge()} / ${snapshot.heroRules().ares().revengeCaptures()} • заберёт взявшую его фигуру",fontSize=13.sp)
-                val ready=game.getAbilityAvailability(selectedPos,Ability.SPEAR)
-                Button(enabled=ready.isSuccess,onClick={chooseAbility(Ability.SPEAR)}){Text("Бросить копьё")}
-                if(selectedAbility==Ability.SPEAR)Text("Выберите подсвеченное направление: первая фигура летит до конца, столкновение оглушает обе",fontSize=13.sp)
+                val ready=game.getAbilityAvailability(selectedPos,AresAbility.SPEAR)
+                Button(enabled=ready.isSuccess,onClick={chooseAbility(AresAbility.SPEAR)}){Text("Бросить копьё")}
+                if(selectedAbility==AresAbility.SPEAR)Text("Выберите подсвеченное направление: первая фигура летит до конца, столкновение оглушает обе",fontSize=13.sp)
                 if(!ready.isSuccess)Text(ready.message,fontSize=12.sp,color=Color.Gray)
             }
             if (moba && selected?.isStunned == true) Text("Оглушён до конца следующего хода соперника источника",fontSize=12.sp,color=Color(0xFF8A4F00))
             if (moba && selected?.hero() == HeroType.FAUN_KNIGHT) {
                 Text("Туча 3×3 • дальность 4 • КД ${selected.cooldown()}",fontSize=13.sp)
                 Text("Невидимость: ${selected.ultimateCharge()} / ${snapshot.heroRules().faun().ultimateCaptures()} • 2 следующих своих хода",fontSize=13.sp)
-                val cloudReady=game.getAbilityAvailability(selectedPos,Ability.CLOUD)
-                val invisReady=game.getAbilityAvailability(selectedPos,Ability.INVISIBILITY)
+                val cloudReady=game.getAbilityAvailability(selectedPos,FaunAbility.CLOUD)
+                val invisReady=game.getAbilityAvailability(selectedPos,FaunAbility.INVISIBILITY)
                 Row {
-                    Button(enabled=cloudReady.isSuccess,onClick={chooseAbility(Ability.CLOUD)}){Text("Бросить тучу")}
+                    Button(enabled=cloudReady.isSuccess,onClick={chooseAbility(FaunAbility.CLOUD)}){Text("Бросить тучу")}
                     Spacer(Modifier.width(8.dp))
-                    Button(enabled=invisReady.isSuccess,onClick={val actor=selectedPos;clearSelection();updateView(game.useAbility(currentPlayer,actor,null,Ability.INVISIBILITY))}){Text("Невидимость")}
+                    Button(enabled=invisReady.isSuccess,onClick={val actor=selectedPos;clearSelection();updateView(game.useAbility(currentPlayer,actor,null,FaunAbility.INVISIBILITY))}){Text("Невидимость")}
                 }
                 if(snapshot.faun().silenced(selectedPos))Text("В туче: скилл и ульта недоступны",fontSize=12.sp,color=Color.Gray)
             }
             if (moba && selected?.hero() == HeroType.IZBA_ROOK) {
                 Text("Пассивка: при взятии призовёт Бабу-ягу на свободную клетку рядом", fontSize = 13.sp)
                 Text("Ульта: ${selected.ultimateCharge()} / ${snapshot.heroRules().izba().ultimateCaptures()}", fontSize = 13.sp)
-                val ready=game.getAbilityAvailability(selectedPos,Ability.SUMMON_YAGA)
-                Button(enabled=ready.isSuccess,onClick={clearSelection();updateView(game.useAbility(currentPlayer,selectedPos,null,Ability.SUMMON_YAGA))}) { Text("Призвать Бабу-ягу") }
+                val ready=game.getAbilityAvailability(selectedPos,IzbaAbility.SUMMON_YAGA)
+                Button(enabled=ready.isSuccess,onClick={clearSelection();updateView(game.useAbility(currentPlayer,selectedPos,null,IzbaAbility.SUMMON_YAGA))}) { Text("Призвать Бабу-ягу") }
                 if(!ready.isSuccess)Text(ready.message,fontSize=12.sp,color=Color.Gray)
             }
             if (moba && selected?.hero() == HeroType.GINSENG_BISHOP) {
-                val normal = game.getAbilityAvailability(selectedPos, Ability.DISPLACE)
-                val ultimate = game.getAbilityAvailability(selectedPos, Ability.COPY_SPELL)
+                val normal = game.getAbilityAvailability(selectedPos, GinsengAbility.DISPLACE)
+                val ultimate = game.getAbilityAvailability(selectedPos, GinsengAbility.COPY_SPELL)
                 Text("Сдвиг: радиус 3 • КД ${selected.cooldown()} • новая клетка рядом с целью", fontSize = 13.sp)
                 Text("Ульта: ${selected.ultimateCharge()} / ${snapshot.heroRules().ginseng().ultimateCaptures()} • последняя активная способность цели", fontSize = 13.sp)
                 Row {
-                    Button(enabled = normal.isSuccess, onClick = { chooseAbility(Ability.DISPLACE) }) { Text("Переместить фигуру") }
+                    Button(enabled = normal.isSuccess, onClick = { chooseAbility(GinsengAbility.DISPLACE) }) { Text("Переместить фигуру") }
                     Spacer(Modifier.width(8.dp))
-                    Button(enabled = ultimate.isSuccess, onClick = { chooseAbility(Ability.COPY_SPELL) }) { Text("Копировать последнее") }
+                    Button(enabled = ultimate.isSuccess, onClick = { chooseAbility(GinsengAbility.COPY_SPELL) }) { Text("Копировать последнее") }
                 }
                 val copy = snapshot.spells().borrowed()[selected.id()]
                 if (copy != null) {
                     val ready = game.getAbilityAvailability(selectedPos, copy.ability(), true)
                     Text("Копия: ${copy.ability().displayName} • одно применение", fontSize = 13.sp)
                     Button(enabled = ready.isSuccess, onClick = {
-                        if (copy.ability() in listOf(Ability.STEAL, Ability.AMBUSH, Ability.SUMMON_YAGA, Ability.INVISIBILITY, Ability.PLANT_MINE, Ability.THUNDERSTORM, Ability.EVOLVE)) {
+                        if (copy.ability() in listOf(BountyCrowAbility.STEAL, BolotnikAbility.AMBUSH, IzbaAbility.SUMMON_YAGA, FaunAbility.INVISIBILITY, MoleminerAbility.PLANT_MINE, ZeusAbility.THUNDERSTORM, ChronomlinAbility.EVOLVE)) {
                             val request = AbilityRequest(selectedPos, copy.ability(), null, null, true)
                             clearSelection(); updateView(game.useAbility(currentPlayer, request))
                         } else chooseAbility(copy.ability(), true)
                     }) { Text("Использовать: ${copy.ability().displayName}") }
                     if (!ready.isSuccess) Text(ready.message, fontSize = 12.sp, color = Color.Gray)
                 } else Text("Украденной способности нет", fontSize = 12.sp, color = Color.Gray)
-                if (selectedAbility == Ability.DISPLACE) {
+                if (selectedAbility == GinsengAbility.DISPLACE) {
                     Text(if (displaced == null) "Выберите подсвеченную фигуру" else "Выберите свободную клетку рядом с выбранной фигурой", fontSize = 13.sp)
                     if (displaced != null) Button(onClick = { displacementTargetId = null }) { Text("Выбрать другую цель") }
                 }
-                if (selectedAbility == Ability.COPY_SPELL) Text("Выберите героя: скопируется последняя успешно применённая им способность", fontSize = 13.sp)
+                if (selectedAbility == GinsengAbility.COPY_SPELL) Text("Выберите героя: скопируется последняя успешно применённая им способность", fontSize = 13.sp)
             }
             moveError?.let { Text(it, color = Color.Red) }
             Spacer(Modifier.height(8.dp))

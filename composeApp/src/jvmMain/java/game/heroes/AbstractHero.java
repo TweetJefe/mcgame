@@ -17,8 +17,8 @@ import java.util.Objects;
  */
 public abstract class AbstractHero implements Hero {
     private final HeroType type;
-    private final List<Ability> abilities;
-    private final Ability ultimateAbility;
+    private final List<Abilities> abilities;
+    private final Abilities ultimateAbility;
     private final int ultimateCaptures;
 
     /**
@@ -27,7 +27,7 @@ public abstract class AbstractHero implements Hero {
      *                         and disables capture charging. May also cap a passive's charge
      *                         when ultimateAbility is null.
      */
-    protected AbstractHero(HeroType type, List<Ability> abilities, Ability ultimateAbility,
+    protected AbstractHero(HeroType type, List<? extends Abilities> abilities, Abilities ultimateAbility,
                            int ultimateCaptures) {
         this.type = Objects.requireNonNull(type, "type");
         this.abilities = List.copyOf(abilities);
@@ -44,7 +44,7 @@ public abstract class AbstractHero implements Hero {
     }
 
     @Override
-    public final List<Ability> abilities() {
+    public final List<Abilities> abilities() {
         return abilities;
     }
 
@@ -54,12 +54,12 @@ public abstract class AbstractHero implements Hero {
     }
 
     /** Returns the charge-based ability, or null when there is no active ultimate. */
-    protected final Ability ultimateAbility() {
+    protected final Abilities ultimateAbility() {
         return ultimateAbility;
     }
 
     @Override
-    public final MoveResult availability(PieceState actor, Ability ability) {
+    public final MoveResult availability(PieceState actor, Abilities ability) {
         if (ability == null) return AbilityRejection.INVALID_ABILITY;
         if (actor != null && actor.isPotted()) return StatusRejection.POTTED;
         if (actor == null || actor.status() != PieceState.Status.BOARD) return MovementRejection.EMPTY_SOURCE;
@@ -73,13 +73,13 @@ public abstract class AbstractHero implements Hero {
     }
 
     /** Runs after identity and cooldown checks, before the ultimate charge check. */
-    protected MoveResult availabilitySpecific(PieceState actor, Ability ability) {
+    protected MoveResult availabilitySpecific(PieceState actor, Abilities ability) {
         return Success.SUCCESS;
     }
 
     @Override
     public final HeroEffect preview(HeroActionContext context, PieceState actor, PieceState target,
-                                    Position square, Ability ability) {
+                                    Position square, Abilities ability) {
         Objects.requireNonNull(context, "context");
         MoveResult ready = availability(actor, ability);
         if (!ready.isSuccess()) return HeroEffect.rejected(ready);
@@ -91,7 +91,7 @@ public abstract class AbstractHero implements Hero {
      * includes cooldown and charge costs in the proposed updates only when targeting succeeds.
      */
     protected abstract HeroEffect previewAvailable(HeroActionContext context, PieceState actor,
-                                                   PieceState target, Position square, Ability ability);
+                                                   PieceState target, Position square, Abilities ability);
 
     /**
      * Default capture charging preserves cooldown, stored pieces and all other actor state.

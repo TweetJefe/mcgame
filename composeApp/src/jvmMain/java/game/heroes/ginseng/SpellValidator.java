@@ -12,7 +12,7 @@ public final class SpellValidator {
         if (s.spells() == null || !s.spells().equals(SpellState.fromHistory(s.events())))
             throw new IllegalArgumentException("Spell memory differs from action history");
         for (GameEvent event : s.events()) {
-            Ability ability = SpellState.activeAbility(event.kind());
+            Abilities ability = SpellState.activeAbility(event.kind());
             if (ability == null) continue;
             PieceState actor = s.pieces().get(event.actorId());
             if (event.borrowed()) {
@@ -20,7 +20,7 @@ public final class SpellValidator {
                     throw new IllegalArgumentException("Borrowed cast by non-Ginseng");
             } else if (!HeroAbilities.abilities(actor.hero()).contains(ability))
                 throw new IllegalArgumentException("Hero cannot cast this native ability");
-            if (ability == Ability.COPY_SPELL) {
+            if (ability == GinsengAbility.COPY_SPELL) {
                 PieceState source = s.pieces().get(event.targetId());
                 if (source == null || source.hero() == HeroType.NONE || source.hero() == HeroType.BABA_YAGA_PAWN)
                     throw new IllegalArgumentException("Invalid copy source");

@@ -1,8 +1,10 @@
 package game.persistence;
 
+import game.heroes.lumeshard.LumeshardAbility;
+import game.heroes.bountycrow.BountyCrowAbility;
+
 import game.moves.Success;
 import game.core.Game;
-import game.heroes.Ability;
 import game.scenarios.BountyCrowScenario;
 import game.scenarios.LumeshardScenario;
 import java.nio.charset.StandardCharsets;
@@ -15,7 +17,7 @@ public class BountyCrowSaveTest {
     private Game load(String xml) throws Exception { return Game.fromSnapshot(GameSaveFile.decode(xml.getBytes(StandardCharsets.UTF_8)), () -> 0L); }
     private Game marked() {
         Game game = BountyCrowScenario.PASSIVE.createGame(() -> 0L);
-        assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("d4"), pos("e5"), Ability.BOUNTY)); return game;
+        assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("d4"), pos("e5"), BountyCrowAbility.BOUNTY)); return game;
     }
     private void invalid(String xml) {
         try { GameSaveFile.decode(xml.getBytes(StandardCharsets.UTF_8)); fail("Expected invalid save"); }
@@ -37,7 +39,7 @@ public class BountyCrowSaveTest {
     }
     @Test public void theftAfterLoadingTransfersInsteadOfMintingGold() throws Exception {
         Game game = load(xml(BountyCrowScenario.STEAL.createGame(() -> 0L)));
-        assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("f6"), null, Ability.STEAL));
+        assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("f6"), null, BountyCrowAbility.STEAL));
         assertEquals(10, game.getEconomy().whiteHalves()); assertEquals(2, game.getEconomy().blackHalves());
         assertEquals(xml(game), xml(load(xml(game))));
     }
@@ -66,6 +68,6 @@ public class BountyCrowSaveTest {
                 .replaceAll("(?s)\\s*<economy .*?</economy>", "");
         Game copy = load(old); assertFalse(copy.getEconomy().enabled());
         assertTrue(xml(copy).contains("formatVersion=\"2\""));
-        assertEquals(Success.SUCCESS, copy.useAbility(copy.getCurrentPlayer(), pos("f4"), pos("a3"), Ability.TELEPORT));
+        assertEquals(Success.SUCCESS, copy.useAbility(copy.getCurrentPlayer(), pos("f4"), pos("a3"), LumeshardAbility.TELEPORT));
     }
 }

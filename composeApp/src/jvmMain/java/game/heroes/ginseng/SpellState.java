@@ -1,6 +1,6 @@
 package game.heroes.ginseng;
 
-import game.heroes.Ability;
+import game.heroes.Abilities;
 import game.history.GameEvent;
 
 import java.util.*;
@@ -8,7 +8,7 @@ import java.util.*;
 /**
  * Last successful active casts and one consumable copy per Ginseng, replayable from the action journal.
  */
-public record SpellState(Map<Long, Ability> lastUsed, Map<Long, BorrowedAbility> borrowed) {
+public record SpellState(Map<Long, Abilities> lastUsed, Map<Long, BorrowedAbility> borrowed) {
     public SpellState {
         lastUsed = Map.copyOf(lastUsed);
         borrowed = Map.copyOf(borrowed);
@@ -18,7 +18,7 @@ public record SpellState(Map<Long, Ability> lastUsed, Map<Long, BorrowedAbility>
         return new SpellState(Map.of(), Map.of());
     }
 
-    public SpellState cast(long actor, Ability ability, boolean useBorrowed, long turn, Long source, Ability copied) {
+    public SpellState cast(long actor, Abilities ability, boolean useBorrowed, long turn, Long source, Abilities copied) {
         var last = new HashMap<>(lastUsed);
         var copies = new HashMap<>(borrowed);
         if (useBorrowed) {
@@ -26,7 +26,7 @@ public record SpellState(Map<Long, Ability> lastUsed, Map<Long, BorrowedAbility>
             if (stored == null || stored.ability() != ability || !stored.isReady(turn))
                 throw new IllegalArgumentException("Borrowed cast without a ready copy");
         }
-        if (ability == Ability.COPY_SPELL) {
+        if (ability == GinsengAbility.COPY_SPELL) {
             if (source == null || last.get(source) != copied)
                 throw new IllegalArgumentException("Copy differs from target's latest active cast");
             if(copied==null)copies.remove(actor);else copies.put(actor, new BorrowedAbility(copied, source, turn));
@@ -38,7 +38,7 @@ public record SpellState(Map<Long, Ability> lastUsed, Map<Long, BorrowedAbility>
     public static SpellState fromHistory(List<GameEvent> events) {
         SpellState state = empty();
         for (GameEvent event : events) {
-            Ability ability = activeAbility(event.kind());
+            Abilities ability = activeAbility(event.kind());
             if (ability != null) {
                 if (event.actorId() == null) throw new IllegalArgumentException("Active cast without actor");
                 state = state.cast(event.actorId(), ability, event.borrowed(), event.turn(), event.targetId(), event.copiedAbility());
@@ -48,12 +48,8 @@ public record SpellState(Map<Long, Ability> lastUsed, Map<Long, BorrowedAbility>
         return state;
     }
 
-    public static Ability activeAbility(GameEvent.Kind kind) {
+    public static Abilities activeAbility(GameEvent.Kind kind) {
         if (kind == null) return null;
-        try {
-            return Ability.valueOf(kind.name());
-        } catch (IllegalArgumentException ex) {
-            return null;
-        }
+        return game.heroes.HeroRegistry.standard().findAbility(kind.name());
     }
 }

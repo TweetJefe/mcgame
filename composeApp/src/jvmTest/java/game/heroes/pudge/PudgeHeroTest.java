@@ -1,9 +1,11 @@
 package game.heroes.pudge;
 
+import game.heroes.lumeshard.LumeshardAbility;
+
 import game.moves.AbilityRejection;
 import game.moves.StatusRejection;
 import game.moves.Success;
-import game.heroes.Ability;
+import game.heroes.Abilities;
 import game.heroes.HeroActionContext;
 import game.heroes.HeroEffect;
 import game.heroes.HeroType;
@@ -31,7 +33,7 @@ public class PudgeHeroTest {
         assertThrows(NullPointerException.class, () -> new PudgeHero(null));
         var hero = new PudgeHero(RULES);
         assertEquals(HeroType.PUDGE_ROOK, hero.type());
-        assertEquals(List.of(Ability.HOOK, Ability.SWALLOW), hero.abilities());
+        assertEquals(List.of(PudgeAbility.HOOK, PudgeAbility.SWALLOW), hero.abilities());
     }
 
     @Test public void hookPullsEitherColorFromAllEightDirections() {
@@ -43,7 +45,7 @@ public class PudgeHeroTest {
                         Position square = new Position(3 + dr * distance, 3 + dc * distance);
                         if (square.equals(new Position(0, 0))) continue; // White king.
                         Fixture f = fixture(square, color, null).withState(0, 2, null);
-                        HeroEffect effect = preview(RULES, f, f.target(), Ability.HOOK);
+                        HeroEffect effect = preview(RULES, f, f.target(), PudgeAbility.HOOK);
                         assertEquals(Success.SUCCESS, effect.result());
                         assertEquals(new Position(3 + dr, 3 + dc), effect.updates().get(2L).position());
                         assertEquals(f.actor().withAbilityState(4, 2, null), effect.updates().get(1L));
@@ -56,19 +58,19 @@ public class PudgeHeroTest {
 
     @Test public void hookRejectsBlockedPathsBadDirectionsAndTargetsOutsideItsRange() {
         assertEquals(AbilityRejection.ABILITY_BLOCKED,
-                preview(RULES, fixture(new Position(3, 6), FigureColor.BLACK, new Position(3, 4)), Ability.HOOK).result());
+                preview(RULES, fixture(new Position(3, 6), FigureColor.BLACK, new Position(3, 4)), PudgeAbility.HOOK).result());
         assertEquals(AbilityRejection.ABILITY_OUT_OF_RANGE,
-                preview(RULES, fixture(new Position(3, 7), FigureColor.BLACK, null), Ability.HOOK).result());
+                preview(RULES, fixture(new Position(3, 7), FigureColor.BLACK, null), PudgeAbility.HOOK).result());
         assertEquals(AbilityRejection.ABILITY_OUT_OF_RANGE,
-                preview(RULES, fixture(new Position(5, 4), FigureColor.BLACK, null), Ability.HOOK).result());
+                preview(RULES, fixture(new Position(5, 4), FigureColor.BLACK, null), PudgeAbility.HOOK).result());
         assertEquals(AbilityRejection.ABILITY_OUT_OF_RANGE,
                 preview(new PudgeRules(4, 3, false, true),
-                        fixture(new Position(5, 5), FigureColor.BLACK, null), Ability.HOOK).result());
+                        fixture(new Position(5, 5), FigureColor.BLACK, null), PudgeAbility.HOOK).result());
     }
 
     @Test public void swallowSpendsConfiguredChargeAndPreservesCooldownAndOtherState() {
         Fixture f = fixture(new Position(4, 4), FigureColor.WHITE, null).withState(7, 5, null);
-        HeroEffect effect = preview(RULES, f, f.target(), Ability.SWALLOW);
+        HeroEffect effect = preview(RULES, f, f.target(), PudgeAbility.SWALLOW);
         assertEquals(Success.SUCCESS, effect.result());
         assertEquals(f.actor().withAbilityState(7, 2, f.target().id()), effect.updates().get(1L));
         assertEquals(f.target().hidden(PieceState.Status.SWALLOWED), effect.updates().get(2L));
@@ -76,24 +78,24 @@ public class PudgeHeroTest {
         assertEquals(f.target(), f.context().pieceAt(f.target().position()));
         assertTrue(effect.captures().isEmpty());
         assertThrows(UnsupportedOperationException.class, () -> effect.updates().clear());
-        assertEquals(effect, preview(RULES, f, f.target(), Ability.SWALLOW));
+        assertEquals(effect, preview(RULES, f, f.target(), PudgeAbility.SWALLOW));
     }
 
     @Test public void swallowRequiresAnAdjacentAllyAndRespectsDiagonalConfiguration() {
         Fixture enemy = fixture(new Position(3, 4), FigureColor.BLACK, null).withState(0, 3, null);
-        assertEquals(AbilityRejection.INVALID_ABILITY_TARGET, preview(RULES, enemy, Ability.SWALLOW).result());
+        assertEquals(AbilityRejection.INVALID_ABILITY_TARGET, preview(RULES, enemy, PudgeAbility.SWALLOW).result());
         Fixture far = fixture(new Position(3, 5), FigureColor.WHITE, null).withState(0, 3, null);
-        assertEquals(AbilityRejection.ABILITY_OUT_OF_RANGE, preview(RULES, far, Ability.SWALLOW).result());
+        assertEquals(AbilityRejection.ABILITY_OUT_OF_RANGE, preview(RULES, far, PudgeAbility.SWALLOW).result());
         Fixture diagonal = fixture(new Position(4, 4), FigureColor.WHITE, null).withState(0, 3, null);
         PudgeRules orthogonal = new PudgeRules(4, 3, true, false);
-        assertEquals(AbilityRejection.ABILITY_OUT_OF_RANGE, preview(orthogonal, diagonal, Ability.SWALLOW).result());
+        assertEquals(AbilityRejection.ABILITY_OUT_OF_RANGE, preview(orthogonal, diagonal, PudgeAbility.SWALLOW).result());
         Fixture adjacent = fixture(new Position(3, 4), FigureColor.WHITE, null).withState(0, 3, null);
-        assertEquals(Success.SUCCESS, preview(orthogonal, adjacent, Ability.SWALLOW).result());
+        assertEquals(Success.SUCCESS, preview(orthogonal, adjacent, PudgeAbility.SWALLOW).result());
     }
 
     @Test public void bothAbilitiesRejectMissingHiddenSelfAndKingTargets() {
         Fixture f = fixture(new Position(3, 4), FigureColor.WHITE, null).withState(0, 3, null);
-        for (Ability ability : List.of(Ability.HOOK, Ability.SWALLOW)) {
+        for (Abilities ability : List.of(PudgeAbility.HOOK, PudgeAbility.SWALLOW)) {
             assertEquals(AbilityRejection.INVALID_ABILITY_TARGET, preview(RULES, f, null, ability).result());
             assertEquals(AbilityRejection.INVALID_ABILITY_TARGET, preview(RULES, f, f.actor(), ability).result());
             assertEquals(AbilityRejection.INVALID_ABILITY_TARGET,
@@ -112,7 +114,7 @@ public class PudgeHeroTest {
                     f.actor().withAbilityState(1, 0, null), f.actor().withAbilityState(1, 5, null),
                     f.actor().withAbilityState(0, 0, 2L), f.actor().withAbilityState(0, 5, 2L)};
             for (PieceState actor : actors) {
-                for (Ability ability : new Ability[]{null, Ability.HOOK, Ability.SWALLOW, Ability.LASER})
+                for (Abilities ability : new Abilities[]{null, PudgeAbility.HOOK, PudgeAbility.SWALLOW, LumeshardAbility.LASER})
                     assertEquals(PudgeAbilities.availability(actor, ability, rules), hero.availability(actor, ability));
                 if (actor != null)
                     assertEquals(PudgeAbilities.afterCapture(actor, rules), hero.afterCapture(actor));
@@ -122,21 +124,21 @@ public class PudgeHeroTest {
 
     @Test public void rejectedAvailabilityNeverProducesUpdatesAndSandboxUltimatesAreFree() {
         Fixture f = fixture(new Position(3, 4), FigureColor.WHITE, null);
-        assertEquals(HeroEffect.rejected(AbilityRejection.ULTIMATE_NOT_READY), preview(RULES, f, Ability.SWALLOW));
+        assertEquals(HeroEffect.rejected(AbilityRejection.ULTIMATE_NOT_READY), preview(RULES, f, PudgeAbility.SWALLOW));
         assertEquals(HeroEffect.rejected(AbilityRejection.ABILITY_COOLDOWN),
-                preview(RULES, f.withState(1, 3, null), Ability.HOOK));
+                preview(RULES, f.withState(1, 3, null), PudgeAbility.HOOK));
         assertEquals(HeroEffect.rejected(AbilityRejection.ALREADY_SWALLOWED),
-                preview(RULES, f.withState(0, 0, 2L), Ability.SWALLOW));
-        HeroEffect free = preview(PudgeRules.sandbox(), f, Ability.SWALLOW);
+                preview(RULES, f.withState(0, 0, 2L), PudgeAbility.SWALLOW));
+        HeroEffect free = preview(PudgeRules.sandbox(), f, PudgeAbility.SWALLOW);
         assertEquals(Success.SUCCESS, free.result());
         assertEquals(0, free.updates().get(1L).ultimateCharge());
     }
 
-    private static HeroEffect preview(PudgeRules rules, Fixture f, Ability ability) {
+    private static HeroEffect preview(PudgeRules rules, Fixture f, Abilities ability) {
         return preview(rules, f, f.target(), ability);
     }
 
-    private static HeroEffect preview(PudgeRules rules, Fixture f, PieceState target, Ability ability) {
+    private static HeroEffect preview(PudgeRules rules, Fixture f, PieceState target, Abilities ability) {
         HeroEffect effect = new PudgeHero(rules).preview(f.context(), f.actor(), target,
                 target == null ? null : target.position(), ability);
         assertEquals(PudgeAbilities.preview(f.context().field(), f.actor(), target, ability, rules), effect);

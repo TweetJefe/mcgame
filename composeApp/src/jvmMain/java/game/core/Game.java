@@ -1,5 +1,8 @@
 package game.core;
 
+import game.heroes.ares.AresAbility;
+import game.heroes.chronomlin.ChronomlinAbility;
+
 import game.moves.AbilityRejection;
 import game.moves.DrawRejection;
 import game.moves.ItemRejection;
@@ -9,8 +12,7 @@ import game.moves.TurnRejection;
 import game.heroes.clownganger.*;
 import game.heroes.zeus.*;
 import game.heroes.moleminer.*;
-
-import game.heroes.Ability;
+import game.heroes.Abilities;
 import game.heroes.AbilityRequest;
 import game.heroes.ginseng.*;
 import game.heroes.faun.*;
@@ -324,14 +326,14 @@ public final class Game {
         return Success.SUCCESS;
     }
 
-    public synchronized MoveResult useAbility(Player player, Position actorSquare, Position target, Ability ability) {
+    public synchronized MoveResult useAbility(Player player, Position actorSquare, Position target, Abilities ability) {
         return useAbility(player, new AbilityRequest(actorSquare, ability, target));
     }
 
     public synchronized MoveResult useAbility(Player player, AbilityRequest request) {
         if (request == null) return AbilityRejection.INVALID_ABILITY;
         Position actorSquare = request.actor(), target = request.target();
-        Ability ability = request.ability();
+        Abilities ability = request.ability();
         MoveResult guard = commandGuard(player);
         if (!guard.isSuccess()) return guard;
         if (mode != GameMode.MOBA) return TurnRejection.UNSUPPORTED_ACTION;
@@ -352,9 +354,9 @@ public final class Game {
         var behavior = request.borrowed() ? heroRegistry.ownerOf(ability) : heroRegistry.get(actor.hero());
         String message = behavior.abilityMessage(before.heroContext(), preview.next().heroContext(), actor, victim, request);
         if (request.borrowed()) message = "Ginseng, копия: " + message;
-        Position eventTo = ability == Ability.ILLUSION?clown.illusions().values().stream().filter(i->i.sourceId()==actor.id() && i.bornTurn()==turnNumber).findFirst().orElseThrow().bornAt():request.destination() != null ? request.destination() : target == null ? actorSquare : target;
-        events.add(new GameEvent(events.size() + 1L, turnNumber, GameEvent.Kind.valueOf(ability.name()), player.color(), actor.id(),ability==Ability.ILLUSION?clown.illusions().values().stream().filter(i->i.sourceId()==actor.id() && i.bornTurn()==turnNumber).findFirst().map(i->Long.valueOf(i.id())).orElseThrow():victim == null || ability == Ability.CLOUD || ability == Ability.SPEAR || ability==Ability.PLANT_MINE || ability==Ability.DETONATE || ability==Ability.THUNDERSTORM || ability==Ability.EVOLVE? null : victim.id(), actorSquare, eventTo, message,
-                ability == Ability.COPY_SPELL ? before.spells().lastUsed().get(victim.id()) : null, request.borrowed()));
+        Position eventTo = ability == ClowngangerAbility.ILLUSION?clown.illusions().values().stream().filter(i->i.sourceId()==actor.id() && i.bornTurn()==turnNumber).findFirst().orElseThrow().bornAt():request.destination() != null ? request.destination() : target == null ? actorSquare : target;
+        events.add(new GameEvent(events.size() + 1L, turnNumber, GameEvent.Kind.valueOf(ability.id()), player.color(), actor.id(),ability==ClowngangerAbility.ILLUSION?clown.illusions().values().stream().filter(i->i.sourceId()==actor.id() && i.bornTurn()==turnNumber).findFirst().map(i->Long.valueOf(i.id())).orElseThrow():victim == null || ability == FaunAbility.CLOUD || ability == AresAbility.SPEAR || ability==MoleminerAbility.PLANT_MINE || ability==MoleminerAbility.DETONATE || ability==ZeusAbility.THUNDERSTORM || ability==ChronomlinAbility.EVOLVE? null : victim.id(), actorSquare, eventTo, message,
+                ability == GinsengAbility.COPY_SPELL ? before.spells().lastUsed().get(victim.id()) : null, request.borrowed()));
         addActionEffects(before, preview);
         version++;
         return Success.SUCCESS;
@@ -411,11 +413,11 @@ public final class Game {
         return piece.inventory().get(slot).isEmpty() ? ItemRejection.EMPTY_ITEM_SLOT : ItemRejection.ITEM_NOT_AVAILABLE;
     }
 
-    public synchronized List<Position> getAbilityTargets(Position actorSquare, Ability ability) {
+    public synchronized List<Position> getAbilityTargets(Position actorSquare, Abilities ability) {
         return getAbilityTargets(actorSquare, ability, false);
     }
 
-    public synchronized List<Position> getAbilityTargets(Position actorSquare, Ability ability, boolean borrowed) {
+    public synchronized List<Position> getAbilityTargets(Position actorSquare, Abilities ability, boolean borrowed) {
         updateTime();
         if (mode != GameMode.MOBA || outcome.isFinished() || abilityUsed) return List.of();
         var before = context();
@@ -433,7 +435,7 @@ public final class Game {
         if (mode != GameMode.MOBA || outcome.isFinished() || abilityUsed) return List.of();
         var before = context();
         var result = new ArrayList<Position>();
-        for (var request : ActionEngine.requests(before, currentPlayer.color(), actor, Ability.DISPLACE, borrowed, heroRules))
+        for (var request : ActionEngine.requests(before, currentPlayer.color(), actor, GinsengAbility.DISPLACE, borrowed, heroRules))
             if (java.util.Objects.equals(request.target(), target)) {
                 if (canCompleteAbility(ActionEngine.ability(before, currentPlayer.color(), request, heroRules)))
                     result.add(request.destination());
@@ -445,11 +447,11 @@ public final class Game {
         return preview.result().isSuccess() && (moveUsed ? ActionEngine.canEnd(preview.next(), currentPlayer.color()) : ActionEngine.hasMove(preview.next(), currentPlayer.color(), mode, heroRules));
     }
 
-    public synchronized MoveResult getAbilityAvailability(Position actorSquare, Ability ability) {
+    public synchronized MoveResult getAbilityAvailability(Position actorSquare, Abilities ability) {
         return getAbilityAvailability(actorSquare, ability, false);
     }
 
-    public synchronized MoveResult getAbilityAvailability(Position actorSquare, Ability ability, boolean borrowed) {
+    public synchronized MoveResult getAbilityAvailability(Position actorSquare, Abilities ability, boolean borrowed) {
         updateTime();
         if (outcome.isFinished()) return TurnRejection.GAME_OVER;
         if (mode != GameMode.MOBA) return TurnRejection.UNSUPPORTED_ACTION;

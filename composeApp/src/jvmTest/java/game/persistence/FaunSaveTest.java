@@ -1,4 +1,5 @@
 package game.persistence;
+
 import game.moves.Success;
 import game.core.Game;
 import game.heroes.*;
@@ -14,13 +15,13 @@ public class FaunSaveTest {
     private Game load(String xml)throws Exception{return Game.fromSnapshot(GameSaveFile.decode(xml.getBytes(StandardCharsets.UTF_8)),()->0L);}
     private void invalid(String xml){assertThrows(java.io.IOException.class,()->load(xml));}
     @Test public void invisibleMovingPieceAndItsRemainingLifetimeSurviveLoading()throws Exception {
-        Game g=FaunTest.charged();assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("c2"),null,Ability.INVISIBILITY));
+        Game g=FaunTest.charged();assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("c2"),null,FaunAbility.INVISIBILITY));
         assertEquals(Success.SUCCESS,g.moveFigure(g.getCurrentPlayer(),pos("c2"),pos("d4")));assertEquals(Success.SUCCESS,g.endTurn(g.getCurrentPlayer()));
         String s=xml(g);assertTrue(s.contains("formatVersion=\"8\""));Game other=load(s);assertEquals(s,xml(other));assertEquals(g.getFaun(),other.getFaun());
         assertTrue(other.getFaun().hidden(other.getPieceState(pos("d4")),BLACK));
     }
     @Test public void cloudRulesJournalAndOldVersionDowngradesAreValidated()throws Exception {
-        Game g=FaunTest.basic();assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("c2"),pos("f4"),Ability.CLOUD));String s=xml(g);assertEquals(s,xml(load(s)));
+        Game g=FaunTest.basic();assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("c2"),pos("f4"),FaunAbility.CLOUD));String s=xml(g);assertEquals(s,xml(load(s)));
         invalid(s.replace("formatVersion=\"8\"","formatVersion=\"7\""));invalid(s.replaceAll("(?s)<faunRules [^>]*/>",""));
         invalid(s.replace("cloudTurns=\"2\"","cloudTurns=\"0\""));invalid(s.replace("cloudCooldown=\"3\"","cloudCooldown=\"1\""));
         invalid(s.replace("kind=\"CLOUD\"","kind=\"INVISIBILITY\""));invalid(s.replace("to=\"f4\"","to=\"h8\""));

@@ -2,14 +2,14 @@ package game.history;
 
 
 import model.FigureColor;
-import game.heroes.Ability;
+import game.heroes.Abilities;
 import model.Position;
 
 /**
  * Presentation-independent action history, including reactions and explicit turn boundaries.
  */
 public record GameEvent(long sequence, long turn, Kind kind, FigureColor color, Long actorId, Long targetId,
-                        Position from, Position to, String message, Ability copiedAbility, boolean borrowed) {
+                        Position from, Position to, String message, Abilities copiedAbility, boolean borrowed) {
     public GameEvent(long sequence, long turn, Kind kind, FigureColor color, Long actorId, Long targetId, Position from, Position to, String message) {
         this(sequence, turn, kind, color, actorId, targetId, from, to, message, null, false);
     }

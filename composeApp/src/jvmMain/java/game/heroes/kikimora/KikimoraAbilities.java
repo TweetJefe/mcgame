@@ -12,14 +12,16 @@ import java.util.*;
 
 public final class KikimoraAbilities{
     private KikimoraAbilities(){}
-    public static List<Ability> abilities(){return List.of(Ability.YARN,Ability.CLAY_POT);}
-    public static MoveResult availability(PieceState actor,Ability ability,KikimoraRules rules,boolean borrowed){
+    public static List<Abilities> abilities() {
+        return KikimoraAbility.getAbilities();
+    }
+    public static MoveResult availability(PieceState actor,Abilities ability,KikimoraRules rules,boolean borrowed){
         if(ability==null)return AbilityRejection.INVALID_ABILITY;
         if(actor==null || actor.position()==null)return MovementRejection.EMPTY_SOURCE;
         if(actor.hero()!=(borrowed?HeroType.GINSENG_BISHOP:HeroType.KIKIMORA_BISHOP) || !abilities().contains(ability))return AbilityRejection.NO_ABILITY;
         if(actor.isPotted())return StatusRejection.POTTED;
-        if(!borrowed && ability==Ability.YARN && actor.cooldown()>0)return AbilityRejection.ABILITY_COOLDOWN;
-        if(!borrowed && ability==Ability.CLAY_POT && actor.ultimateCharge()<rules.ultimateCaptures())return AbilityRejection.ULTIMATE_NOT_READY;
+        if(!borrowed && ability==KikimoraAbility.YARN && actor.cooldown()>0)return AbilityRejection.ABILITY_COOLDOWN;
+        if(!borrowed && ability==KikimoraAbility.CLAY_POT && actor.ultimateCharge()<rules.ultimateCaptures())return AbilityRejection.ULTIMATE_NOT_READY;
         return Success.SUCCESS;
     }
     /** Exact lattice ray, including slopes such as (1,2), follows the flight from caster to target. */
@@ -36,16 +38,16 @@ public final class KikimoraAbilities{
         return List.copyOf(result);
     }
     public static long stunDeadline(long turn,FigureColor caster,FigureColor owner,int turns){return Math.addExact(turn,2L*turns-(caster==owner?0:1));}
-    public static HeroEffect preview(Map<Long,PieceState> pieces,PieceState actor,PieceState target,Ability ability,long turn,KikimoraRules rules,boolean borrowed){
+    public static HeroEffect preview(Map<Long,PieceState> pieces,PieceState actor,PieceState target,Abilities ability,long turn,KikimoraRules rules,boolean borrowed){
         var ready=availability(actor,ability,rules,borrowed);if(!ready.isSuccess())return HeroEffect.rejected(ready);
         if(target==null || target.position()==null || target.id()==actor.id())return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
         if(target.type()==King.class)return HeroEffect.rejected(StatusRejection.KING_IMMUNE);
         if(target.isPotted())return HeroEffect.rejected(StatusRejection.POTTED);
         if(target.isBoxed())return HeroEffect.rejected(StatusRejection.BOXED);
         int distance=Math.max(Math.abs(target.position().getRow()-actor.position().getRow()),Math.abs(target.position().getColumn()-actor.position().getColumn()));
-        if(distance>(ability==Ability.YARN?2:1))return HeroEffect.rejected(AbilityRejection.ABILITY_OUT_OF_RANGE);
+        if(distance>(ability==KikimoraAbility.YARN?2:1))return HeroEffect.rejected(AbilityRejection.ABILITY_OUT_OF_RANGE);
         var updates=new HashMap<Long,PieceState>();
-        if(ability==Ability.CLAY_POT){
+        if(ability==KikimoraAbility.CLAY_POT){
             updates.put(actor.id(),actor.withAbilityState(actor.cooldown(),borrowed?actor.ultimateCharge():actor.ultimateCharge()-rules.ultimateCaptures(),actor.storedPieceId()));
             updates.put(target.id(),target.asPot());
         }else{

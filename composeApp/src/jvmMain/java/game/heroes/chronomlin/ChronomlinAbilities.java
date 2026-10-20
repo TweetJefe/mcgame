@@ -14,26 +14,28 @@ import java.util.Map;
 /** Movement and evolution preserve the caster's identity, inventory and lasting effects. */
 public final class ChronomlinAbilities {
     private ChronomlinAbilities(){}
-    public static List<Ability> abilities(){return List.of(Ability.GRAPPLE,Ability.EVOLVE);}
+    public static List<Abilities> abilities() {
+        return ChronomlinAbility.getAbilities();
+    }
     public static Class<? extends Figure> nextType(Class<? extends Figure> type){
         if(type==Pawn.class)return Bishop.class;
         if(type==Bishop.class)return Knight.class;
         if(type==Knight.class)return Rook.class;
         return null;
     }
-    public static MoveResult availability(PieceState actor,Ability ability,ChronomlinRules rules,boolean borrowed){
+    public static MoveResult availability(PieceState actor,Abilities ability,ChronomlinRules rules,boolean borrowed){
         if(ability==null)return AbilityRejection.INVALID_ABILITY;
         if(actor==null || actor.position()==null)return MovementRejection.EMPTY_SOURCE;
         if(actor.hero()!=(borrowed?HeroType.GINSENG_BISHOP:HeroType.CHRONOMLIN_PAWN) || !abilities().contains(ability))return AbilityRejection.NO_ABILITY;
-        if(ability==Ability.EVOLVE && nextType(actor.type())==null)return AbilityRejection.MAX_EVOLUTION;
-        if(!borrowed && ability==Ability.GRAPPLE && actor.cooldown()>0)return AbilityRejection.ABILITY_COOLDOWN;
-        if(!borrowed && ability==Ability.EVOLVE && actor.ultimateCharge()<rules.ultimateCaptures())return AbilityRejection.ULTIMATE_NOT_READY;
+        if(ability==ChronomlinAbility.EVOLVE && nextType(actor.type())==null)return AbilityRejection.MAX_EVOLUTION;
+        if(!borrowed && ability==ChronomlinAbility.GRAPPLE && actor.cooldown()>0)return AbilityRejection.ABILITY_COOLDOWN;
+        if(!borrowed && ability==ChronomlinAbility.EVOLVE && actor.ultimateCharge()<rules.ultimateCaptures())return AbilityRejection.ULTIMATE_NOT_READY;
         return Success.SUCCESS;
     }
-    public static HeroEffect preview(Field field,PieceState actor,PieceState target,Ability ability,ChronomlinRules rules,boolean borrowed){
+    public static HeroEffect preview(Field field,PieceState actor,PieceState target,Abilities ability,ChronomlinRules rules,boolean borrowed){
         var ready=availability(actor,ability,rules,borrowed);
         if(!ready.isSuccess())return HeroEffect.rejected(ready);
-        if(ability==Ability.EVOLVE){
+        if(ability==ChronomlinAbility.EVOLVE){
             var evolved=actor.withAbilityState(actor.cooldown(),borrowed?actor.ultimateCharge():actor.ultimateCharge()-rules.ultimateCaptures(),actor.storedPieceId()).placed(actor.position(),nextType(actor.type()));
             return HeroEffect.success(Map.of(actor.id(),evolved));
         }

@@ -71,7 +71,7 @@ public final class SnapshotValidator {
             else if (piece.hero() == HeroType.NONE || piece.hero()==HeroType.ILLUSION)
                 require(piece.cooldown() == 0 && piece.ultimateCharge() == 0 && piece.storedPieceId() == null, "Nonhero has hero state");
             else if (piece.hero() == HeroType.PUDGE_ROOK)
-                require(piece.cooldown() <= s.pudgeRules().hookCooldown() && piece.ultimateCharge() <= s.pudgeRules().ultimateCaptures(), "Ability state exceeds configured limits");
+                require(piece.cooldown() <= s.pudgeRules().hookCooldown() && piece.ultimateCharge() <= s.pudgeRules().ultimateCaptures(), "Abilities state exceeds configured limits");
             else if (piece.hero() == HeroType.LUMESHARD_BISHOP)
                 require(piece.cooldown() <= s.lumeshardRules().laserCooldown() && piece.ultimateCharge() <= s.lumeshardRules().ultimateCaptures(), "Lumeshard state exceeds configured limits");
             else if (piece.hero() == HeroType.BOUNTY_CROW_PAWN)

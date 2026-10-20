@@ -1,9 +1,10 @@
 package game.persistence;
 
+import game.heroes.pudge.PudgeAbility;
+
 import game.moves.Success;
 import game.moves.TurnRejection;
 import game.core.Game;
-import game.heroes.Ability;
 import game.state.PieceState;
 
 import model.FigureColor;
@@ -35,7 +36,7 @@ public class LegacySaveCompatibilityTest {
     @Test public void oldChargedPudgeCanStillSwallowItsDiagonalAlly() throws Exception {
         Game game = load("pudge-charged"); long ally = game.getPieceState(pos("g4")).id();
         assertEquals(2, game.getPieceState(pos("f3")).ultimateCharge());
-        assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("f3"), pos("g4"), Ability.SWALLOW));
+        assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("f3"), pos("g4"), PudgeAbility.SWALLOW));
         assertEquals(PieceState.Status.SWALLOWED, game.getPieceState(ally).status());
         assertEquals(0, game.getPieceState(pos("f3")).ultimateCharge());
     }

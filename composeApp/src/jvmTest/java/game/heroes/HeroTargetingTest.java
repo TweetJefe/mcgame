@@ -1,5 +1,7 @@
 package game.heroes;
 
+import game.heroes.pudge.PudgeAbility;
+
 import game.moves.AbilityRejection;
 import game.moves.MovementRejection;
 import game.moves.StatusRejection;
@@ -26,14 +28,14 @@ public class HeroTargetingTest {
                 HeroType.ILLUSION).asPot().withBox(4);
         HeroActionContext context = new HeroActionContext(field, Map.of(1L, actor, 2L, illusion), 1);
         var hero = new PudgeHero(PudgeRules.sandbox());
-        assertEquals(AbilityRejection.INVALID_ABILITY_TARGET, hero.targeting(Ability.SWALLOW)
-                .validate(context, actor, new AbilityRequest(actor.position(), Ability.SWALLOW, square)));
-        assertEquals(StatusRejection.BOXED, hero.targeting(Ability.HOOK)
-                .validate(context, actor, new AbilityRequest(actor.position(), Ability.HOOK, square)));
+        assertEquals(AbilityRejection.INVALID_ABILITY_TARGET, hero.targeting(PudgeAbility.SWALLOW)
+                .validate(context, actor, new AbilityRequest(actor.position(), PudgeAbility.SWALLOW, square)));
+        assertEquals(StatusRejection.BOXED, hero.targeting(PudgeAbility.HOOK)
+                .validate(context, actor, new AbilityRequest(actor.position(), PudgeAbility.HOOK, square)));
         PieceState unboxed = illusion.withBox(0);
         context = new HeroActionContext(field, Map.of(1L, actor, 2L, unboxed), 1);
-        assertEquals(Success.SUCCESS, hero.targeting(Ability.HOOK)
-                .validate(context, actor, new AbilityRequest(actor.position(), Ability.HOOK, square)));
+        assertEquals(Success.SUCCESS, hero.targeting(PudgeAbility.HOOK)
+                .validate(context, actor, new AbilityRequest(actor.position(), PudgeAbility.HOOK, square)));
     }
 
     @Test public void requestShapeValidationKeepsTheExistingErrorPrecedence() {
@@ -42,12 +44,12 @@ public class HeroTargetingTest {
         HeroActionContext context = new HeroActionContext(field, Map.of(1L, actor), 1);
         HeroTargeting targeted = HeroTargeting.square();
         assertEquals(AbilityRejection.INVALID_ABILITY_TARGET, targeted.validate(context, actor,
-                new AbilityRequest(actor.position(), Ability.HOOK, null, new Position(1, 1), false)));
+                new AbilityRequest(actor.position(), PudgeAbility.HOOK, null, new Position(1, 1), false)));
         assertEquals(MovementRejection.OUT_OF_BOUNDS, targeted.validate(context, actor,
-                new AbilityRequest(actor.position(), Ability.HOOK, null)));
+                new AbilityRequest(actor.position(), PudgeAbility.HOOK, null)));
         assertEquals(AbilityRejection.INVALID_ABILITY_TARGET, targeted.validate(context, actor,
-                new AbilityRequest(actor.position(), Ability.HOOK, actor.position())));
+                new AbilityRequest(actor.position(), PudgeAbility.HOOK, actor.position())));
         assertEquals(AbilityRejection.INVALID_ABILITY_TARGET, HeroTargeting.untargeted().validate(context, actor,
-                new AbilityRequest(actor.position(), Ability.HOOK, new Position(1, 1))));
+                new AbilityRequest(actor.position(), PudgeAbility.HOOK, new Position(1, 1))));
     }
 }

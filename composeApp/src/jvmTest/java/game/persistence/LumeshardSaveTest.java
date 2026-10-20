@@ -1,11 +1,11 @@
 package game.persistence;
 
+import game.heroes.lumeshard.LumeshardAbility;
+
 import game.moves.StatusRejection;
 import game.moves.Success;
 import game.core.Game;
-import game.heroes.Ability;
 import game.scenarios.LumeshardScenario;
-import game.state.SquareColor;
 import org.junit.Test;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.TransformerFactory;
@@ -41,7 +41,7 @@ public class LumeshardSaveTest {
     }
     @Test public void blindEnemyAndLaserCooldownRemainEffectiveAfterLoadingThenExpireNormally() throws Exception {
         Game game = LumeshardScenario.LASER.createGame(() -> 0L);
-        assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("d2"), pos("g5"), Ability.LASER));
+        assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("d2"), pos("g5"), LumeshardAbility.LASER));
         assertEquals(Success.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos("d2"), pos("c1")));
         assertEquals(Success.SUCCESS, game.endTurn(game.getCurrentPlayer())); game = copy(game);
         assertTrue(game.getPieceState(pos("g5")).isBlinded());

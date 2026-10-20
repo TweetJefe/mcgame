@@ -16,22 +16,22 @@ public final class GinsengAbilities {
     private GinsengAbilities() {
     }
 
-    public static List<Ability> abilities() {
-        return List.of(Ability.DISPLACE, Ability.COPY_SPELL);
+    public static List<Abilities> abilities() {
+        return GinsengAbility.getAbilities();
     }
 
-    public static MoveResult availability(PieceState actor, Ability ability, GinsengRules rules, boolean borrowed) {
+    public static MoveResult availability(PieceState actor, Abilities ability, GinsengRules rules, boolean borrowed) {
         if (ability == null) return AbilityRejection.INVALID_ABILITY;
         if (actor == null || actor.status() != PieceState.Status.BOARD) return MovementRejection.EMPTY_SOURCE;
         if (actor.hero() != HeroType.GINSENG_BISHOP || !abilities().contains(ability)) return AbilityRejection.NO_ABILITY;
-        if (!borrowed && ability == Ability.DISPLACE && actor.cooldown() > 0) return AbilityRejection.ABILITY_COOLDOWN;
-        if (!borrowed && ability == Ability.COPY_SPELL && actor.ultimateCharge() < rules.ultimateCaptures())
+        if (!borrowed && ability == GinsengAbility.DISPLACE && actor.cooldown() > 0) return AbilityRejection.ABILITY_COOLDOWN;
+        if (!borrowed && ability == GinsengAbility.COPY_SPELL && actor.ultimateCharge() < rules.ultimateCaptures())
             return AbilityRejection.ULTIMATE_NOT_READY;
         return Success.SUCCESS;
     }
 
     public static HeroEffect displace(Field field, PieceState actor, PieceState target, Position destination, GinsengRules rules, boolean borrowed) {
-        MoveResult ready = availability(actor, Ability.DISPLACE, rules, borrowed);
+        MoveResult ready = availability(actor, GinsengAbility.DISPLACE, rules, borrowed);
         if (!ready.isSuccess()) return HeroEffect.rejected(ready);
         if (target == null) return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
         if (target.type() == King.class) return HeroEffect.rejected(StatusRejection.KING_IMMUNE);
@@ -48,8 +48,8 @@ public final class GinsengAbilities {
         return HeroEffect.success(updates);
     }
 
-    public static HeroEffect copy(PieceState actor, PieceState source, Ability last, GinsengRules rules, boolean borrowed) {
-        MoveResult ready = availability(actor, Ability.COPY_SPELL, rules, borrowed);
+    public static HeroEffect copy(PieceState actor, PieceState source, Abilities last, GinsengRules rules, boolean borrowed) {
+        MoveResult ready = availability(actor, GinsengAbility.COPY_SPELL, rules, borrowed);
         if (!ready.isSuccess()) return HeroEffect.rejected(ready);
         if (source == null || source.hero() == HeroType.NONE || source.type() == King.class)
             return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);

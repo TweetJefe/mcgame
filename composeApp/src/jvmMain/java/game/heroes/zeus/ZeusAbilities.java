@@ -1,7 +1,4 @@
 package game.heroes.zeus;
-import game.moves.AbilityRejection;
-import game.moves.MovementRejection;
-import game.moves.Success;
 import game.heroes.*;
 import game.moves.*;
 import game.state.PieceState;
@@ -11,34 +8,36 @@ import model.figures.King;
 import java.util.*;
 public final class ZeusAbilities{
     private ZeusAbilities(){}
-    public static List<Ability> abilities(){return List.of(Ability.CHAIN_LIGHTNING,Ability.THUNDERSTORM);}
-    public static MoveResult availability(PieceState actor,Ability ability,ZeusRules rules){
+    public static List<Abilities> abilities() {
+        return ZeusAbility.getAbilities();
+    }
+    public static MoveResult availability(PieceState actor,Abilities ability,ZeusRules rules){
         if(actor==null || actor.position()==null)return MovementRejection.EMPTY_SOURCE;
         if(actor.hero()!=HeroType.ZEUS_ROOK || !abilities().contains(ability))return AbilityRejection.NO_ABILITY;
-        if(ability==Ability.CHAIN_LIGHTNING && actor.cooldown()>0)return AbilityRejection.ABILITY_COOLDOWN;
-        if(ability==Ability.THUNDERSTORM && actor.ultimateCharge()<rules.ultimateCaptures())return AbilityRejection.ULTIMATE_NOT_READY;
+        if(ability==ZeusAbility.CHAIN_LIGHTNING && actor.cooldown()>0)return AbilityRejection.ABILITY_COOLDOWN;
+        if(ability==ZeusAbility.THUNDERSTORM && actor.ultimateCharge()<rules.ultimateCaptures())return AbilityRejection.ULTIMATE_NOT_READY;
         return Success.SUCCESS;
     }
     public static List<PieceState> charged(Map<Long,PieceState> pieces,LightningState lightning,PieceState actor){return pieces.values().stream().filter(p->eligible(p,actor) && lightning.count(actor.id(),p.id())>0).sorted(Comparator.comparingLong(PieceState::id)).toList();}
     public record Result(HeroEffect effect,LightningState lightning,SummonState summons,List<Long> illusionHits){}
     private static boolean eligible(PieceState p,PieceState actor){return p.position()!=null && p.color()!=actor.color() && p.type()!=King.class && !p.isBoxed() && !p.isPotted();}
-    public static Result cast(Field factory,Map<Long,PieceState> pieces,PieceState actor,PieceState first,Ability ability,LightningState lightning,SummonState summons,long turn,HeroRules rules,boolean borrowed){
+    public static Result cast(Field factory,Map<Long,PieceState> pieces,PieceState actor,PieceState first,Abilities ability,LightningState lightning,SummonState summons,long turn,HeroRules rules,boolean borrowed){
         var states=new HashMap<>(pieces);var updates=new HashMap<Long,PieceState>();var captures=new ArrayList<Capture>();var illusions=new ArrayList<Long>();
-        if(ability==Ability.CHAIN_LIGHTNING){
+        if(ability==ZeusAbility.CHAIN_LIGHTNING){
             if(first==null || !eligible(first,actor))return rejected(AbilityRejection.INVALID_ABILITY_TARGET,lightning,summons);
             if(distance(actor.position(),first.position())>3)return rejected(AbilityRejection.ABILITY_OUT_OF_RANGE,lightning,summons);
-        }else if(ability!=Ability.THUNDERSTORM)return rejected(AbilityRejection.NO_ABILITY,lightning,summons);
-        var nextActor=actor.withAbilityState(borrowed?actor.cooldown():ability==Ability.CHAIN_LIGHTNING?rules.zeus().lightningCooldown():actor.cooldown(),borrowed || ability!=Ability.THUNDERSTORM?actor.ultimateCharge():actor.ultimateCharge()-rules.zeus().ultimateCaptures(),actor.storedPieceId());states.put(actor.id(),nextActor);updates.put(actor.id(),nextActor);
+        }else if(ability!=ZeusAbility.THUNDERSTORM)return rejected(AbilityRejection.NO_ABILITY,lightning,summons);
+        var nextActor=actor.withAbilityState(borrowed?actor.cooldown():ability==ZeusAbility.CHAIN_LIGHTNING?rules.zeus().lightningCooldown():actor.cooldown(),borrowed || ability!=ZeusAbility.THUNDERSTORM?actor.ultimateCharge():actor.ultimateCharge()-rules.zeus().ultimateCaptures(),actor.storedPieceId());states.put(actor.id(),nextActor);updates.put(actor.id(),nextActor);
         PieceState target=first;
-        if(ability==Ability.THUNDERSTORM){
+        if(ability==ZeusAbility.THUNDERSTORM){
             var candidates=charged(states,lightning,actor);if(candidates.isEmpty())return rejected(AbilityRejection.NO_CHARGED_TARGETS,lightning,summons);
             int pick=0;if(candidates.size()>1){var choice=summons.choose(candidates.size());pick=choice.index();summons=new SummonState(true,choice.nextState(),summons.records());}target=candidates.get(pick);
         }
         var seen=new HashSet<Long>();
-        for(int jump=0;jump<(ability==Ability.CHAIN_LIGHTNING?3:1);jump++){
+        for(int jump=0;jump<(ability==ZeusAbility.CHAIN_LIGHTNING?3:1);jump++){
             seen.add(target.id());Position square=target.position();
-            if(ability==Ability.CHAIN_LIGHTNING)lightning=lightning.pulse(new LightningState.Pulse(actor.id(),target.id(),turn,square,LightningState.Kind.HIT),rules.zeus());
-            if(ability==Ability.THUNDERSTORM || lightning.count(actor.id(),target.id())>=3){
+            if(ability==ZeusAbility.CHAIN_LIGHTNING)lightning=lightning.pulse(new LightningState.Pulse(actor.id(),target.id(),turn,square,LightningState.Kind.HIT),rules.zeus());
+            if(ability==ZeusAbility.THUNDERSTORM || lightning.count(actor.id(),target.id())>=3){
                 if(target.hero()==HeroType.ILLUSION){
                     illusions.add(target.id());lightning=lightning.pulse(new LightningState.Pulse(actor.id(),target.id(),turn,square,LightningState.Kind.DISCHARGE),rules.zeus());
                 }else{
@@ -50,7 +49,7 @@ public final class ZeusAbilities{
                     break; // The first real lightning kill ends the chain.
                 }
             }
-            if(ability==Ability.THUNDERSTORM || jump==2)break;
+            if(ability==ZeusAbility.THUNDERSTORM || jump==2)break;
             Position previous=square;var candidates=states.values().stream().filter(p->eligible(p,actor) && !seen.contains(p.id()) && distance(previous,p.position())<=2).toList();
             if(candidates.isEmpty())break;int nearest=candidates.stream().mapToInt(p->distance(previous,p.position())).min().orElseThrow();
             var tied=candidates.stream().filter(p->distance(previous,p.position())==nearest).sorted(Comparator.comparingLong(PieceState::id)).toList();int pick=0;

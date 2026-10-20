@@ -16,24 +16,24 @@ public final class BountyCrowAbilities {
     private BountyCrowAbilities() {
     }
 
-    public static List<Ability> abilities() {
-        return List.of(Ability.BOUNTY, Ability.STEAL);
+    public static List<Abilities> abilities() {
+        return BountyCrowAbility.getAbilities();
     }
 
-    public static MoveResult availability(PieceState actor, Ability ability, BountyCrowRules rules) {
+    public static MoveResult availability(PieceState actor, Abilities ability, BountyCrowRules rules) {
         if (ability == null) return AbilityRejection.INVALID_ABILITY;
         if (actor == null || actor.status() != PieceState.Status.BOARD) return MovementRejection.EMPTY_SOURCE;
         if (actor.hero() != HeroType.BOUNTY_CROW_PAWN || !abilities().contains(ability)) return AbilityRejection.NO_ABILITY;
-        if (ability == Ability.BOUNTY && actor.cooldown() > 0) return AbilityRejection.ABILITY_COOLDOWN;
-        if (ability == Ability.STEAL && actor.ultimateCharge() < rules.ultimateCaptures())
+        if (ability == BountyCrowAbility.BOUNTY && actor.cooldown() > 0) return AbilityRejection.ABILITY_COOLDOWN;
+        if (ability == BountyCrowAbility.STEAL && actor.ultimateCharge() < rules.ultimateCaptures())
             return AbilityRejection.ULTIMATE_NOT_READY;
         return Success.SUCCESS;
     }
 
-    public static HeroEffect preview(PieceState actor, PieceState target, Ability ability, BountyCrowRules rules) {
+    public static HeroEffect preview(PieceState actor, PieceState target, Abilities ability, BountyCrowRules rules) {
         MoveResult ready = availability(actor, ability, rules);
         if (!ready.isSuccess()) return HeroEffect.rejected(ready);
-        if (ability == Ability.STEAL)
+        if (ability == BountyCrowAbility.STEAL)
             return HeroEffect.success(Map.of(actor.id(), actor.withAbilityState(actor.cooldown(), actor.ultimateCharge() - rules.ultimateCaptures(), null)));
         if (target == null || target.status() != PieceState.Status.BOARD || target.color() == actor.color())
             return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);

@@ -20,24 +20,24 @@ public final class BolotnikAbilities {
     private BolotnikAbilities() {
     }
 
-    public static List<Ability> abilities() {
-        return List.of(Ability.MUD, Ability.AMBUSH);
+    public static List<Abilities> abilities() {
+        return BolotnikAbility.getAbilities();
     }
 
-    public static MoveResult availability(PieceState actor, Ability ability, BolotnikRules rules) {
+    public static MoveResult availability(PieceState actor, Abilities ability, BolotnikRules rules) {
         if (ability == null) return AbilityRejection.INVALID_ABILITY;
         if (actor == null || actor.status() != PieceState.Status.BOARD) return MovementRejection.EMPTY_SOURCE;
         if (actor.hero() != HeroType.BOLOTNIK_KNIGHT || !abilities().contains(ability)) return AbilityRejection.NO_ABILITY;
-        if (ability == Ability.MUD && actor.cooldown() > 0) return AbilityRejection.ABILITY_COOLDOWN;
-        if (ability == Ability.AMBUSH && actor.ultimateCharge() < rules.ultimateCaptures())
+        if (ability == BolotnikAbility.MUD && actor.cooldown() > 0) return AbilityRejection.ABILITY_COOLDOWN;
+        if (ability == BolotnikAbility.AMBUSH && actor.ultimateCharge() < rules.ultimateCaptures())
             return AbilityRejection.ULTIMATE_NOT_READY;
         return Success.SUCCESS;
     }
 
-    public static HeroEffect preview(PieceState actor, PieceState target, Position square, Ability ability, BolotnikRules rules) {
+    public static HeroEffect preview(PieceState actor, PieceState target, Position square, Abilities ability, BolotnikRules rules) {
         MoveResult ready = availability(actor, ability, rules);
         if (!ready.isSuccess()) return HeroEffect.rejected(ready);
-        if (ability == Ability.AMBUSH)
+        if (ability == BolotnikAbility.AMBUSH)
             return HeroEffect.success(Map.of(actor.id(), actor.withAbilityState(actor.cooldown(), actor.ultimateCharge() - rules.ultimateCaptures(), null)
                     .hidden(PieceState.Status.HIDDEN_BOG)));
         if (target != null && target.type() == King.class) return HeroEffect.rejected(StatusRejection.KING_IMMUNE);

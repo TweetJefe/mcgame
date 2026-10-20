@@ -19,14 +19,14 @@ public final class AresAbilities {
     private AresAbilities() {
     }
 
-    public static List<Ability> abilities() {
-        return List.of(Ability.SPEAR);
+    public static List<Abilities> abilities() {
+        return AresAbility.getAbilities();
     }
 
-    public static MoveResult availability(PieceState actor, Ability ability, AresRules rules) {
+    public static MoveResult availability(PieceState actor, Abilities ability, AresRules rules) {
         if (ability == null) return AbilityRejection.INVALID_ABILITY;
         if (actor == null || actor.status() != PieceState.Status.BOARD) return MovementRejection.EMPTY_SOURCE;
-        if (actor.hero() != HeroType.ARES_BISHOP || ability != Ability.SPEAR) return AbilityRejection.NO_ABILITY;
+        if (actor.hero() != HeroType.ARES_BISHOP || ability != AresAbility.SPEAR) return AbilityRejection.NO_ABILITY;
         return actor.cooldown() > 0 ? AbilityRejection.ABILITY_COOLDOWN : Success.SUCCESS;
     }
 

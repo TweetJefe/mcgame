@@ -4,7 +4,7 @@ import game.moves.AbilityRejection;
 import game.moves.MovementRejection;
 import game.moves.StatusRejection;
 import game.moves.Success;
-import game.heroes.Ability;
+import game.heroes.Abilities;
 import game.heroes.HeroEffect;
 import game.heroes.HeroType;
 import game.moves.MoveResult;
@@ -21,24 +21,24 @@ public final class LumeshardAbilities {
     private LumeshardAbilities() {
     }
 
-    public static List<Ability> abilities() {
-        return List.of(Ability.LASER, Ability.TELEPORT);
+    public static List<Abilities> abilities() {
+        return LumeshardAbility.getAbilities();
     }
 
-    public static MoveResult availability(PieceState actor, Ability ability, LumeshardRules rules) {
+    public static MoveResult availability(PieceState actor, Abilities ability, LumeshardRules rules) {
         if (ability == null) return AbilityRejection.INVALID_ABILITY;
         if (actor == null || actor.status() != PieceState.Status.BOARD) return MovementRejection.EMPTY_SOURCE;
         if (actor.hero() != HeroType.LUMESHARD_BISHOP || !abilities().contains(ability)) return AbilityRejection.NO_ABILITY;
-        if (ability == Ability.LASER && actor.cooldown() > 0) return AbilityRejection.ABILITY_COOLDOWN;
-        if (ability == Ability.TELEPORT && actor.ultimateCharge() < rules.ultimateCaptures())
+        if (ability == LumeshardAbility.LASER && actor.cooldown() > 0) return AbilityRejection.ABILITY_COOLDOWN;
+        if (ability == LumeshardAbility.TELEPORT && actor.ultimateCharge() < rules.ultimateCaptures())
             return AbilityRejection.ULTIMATE_NOT_READY;
         return Success.SUCCESS;
     }
 
-    public static HeroEffect preview(Field field, PieceState actor, PieceState target, Position square, Ability ability, LumeshardRules rules) {
+    public static HeroEffect preview(Field field, PieceState actor, PieceState target, Position square, Abilities ability, LumeshardRules rules) {
         MoveResult ready = availability(actor, ability, rules);
         if (!ready.isSuccess()) return HeroEffect.rejected(ready);
-        if (ability == Ability.TELEPORT) {
+        if (ability == LumeshardAbility.TELEPORT) {
             if (target != null) return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
             if (SquareColor.at(square) != actor.startingColor())
                 return HeroEffect.rejected(AbilityRejection.WRONG_SQUARE_COLOR);

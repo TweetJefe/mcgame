@@ -1,5 +1,11 @@
 package game.core;
 
+import game.heroes.bountycrow.BountyCrowAbility;
+import game.heroes.izba.IzbaAbility;
+import game.heroes.ares.AresAbility;
+import game.heroes.chronomlin.ChronomlinAbility;
+import game.heroes.kikimora.KikimoraAbility;
+
 import game.moves.AbilityRejection;
 import game.moves.EconomyRejection;
 import game.moves.MovementRejection;
@@ -9,8 +15,7 @@ import game.moves.TurnRejection;
 import game.heroes.zeus.*;
 import game.heroes.clownganger.*;
 import game.heroes.moleminer.*;
-
-import game.heroes.Ability;
+import game.heroes.Abilities;
 import game.heroes.AbilityRequest;
 import game.heroes.ginseng.*;
 import game.heroes.faun.*;
@@ -29,7 +34,6 @@ import rules.moba.AttackRules;
 
 import java.util.Set;
 
-import game.heroes.pudge.PudgeRules;
 import game.moves.AvailableMoves;
 import game.moves.Capture;
 import game.moves.MoveResult;
@@ -157,11 +161,11 @@ final class ActionEngine {
         return new Preview(preview.result(),new Context(n.field(),n.pieces(),n.rights(),n.ep(),n.economy(),n.turn(),n.terrain(),n.summons(),n.spells(),n.faun(),n.clown().move(actor,n.turn()),n.mines(),n.lightning(),n.heroes()),preview.captures());
     }
 
-    static MoveResult abilityReady(Context context, FigureColor side, Position actorSquare, Ability ability, HeroRules rules) {
+    static MoveResult abilityReady(Context context, FigureColor side, Position actorSquare, Abilities ability, HeroRules rules) {
         return abilityReady(context, side, actorSquare, ability, rules, false);
     }
 
-    static MoveResult abilityReady(Context context, FigureColor side, Position actorSquare, Ability ability, HeroRules rules, boolean borrowed) {
+    static MoveResult abilityReady(Context context, FigureColor side, Position actorSquare, Abilities ability, HeroRules rules, boolean borrowed) {
         if (ability == null) return AbilityRejection.INVALID_ABILITY;
         if (!MoveValidator.inside(context.field(), actorSquare)) return MovementRejection.OUT_OF_BOUNDS;
         PieceState actor = context.at(actorSquare);
@@ -180,23 +184,23 @@ final class ActionEngine {
             ready = BorrowedEffects.availability(actor, ability, rules);
         } else ready = context.heroes().get(actor.hero()).availability(actor, ability);
         if (!ready.isSuccess()) return ready;
-        if(ability==Ability.THUNDERSTORM && ZeusAbilities.charged(context.pieces(),context.lightning(),actor).isEmpty())return AbilityRejection.NO_CHARGED_TARGETS;
-        if ((ability == Ability.BOUNTY || ability == Ability.STEAL) && !context.economy().enabled())
+        if(ability==ZeusAbility.THUNDERSTORM && ZeusAbilities.charged(context.pieces(),context.lightning(),actor).isEmpty())return AbilityRejection.NO_CHARGED_TARGETS;
+        if ((ability == BountyCrowAbility.BOUNTY || ability == BountyCrowAbility.STEAL) && !context.economy().enabled())
             return EconomyRejection.ECONOMY_DISABLED;
-        if (ability == Ability.STEAL && context.economy().balanceHalves(MoveValidator.opposite(side)) == 0)
+        if (ability == BountyCrowAbility.STEAL && context.economy().balanceHalves(MoveValidator.opposite(side)) == 0)
             return EconomyRejection.NO_GOLD_TO_STEAL;
         return Success.SUCCESS;
     }
 
     static Preview ability(Context context, FigureColor side, Position actorSquare, Position targetSquare,
-                           Ability ability, HeroRules rules) {
+                           Abilities ability, HeroRules rules) {
         return ability(context, side, new AbilityRequest(actorSquare, ability, targetSquare), rules);
     }
 
     static Preview ability(Context context, FigureColor side, AbilityRequest request, HeroRules rules) {
         if (request == null) return Preview.rejected(AbilityRejection.INVALID_ABILITY);
         Position actorSquare = request.actor(), targetSquare = request.target();
-        Ability ability = request.ability();
+        Abilities ability = request.ability();
         MoveResult ready = abilityReady(context, side, actorSquare, ability, rules, request.borrowed());
         if (!ready.isSuccess()) return Preview.rejected(ready);
         PieceState actor = context.at(actorSquare), target = context.at(targetSquare);
@@ -205,17 +209,17 @@ final class ActionEngine {
         MoveResult targeting = behavior.targeting(ability).validate(heroContext, actor, request);
         if (!targeting.isSuccess()) return Preview.rejected(targeting);
         HeroEffect effect; ZeusAbilities.Result zeus=null;
-        Ability copied = ability == Ability.COPY_SPELL && target != null ? context.spells().lastUsed().get(target.id()) : null;
-        if(ability==Ability.PLANT_MINE && context.mines().cells().containsKey(actorSquare))return Preview.rejected(AbilityRejection.TERRAIN_OCCUPIED);
-        if(ability==Ability.YARN || ability==Ability.CLAY_POT)effect=game.heroes.kikimora.KikimoraAbilities.preview(context.pieces(),actor,target,ability,context.turn(),rules.kikimora(),request.borrowed());
-        else if(ability==Ability.CHAIN_LIGHTNING || ability==Ability.THUNDERSTORM){zeus=ZeusAbilities.cast(context.field(),context.pieces(),actor,target,ability,context.lightning(),context.summons(),context.turn(),rules,request.borrowed());effect=zeus.effect();}
-        else if(ability==Ability.PLANT_MINE || ability==Ability.DETONATE)effect=MoleminerAbilities.preview(actor,targetSquare,ability,rules.moleminer(),request.borrowed());
-        else if(ability==Ability.BOX || ability==Ability.ILLUSION)effect=ClowngangerAbilities.preview(context.field(),actor,target,targetSquare,ability,context.turn(),rules.clownganger(),request.borrowed());
-        else if (ability == Ability.SPEAR)
+        Abilities copied = ability == GinsengAbility.COPY_SPELL && target != null ? context.spells().lastUsed().get(target.id()) : null;
+        if(ability==MoleminerAbility.PLANT_MINE && context.mines().cells().containsKey(actorSquare))return Preview.rejected(AbilityRejection.TERRAIN_OCCUPIED);
+        if(ability==KikimoraAbility.YARN || ability==KikimoraAbility.CLAY_POT)effect=game.heroes.kikimora.KikimoraAbilities.preview(context.pieces(),actor,target,ability,context.turn(),rules.kikimora(),request.borrowed());
+        else if(ability==ZeusAbility.CHAIN_LIGHTNING || ability==ZeusAbility.THUNDERSTORM){zeus=ZeusAbilities.cast(context.field(),context.pieces(),actor,target,ability,context.lightning(),context.summons(),context.turn(),rules,request.borrowed());effect=zeus.effect();}
+        else if(ability==MoleminerAbility.PLANT_MINE || ability==MoleminerAbility.DETONATE)effect=MoleminerAbilities.preview(actor,targetSquare,ability,rules.moleminer(),request.borrowed());
+        else if(ability==ClowngangerAbility.BOX || ability==ClowngangerAbility.ILLUSION)effect=ClowngangerAbilities.preview(context.field(),actor,target,targetSquare,ability,context.turn(),rules.clownganger(),request.borrowed());
+        else if (ability == AresAbility.SPEAR)
             effect = AresAbilities.spear(context.field(), context.pieces(), actor, targetSquare, context.turn(), rules.ares(), context.terrain(), request.borrowed());
-        else if (ability == Ability.DISPLACE)
+        else if (ability == GinsengAbility.DISPLACE)
             effect = GinsengAbilities.displace(context.field(), actor, target, request.destination(), rules.ginseng(), request.borrowed());
-        else if (ability == Ability.COPY_SPELL)
+        else if (ability == GinsengAbility.COPY_SPELL)
             effect = GinsengAbilities.copy(actor, target, copied, rules.ginseng(), request.borrowed());
         else
             effect = request.borrowed() ? BorrowedEffects.preview(heroContext, actor, target, targetSquare, ability, rules) : behavior.preview(heroContext, actor, target, targetSquare, ability);
@@ -224,11 +228,11 @@ final class ActionEngine {
         var board = new HashMap<>(field.getGameField());
         var states = new HashMap<>(context.pieces());
         CastlingRights rights = applyEffect(field, board, states, context.rights(), effect);
-        if(ability==Ability.GRAPPLE && TerrainGeometry.blocksRay(actor.position(),effect.updates().get(actor.id()).position(),context.terrain().hostileSquares(context.pieces(),actor.color())))return Preview.rejected(AbilityRejection.MUD_BLOCKED);
+        if(ability==ChronomlinAbility.GRAPPLE && TerrainGeometry.blocksRay(actor.position(),effect.updates().get(actor.id()).position(),context.terrain().hostileSquares(context.pieces(),actor.color())))return Preview.rejected(AbilityRejection.MUD_BLOCKED);
         TerrainResolver.Placement placement = TerrainResolver.place(context.terrain(), context.pieces(), actor, targetSquare, ability, context.turn(), rules);
         if (!placement.result().isSuccess()) return Preview.rejected(placement.result());
         SummonState summons =zeus==null?context.summons():zeus.summons();
-        if (ability == Ability.SUMMON_YAGA) {
+        if (ability == IzbaAbility.SUMMON_YAGA) {
             var summoned = SummonResolver.cast(states, summons, actor, context.turn(), side, rules, placement.terrain());
             if (!summoned.result().isSuccess()) return Preview.rejected(summoned.result());
             states = new HashMap<>(summoned.pieces());
@@ -236,7 +240,7 @@ final class ActionEngine {
         }
         ClownState clown=context.clown();
         if(zeus!=null)for(long id:zeus.illusionHits())clown=clown.hit(id);
-        if(ability==Ability.ILLUSION){
+        if(ability==ClowngangerAbility.ILLUSION){
             if(states.size()>=SummonState.MAX_IDENTITIES)return Preview.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
             for(var i:clown.illusions().values())if(i.sourceId()==actor.id() && !states.get(i.id()).isRemoved())return Preview.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
             long id=Math.addExact(states.keySet().stream().mapToLong(Long::longValue).max().orElse(0),1);
@@ -247,13 +251,13 @@ final class ActionEngine {
             clown=clown.create(id,actor.id(),bornAt,context.turn(),rules.clownganger());
         }
         SpellState spells = context.spells().cast(actor.id(), ability, request.borrowed(), context.turn(), target == null ? null : target.id(), copied);
-        MineState mines=context.mines();if(ability==Ability.PLANT_MINE)mines=mines.plant(actor.id(),actorSquare,context.turn());
+        MineState mines=context.mines();if(ability==MoleminerAbility.PLANT_MINE)mines=mines.plant(actor.id(),actorSquare,context.turn());
         Context preparedContext = new Context(context.field(), context.pieces(), context.rights(), context.ep(), context.economy(), context.turn(), context.terrain(), summons, spells, context.faun().cast(actor.id(), ability, targetSquare, context.turn(), rules.faun()),clown,mines,zeus==null?context.lightning():zeus.lightning(),context.heroes());
-        Preview preview = finish(preparedContext, states, rights, context.ep(), effect.captures(), placement.terrain(), placement.immediateEntries(), side, GameMode.MOBA, rules,ability==Ability.DETONATE?actor.id():null,targetSquare);
+        Preview preview = finish(preparedContext, states, rights, context.ep(), effect.captures(), placement.terrain(), placement.immediateEntries(), side, GameMode.MOBA, rules,ability==MoleminerAbility.DETONATE?actor.id():null,targetSquare);
         if (!preview.result().isSuccess()) return preview;
         EconomyState economy = preview.next().economy();
-        if (ability == Ability.BOUNTY) economy = assignBounty(context, actor, target, rules);
-        if (ability == Ability.STEAL)
+        if (ability == BountyCrowAbility.BOUNTY) economy = assignBounty(context, actor, target, rules);
+        if (ability == BountyCrowAbility.STEAL)
             economy = economy.apply(new GoldChange(context.turn(), GoldChange.Kind.STEAL, side, actor.id(), null,
                     Math.min(4, economy.balanceHalves(MoveValidator.opposite(side))), 0, 0));
         Context next = preview.next();
@@ -338,7 +342,7 @@ final class ActionEngine {
         return false;
     }
 
-    static List<AbilityRequest> requests(Context context, FigureColor side, Position square, Ability ability, boolean borrowed, HeroRules rules) {
+    static List<AbilityRequest> requests(Context context, FigureColor side, Position square, Abilities ability, boolean borrowed, HeroRules rules) {
         if (!abilityReady(context, side, square, ability, rules, borrowed).isSuccess()) return List.of();
         PieceState actor = context.at(square);
         Hero behavior = borrowed ? context.heroes().ownerOf(ability) : context.heroes().get(actor.hero());
@@ -350,8 +354,8 @@ final class ActionEngine {
             if (piece.position() == null || piece.color() != side) continue;
             for (boolean borrowed : List.of(false, true)) {
                 var copy = context.spells().borrowed().get(piece.id());
-                var abilities = borrowed ? (copy == null ? List.<Ability>of() : List.of(copy.ability())) : context.heroes().get(piece.hero()).abilities();
-                for (Ability ability : abilities)
+                var abilities = borrowed ? (copy == null ? List.<Abilities>of() : List.of(copy.ability())) : context.heroes().get(piece.hero()).abilities();
+                for (Abilities ability : abilities)
                     for (var request : requests(context, side, piece.position(), ability, borrowed, rules)) {
                         Preview preview = ability(context, side, request, rules);
                         if (preview.result().isSuccess() && continuation.test(preview.next())) return true;

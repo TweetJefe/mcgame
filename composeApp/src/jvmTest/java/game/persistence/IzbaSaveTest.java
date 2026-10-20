@@ -1,7 +1,7 @@
 package game.persistence;
 
-import game.moves.Success;
-import game.moves.TurnRejection;
+import game.heroes.izba.IzbaAbility;
+
 import game.core.Game;
 import game.heroes.*;
 import game.heroes.izba.IzbaFixtures;
@@ -14,14 +14,14 @@ import static game.core.Positions.pos;
 import static org.junit.Assert.*;
 
 public class IzbaSaveTest {
-    private Game spawned() { Game g=IzbaFixtures.standard(55);assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("e2"),null,Ability.SUMMON_YAGA));return g; }
+    private Game spawned() { Game g=IzbaFixtures.standard(55);assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("e2"),null,IzbaAbility.SUMMON_YAGA));return g; }
     private String xml(Game g)throws Exception {return new String(GameSaveFile.encode(g.getSnapshot()),StandardCharsets.UTF_8);}
     private Game load(String s)throws Exception {return Game.fromSnapshot(GameSaveFile.decode(s.getBytes(StandardCharsets.UTF_8)),()->0L);}
     private void invalid(String s) {assertThrows(java.io.IOException.class,()->GameSaveFile.decode(s.getBytes(StandardCharsets.UTF_8)));}
     @Test public void formatSixStoresLifetimeLineageAndRandomnessExactly()throws Exception {
         Game g=spawned();String xml=xml(g);assertTrue(xml.contains("formatVersion=\"6\""));Game copy=load(xml);
         assertEquals(xml,xml(copy));assertEquals(g.getSummons(),copy.getSummons());
-        assertTrue(copy.getTurnState().abilityUsed());assertEquals(TurnRejection.ABILITY_ALREADY_USED,copy.useAbility(copy.getCurrentPlayer(),pos("e2"),null,Ability.SUMMON_YAGA));
+        assertTrue(copy.getTurnState().abilityUsed());assertEquals(TurnRejection.ABILITY_ALREADY_USED,copy.useAbility(copy.getCurrentPlayer(),pos("e2"),null,IzbaAbility.SUMMON_YAGA));
     }
     @Test public void rejectsMissingDuplicateForgedAndAlreadyOverdueOrigin()throws Exception {
         String s=xml(spawned());invalid(s.replaceAll("(?s)<origin [^>]*/>",""));

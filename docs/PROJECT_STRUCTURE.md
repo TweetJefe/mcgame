@@ -12,8 +12,8 @@
 | `game.state` | Неизменяемые данные: `GameSnapshot`, `GamePosition`, `PieceState`, `TurnState`, `GameMode`, `GameOutcome`, `Termination`, `CastlingRights`, `ClockSnapshot`, `ItemSlot`, `SquareColor` |
 | `game.moves` | Запросы/результаты действий: `AvailableMoves`, интерфейсы `MoveResult` и `Rejection`, успех `Success`, тематические `*Rejection`; `MoveKind`, `Promotion`; описание подготовленного взятия `Capture` |
 | `game.history` | История: `MadeMove`, `GameEvent` |
-| `game.heroes` | Контракт `Hero`, шаблон `AbstractHero`, неизменяемый `HeroRegistry`, `HeroActionContext`, правила целей `HeroTargeting`; `HeroRules` и `HeroEffect`; фасад `HeroAbilities` и временные адаптеры остальных героев |
-| `game.heroes.pudge` | `PudgeRules` и `PudgeHero`: хук, проглатывание, заряд, болото, реакция на гибель и журнал; `PudgeAbilities` сохранён как фасад совместимости |
+| `game.heroes` | Контракты `Hero` и `Abilities`, шаблон `AbstractHero`, неизменяемый `HeroRegistry`, `HeroActionContext`, правила целей `HeroTargeting`; `HeroRules` и `HeroEffect`; фасад `HeroAbilities` и временные адаптеры остальных героев |
+| `game.heroes.pudge` | `PudgeAbility`, `PudgeRules` и `PudgeHero`: хук, проглатывание, заряд, болото, реакция на гибель и журнал; `PudgeAbilities` сохранён как фасад совместимости |
 | `game.heroes.lumeshard` | `LumeshardRules` и `LumeshardAbilities`: лазер, ослепление, телепорт и заряд |
 | `game.heroes.bountycrow` | `BountyCrowRules`, `BountyCrowAbilities`: метка, заряд и кража |
 | `game.heroes.bolotnik` | `BolotnikRules`, `BolotnikAbilities`: грязь, укрытие и заряд |
@@ -56,8 +56,9 @@ Java-тесты повторяют основные границы: `game.core`,
 
 В `composeApp/src/jvmTest/resources/saves/v1` находятся четыре XML-файла, записанные прежним движком до переноса. `LegacySaveCompatibilityTest` проверяет точное сохранение данных при повторной записи и продолжение партии. Формат XML версии 1 использует значения и ID, поэтому перенос Java-пакетов не требует миграции этих файлов.
 
-Проверка после подключения Пуджа 20 октября 2026 года: `bash gradlew :composeApp:jvmTest`,
-всего **617 тестов**, без падений и пропусков. Исходная точка из 610 тестов:
+Проверка после подключения Пуджа и разделения способностей 20 октября 2026 года:
+`bash gradlew :composeApp:jvmTest`, всего **620 тестов**, без падений и пропусков.
+Способности находятся в enum героев: [ABILITIES.md](ABILITIES.md). Исходная точка из 610 тестов:
 [BUILD_BASELINE.md](BUILD_BASELINE.md). Текущий этап: [HERO_MIGRATION.md](HERO_MIGRATION.md).
 Git-коммиты и индекс не изменяются.
 

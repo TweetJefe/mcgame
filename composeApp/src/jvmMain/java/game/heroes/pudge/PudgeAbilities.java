@@ -1,6 +1,6 @@
 package game.heroes.pudge;
 
-import game.heroes.Ability;
+import game.heroes.Abilities;
 import game.heroes.HeroActionContext;
 import game.heroes.HeroEffect;
 import game.moves.MoveResult;
@@ -17,15 +17,15 @@ import java.util.function.UnaryOperator;
 public final class PudgeAbilities {
     private PudgeAbilities() {}
 
-    public static List<Ability> abilities() {
-        return new PudgeHero(PudgeRules.prototype()).abilities();
+    public static List<Abilities> abilities() {
+        return PudgeAbility.getAbilities();
     }
 
-    public static MoveResult availability(PieceState actor, Ability ability, PudgeRules rules) {
+    public static MoveResult availability(PieceState actor, Abilities ability, PudgeRules rules) {
         return new PudgeHero(rules).availability(actor, ability);
     }
 
-    public static HeroEffect preview(Field field, PieceState actor, PieceState target, Ability ability, PudgeRules rules) {
+    public static HeroEffect preview(Field field, PieceState actor, PieceState target, Abilities ability, PudgeRules rules) {
         var pieces = new HashMap<Long, PieceState>();
         if (actor != null) pieces.put(actor.id(), actor);
         if (target != null) pieces.put(target.id(), target);

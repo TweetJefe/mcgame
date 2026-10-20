@@ -1,9 +1,11 @@
 package game.persistence;
 
+import game.heroes.pudge.PudgeAbility;
+
 import game.moves.Success;
 import game.moves.TurnRejection;
 import game.core.Game;
-import game.heroes.Ability;
+import game.heroes.Abilities;
 import game.heroes.HeroType;
 import game.heroes.pudge.PudgeRules;
 import game.moves.Promotion;
@@ -41,7 +43,7 @@ public class GameSaveFileTest {
         assertArrayEquals(bytes, GameSaveFile.encode(restored.getSnapshot())); return restored;
     }
     private void move(Game game, String from, String to) { assertEquals(Success.SUCCESS, game.moveFigure(game.getCurrentPlayer(), pos(from), pos(to))); }
-    private void ability(Game game, String from, String to, Ability ability) { assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos(from), pos(to), ability)); }
+    private void ability(Game game, String from, String to, Abilities ability) { assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos(from), pos(to), ability)); }
     private void end(Game game) { assertEquals(Success.SUCCESS, game.endTurn(game.getCurrentPlayer())); }
     private Map<Position, Figure> board(String whiteKing, String blackKing) {
         Field factory = new Field(8); var board = new HashMap<Position, Figure>();
@@ -69,10 +71,10 @@ public class GameSaveFileTest {
     }
     @Test public void skillOnlySaveKeepsItsBudgetAndStillRequiresNormalMovement() throws Exception {
         Game game = scenario(PudgeScenario.COUNTER_CAPTURE); long ally = game.getPieceState(pos("d3")).id();
-        ability(game, "e2", "d3", Ability.SWALLOW); Game restored = roundtrip(game);
+        ability(game, "e2", "d3", PudgeAbility.SWALLOW); Game restored = roundtrip(game);
         assertEquals(PieceState.Status.SWALLOWED, restored.getPieceState(ally).status());
         assertEquals(TurnRejection.MOVE_REQUIRED, restored.endTurn(restored.getCurrentPlayer()));
-        assertEquals(TurnRejection.ABILITY_ALREADY_USED, restored.useAbility(restored.getCurrentPlayer(), pos("e2"), pos("f8"), Ability.HOOK));
+        assertEquals(TurnRejection.ABILITY_ALREADY_USED, restored.useAbility(restored.getCurrentPlayer(), pos("e2"), pos("f8"), PudgeAbility.HOOK));
         move(restored, "e2", "f2"); end(restored);
         assertFalse(game.getTurnState().moveUsed()); // Restored player/Game are independent.
     }
@@ -84,7 +86,7 @@ public class GameSaveFileTest {
     @Test public void loadedPudgesReactionAfterLoadingPreservesAllyIdAndBothCaptureLists() throws Exception {
         Game game = scenario(PudgeScenario.COUNTER_CAPTURE);
         long ally = game.getPieceState(pos("d3")).id(), pudge = game.getPieceState(pos("e2")).id();
-        ability(game, "e2", "d3", Ability.SWALLOW); move(game, "e2", "f2"); end(game);
+        ability(game, "e2", "d3", PudgeAbility.SWALLOW); move(game, "e2", "f2"); end(game);
         Game restored = roundtrip(game); move(restored, "f8", "f2");
         assertEquals(ally, restored.getPieceState(pos("f2")).id()); assertEquals(PieceState.Status.CAPTURED, restored.getPieceState(pudge).status());
         assertEquals(1, restored.getWhitePlayer().getAttackedFigures().size()); assertEquals(1, restored.getBlackPlayer().getAttackedFigures().size());
@@ -96,8 +98,8 @@ public class GameSaveFileTest {
         Game game = Game.fromMobaPosition(new GamePosition(board, WHITE, CastlingRights.none(), null, 0),
                 Map.of(pos("e2"), HeroType.PUDGE_ROOK, pos("g2"), HeroType.PUDGE_ROOK), PudgeRules.sandbox(), () -> 0L);
         long inner = game.getPieceState(pos("g2")).id(), pawn = game.getPieceState(pos("g3")).id();
-        ability(game, "g2", "g3", Ability.SWALLOW); move(game, "e2", "f2"); end(game);
-        move(game, "h8", "h7"); end(game); ability(game, "f2", "g2", Ability.SWALLOW); move(game, "f2", "f3"); end(game);
+        ability(game, "g2", "g3", PudgeAbility.SWALLOW); move(game, "e2", "f2"); end(game);
+        move(game, "h8", "h7"); end(game); ability(game, "f2", "g2", PudgeAbility.SWALLOW); move(game, "f2", "f3"); end(game);
         Game restored = roundtrip(game); move(restored, "f8", "f3");
         assertEquals(inner, restored.getPieceState(pos("f3")).id()); assertEquals(Long.valueOf(pawn), restored.getPieceState(inner).storedPieceId());
         roundtrip(restored);
@@ -105,10 +107,10 @@ public class GameSaveFileTest {
     @Test public void readyUltimateAndItsCaptureChargeArePreserved() throws Exception {
         Game game = scenario(PudgeScenario.ULTIMATE_CHARGE); move(game, "e2", "e3"); end(game); move(game, "h8", "g8"); end(game); move(game, "e3", "f3");
         Game restored = roundtrip(game); assertEquals(2, restored.getPieceState(pos("f3")).ultimateCharge());
-        ability(restored, "f3", "g4", Ability.SWALLOW); roundtrip(restored);
+        ability(restored, "f3", "g4", PudgeAbility.SWALLOW); roundtrip(restored);
     }
     @Test public void indirectCheckBeforeEndTurnIsAValidSavedMobaPosition() throws Exception {
-        Game game = scenario(PudgeScenario.INDIRECT_CHECK); ability(game, "b2", "e2", Ability.HOOK);
+        Game game = scenario(PudgeScenario.INDIRECT_CHECK); ability(game, "b2", "e2", PudgeAbility.HOOK);
         Game restored = roundtrip(game); assertEquals(WHITE, restored.getCurrentPlayer().color());
         move(restored, "b2", "b3"); roundtrip(restored); end(restored); assertTrue(restored.isInCheck()); roundtrip(restored);
     }
@@ -164,7 +166,7 @@ public class GameSaveFileTest {
         Game game = scenario(PudgeScenario.COUNTER_CAPTURE);
         rejects(game, doc -> first(doc, "pieces").appendChild(first(doc, "piece").cloneNode(true)));
         rejects(game, doc -> ((Element) doc.getElementsByTagName("piece").item(1)).setAttribute("square", first(doc, "piece").getAttribute("square")));
-        ability(game, "e2", "d3", Ability.SWALLOW);
+        ability(game, "e2", "d3", PudgeAbility.SWALLOW);
         rejects(game, doc -> {
             NodeList list = doc.getElementsByTagName("piece");
             for (int i = 0; i < list.getLength(); i++) if (((Element) list.item(i)).hasAttribute("storedPieceId"))
@@ -202,7 +204,7 @@ public class GameSaveFileTest {
         var board = board("a1", "h8"); put(board, Rook.class, WHITE, "e2"); put(board, Rook.class, WHITE, "g2"); put(board, Pawn.class, WHITE, "g3");
         Game game = Game.fromMobaPosition(new GamePosition(board, WHITE, CastlingRights.none(), null, 0),
                 Map.of(pos("e2"), HeroType.PUDGE_ROOK, pos("g2"), HeroType.PUDGE_ROOK), PudgeRules.sandbox(), () -> 0L);
-        ability(game, "g2", "g3", Ability.SWALLOW);
+        ability(game, "g2", "g3", PudgeAbility.SWALLOW);
         long pawn = game.getPieceState(pos("g2")).storedPieceId();
         rejects(game, doc -> {
             NodeList list = doc.getElementsByTagName("piece");

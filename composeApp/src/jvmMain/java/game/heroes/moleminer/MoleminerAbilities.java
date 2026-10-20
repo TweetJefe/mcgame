@@ -1,7 +1,4 @@
 package game.heroes.moleminer;
-import game.moves.AbilityRejection;
-import game.moves.MovementRejection;
-import game.moves.Success;
 import game.heroes.*;
 import game.moves.*;
 import game.state.PieceState;
@@ -11,17 +8,19 @@ import model.figures.King;
 import java.util.*;
 public final class MoleminerAbilities{
     private MoleminerAbilities(){}
-    public static List<Ability> abilities(){return List.of(Ability.PLANT_MINE,Ability.DETONATE);}
-    public static MoveResult availability(PieceState actor,Ability a,MoleminerRules rules){
+    public static List<Abilities> abilities() {
+        return MoleminerAbility.getAbilities();
+    }
+    public static MoveResult availability(PieceState actor,Abilities a,MoleminerRules rules){
         if(actor==null || actor.position()==null)return MovementRejection.EMPTY_SOURCE;
         if(actor.hero()!=HeroType.MOLEMINER_PAWN || !abilities().contains(a))return AbilityRejection.NO_ABILITY;
-        if(a==Ability.PLANT_MINE && actor.cooldown()>0)return AbilityRejection.ABILITY_COOLDOWN;
-        if(a==Ability.DETONATE && actor.ultimateCharge()<rules.ultimateCaptures())return AbilityRejection.ULTIMATE_NOT_READY;
+        if(a==MoleminerAbility.PLANT_MINE && actor.cooldown()>0)return AbilityRejection.ABILITY_COOLDOWN;
+        if(a==MoleminerAbility.DETONATE && actor.ultimateCharge()<rules.ultimateCaptures())return AbilityRejection.ULTIMATE_NOT_READY;
         return Success.SUCCESS;
     }
-    public static HeroEffect preview(PieceState actor,Position square,Ability a,MoleminerRules rules,boolean borrowed){
-        if(a==Ability.PLANT_MINE)return HeroEffect.success(Map.of(actor.id(),actor.withAbilityState(borrowed?actor.cooldown():rules.mineCooldown(),actor.ultimateCharge(),actor.storedPieceId())));
-        if(a!=Ability.DETONATE)return HeroEffect.rejected(AbilityRejection.NO_ABILITY);
+    public static HeroEffect preview(PieceState actor,Position square,Abilities a,MoleminerRules rules,boolean borrowed){
+        if(a==MoleminerAbility.PLANT_MINE)return HeroEffect.success(Map.of(actor.id(),actor.withAbilityState(borrowed?actor.cooldown():rules.mineCooldown(),actor.ultimateCharge(),actor.storedPieceId())));
+        if(a!=MoleminerAbility.DETONATE)return HeroEffect.rejected(AbilityRejection.NO_ABILITY);
         if(Math.max(Math.abs(square.getRow()-actor.position().getRow()),Math.abs(square.getColumn()-actor.position().getColumn()))>3)return HeroEffect.rejected(AbilityRejection.ABILITY_OUT_OF_RANGE);
         return HeroEffect.success(Map.of(actor.id(),actor.withAbilityState(actor.cooldown(),borrowed?actor.ultimateCharge():actor.ultimateCharge()-rules.ultimateCaptures(),actor.storedPieceId()).placed(square,actor.type())));
     }

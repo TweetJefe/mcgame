@@ -1,5 +1,7 @@
 package game.persistence;
 
+import game.heroes.pudge.PudgeAbility;
+
 import game.moves.Success;
 import game.core.Game;
 import game.draft.*;
@@ -18,7 +20,7 @@ public class GinsengSaveTest {
     @Test public void savedCopyAndLatestSourceCastRestoreWithoutAnotherChargeOrExtraUse()throws Exception {
         Game g=GinsengFixtures.readyHook();String s=xml(g);assertTrue(s.contains("formatVersion=\"7\""));Game restored=load(s);
         assertEquals(s,xml(restored));assertEquals(g.getSpells(),restored.getSpells());
-        assertEquals(Success.SUCCESS,restored.useAbility(restored.getCurrentPlayer(),new AbilityRequest(pos("c2"),Ability.HOOK,pos("a4"),null,true)));
+        assertEquals(Success.SUCCESS,restored.useAbility(restored.getCurrentPlayer(),new AbilityRequest(pos("c2"),PudgeAbility.HOOK,pos("a4"),null,true)));
         String used=xml(restored);assertEquals(used,xml(load(used)));assertTrue(load(used).getSpells().borrowed().isEmpty());
     }
     @Test public void rejectsMissingWrongLatestAndPrematureCopiedSpellMetadata()throws Exception {
@@ -29,15 +31,15 @@ public class GinsengSaveTest {
         invalid(s.replace("formatVersion=\"7\"","formatVersion=\"6\""));
     }
     @Test public void changingBorrowedCastToNativeCannotCreateAnUnlimitedGinsengHook()throws Exception {
-        Game g=GinsengFixtures.readyHook();assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),new AbilityRequest(pos("c2"),Ability.HOOK,pos("a4"),null,true)));
+        Game g=GinsengFixtures.readyHook();assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),new AbilityRequest(pos("c2"),PudgeAbility.HOOK,pos("a4"),null,true)));
         String s=xml(g);invalid(s.replace("borrowed=\"true\"","borrowed=\"false\""));
         invalid(s.replaceAll("(?s)<event [^>]*kind=\"COPY_SPELL\"[^>]*/>",""));
     }
     @Test public void previousFormatWithoutGinsengRetainsItsVersionAndRebuildsLastUsedMemory()throws Exception {
         Game g=PudgeScenario.values()[0].createGame(()->0L);
-        assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("e2"),pos("h5"),Ability.HOOK));String s=xml(g);
+        assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("e2"),pos("h5"),PudgeAbility.HOOK));String s=xml(g);
         assertFalse(s.contains("formatVersion=\"7\""));assertFalse(s.contains("borrowed="));
-        Game restored=load(s);assertEquals(s,xml(restored));assertEquals(Ability.HOOK,restored.getSpells().lastUsed().get(g.getPieceState(pos("e2")).id()));
+        Game restored=load(s);assertEquals(s,xml(restored));assertEquals(PudgeAbility.HOOK,restored.getSpells().lastUsed().get(g.getPieceState(pos("e2")).id()));
     }
     @Test public void latestCatalogCanBeSavedEvenWhenGinsengWasBanned()throws Exception {
         var d=new Draft(new DraftRules(1,6,3));d.ban(model.FigureColor.WHITE,HeroType.GINSENG_BISHOP);d.ban(model.FigureColor.BLACK,HeroType.IZBA_ROOK);

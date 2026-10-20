@@ -5,11 +5,10 @@ import game.moves.MovementRejection;
 import game.moves.StatusRejection;
 import game.moves.Success;
 import game.heroes.AbstractHero;
-import game.heroes.Ability;
+import game.heroes.Abilities;
 import game.heroes.HeroActionContext;
 import game.heroes.HeroEffect;
 import game.heroes.HeroType;
-import game.heroes.HeroTargeting;
 import game.heroes.AbilityRequest;
 import game.moves.MoveResult;
 import game.moves.Capture;
@@ -33,22 +32,15 @@ public final class PudgeHero extends AbstractHero {
     private final PudgeRules rules;
 
     public PudgeHero(PudgeRules rules) {
-        super(HeroType.PUDGE_ROOK, List.of(Ability.HOOK, Ability.SWALLOW), Ability.SWALLOW,
+        super(HeroType.PUDGE_ROOK, PudgeAbility.getAbilities(), PudgeAbility.SWALLOW,
                 Objects.requireNonNull(rules, "rules").ultimateCaptures());
         this.rules = rules;
     }
 
     @Override
-    public HeroTargeting targeting(Ability ability) {
-        return ability == Ability.HOOK
-                ? HeroTargeting.square(HeroTargeting.Permission.ILLUSION, HeroTargeting.Permission.POTTED)
-                : HeroTargeting.square();
-    }
-
-    @Override
     public String abilityMessage(HeroActionContext before, HeroActionContext after, PieceState actor,
                                   PieceState target, AbilityRequest request) {
-        return request.ability() == Ability.HOOK
+        return request.ability() == PudgeAbility.HOOK
                 ? "Пудж: хук " + cell(request.target()) + " → " + cell(after.pieceById(target.id()).position())
                 : "Пудж: проглотил " + target.type().getSimpleName() + " на " + cell(request.target());
     }
@@ -58,14 +50,14 @@ public final class PudgeHero extends AbstractHero {
     }
 
     @Override
-    protected MoveResult availabilitySpecific(PieceState actor, Ability ability) {
+    protected MoveResult availabilitySpecific(PieceState actor, Abilities ability) {
         return ability == ultimateAbility() && actor.storedPieceId() != null
                 ? AbilityRejection.ALREADY_SWALLOWED : Success.SUCCESS;
     }
 
     @Override
     protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor, PieceState target,
-                                           Position square, Ability ability) {
+                                           Position square, Abilities ability) {
         if (target == null || target.status() != PieceState.Status.BOARD || target.id() == actor.id())
             return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
         if (target.type() == King.class) return HeroEffect.rejected(StatusRejection.KING_IMMUNE);
@@ -73,7 +65,7 @@ public final class PudgeHero extends AbstractHero {
         int dr = target.position().getRow() - actor.position().getRow();
         int dc = target.position().getColumn() - actor.position().getColumn();
         int distance = Math.max(Math.abs(dr), Math.abs(dc));
-        if (ability == Ability.HOOK) {
+        if (ability == PudgeAbility.HOOK) {
             boolean straight = dr == 0 || dc == 0;
             boolean diagonal = Math.abs(dr) == Math.abs(dc);
             if (distance > 3 || (!straight && !(rules.hookDiagonals() && diagonal)))

@@ -1,4 +1,6 @@
 package game.persistence;
+
+import game.heroes.ginseng.GinsengAbility;
 import game.core.*;
 import game.heroes.*;
 import game.heroes.ares.AresTest;
@@ -24,7 +26,7 @@ public class ZeusSaveTest {
         Game g=basic();chain(g,"e4");cycle(g);chain(g,"e4");String s=xml(g);assertTrue(s.contains("formatVersion=\"12\""));g=load(s);assertEquals(s,xml(g));assertEquals(2,count(g,"e2","e4"));cycle(g);chain(g,"e4");assertNull(g.getPieceState(pos("e4")));AresTest.roundtrip(g);
     }
     @Test public void copiedLightningPoolsRoundtripIndependently()throws Exception{
-        var b=setup();put(b,Bishop.class,WHITE,"c2");put(b,Knight.class,BLACK,"e4");Game g=AresTest.charge(ZeusTest.create(b,Map.of(pos("c2"),HeroType.GINSENG_BISHOP)),"c2",2);chain(g,"e4");cycle(g);cast(g,"c2","e2",Ability.COPY_SPELL);cycle(g);g.useAbility(g.getCurrentPlayer(),new AbilityRequest(pos("c2"),Ability.CHAIN_LIGHTNING,pos("e4"),null,true));String s=xml(g);g=load(s);assertEquals(s,xml(g));assertEquals(2,g.getSnapshot().lightning().charges().size());assertEquals(1,count(g,"e2","e4"));assertEquals(1,count(g,"c2","e4"));
+        var b=setup();put(b,Bishop.class,WHITE,"c2");put(b,Knight.class,BLACK,"e4");Game g=AresTest.charge(ZeusTest.create(b,Map.of(pos("c2"),HeroType.GINSENG_BISHOP)),"c2",2);chain(g,"e4");cycle(g);cast(g,"c2","e2",GinsengAbility.COPY_SPELL);cycle(g);g.useAbility(g.getCurrentPlayer(),new AbilityRequest(pos("c2"),ZeusAbility.CHAIN_LIGHTNING,pos("e4"),null,true));String s=xml(g);g=load(s);assertEquals(s,xml(g));assertEquals(2,g.getSnapshot().lightning().charges().size());assertEquals(1,count(g,"e2","e4"));assertEquals(1,count(g,"c2","e4"));
     }
     @Test public void forgedLightningSettingsMissingSectionAndDowngradeAreRejected()throws Exception{
         Game g=basic();chain(g,"e4");String s=xml(g);invalid(s.replace("formatVersion=\"12\"","formatVersion=\"11\""));invalid(s.replaceAll("(?s)<zeusRules [^>]*/>",""));invalid(s.replace("lightningCooldown=\"1\"","lightningCooldown=\"0\""));invalid(s.replace("kind=\"LIGHTNING_HIT\"","kind=\"LIGHTNING_RESET\""));

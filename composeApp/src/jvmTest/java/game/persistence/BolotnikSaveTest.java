@@ -1,9 +1,11 @@
 package game.persistence;
 
+import game.heroes.bountycrow.BountyCrowAbility;
+import game.heroes.bolotnik.BolotnikAbility;
+
 import game.moves.Success;
 import game.moves.TurnRejection;
 import game.core.Game;
-import game.heroes.Ability;
 import game.scenarios.BolotnikScenario;
 import game.scenarios.BountyCrowScenario;
 import java.nio.charset.StandardCharsets;
@@ -15,7 +17,7 @@ public class BolotnikSaveTest {
     private String xml(Game g)throws Exception { return new String(GameSaveFile.encode(g.getSnapshot()),StandardCharsets.UTF_8); }
     private Game load(String s)throws Exception { return Game.fromSnapshot(GameSaveFile.decode(s.getBytes(StandardCharsets.UTF_8)),()->0L); }
     private Game hidden() {
-        Game g=BolotnikScenario.AMBUSH.createGame(()->0L);assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("f5"),null,Ability.AMBUSH));return g;
+        Game g=BolotnikScenario.AMBUSH.createGame(()->0L);assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("f5"),null,BolotnikAbility.AMBUSH));return g;
     }
     private void invalid(String s) { assertThrows(java.io.IOException.class,()->GameSaveFile.decode(s.getBytes(StandardCharsets.UTF_8))); }
     @Test public void allExercisesRoundtripAndRestartExactly()throws Exception {
@@ -31,9 +33,9 @@ public class BolotnikSaveTest {
         assertEquals(id,g.getPieceState(pos("e5")).id());assertTrue(g.getTerrain().cells().isEmpty());assertEquals(xml(g),xml(load(xml(g))));
     }
     @Test public void timedMudAndCooldownPersistWithoutGivingAnExtraSkill()throws Exception {
-        Game g=BolotnikScenario.MUD.createGame(()->0L);assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("d4"),pos("f4"),Ability.MUD));
+        Game g=BolotnikScenario.MUD.createGame(()->0L);assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("d4"),pos("f4"),BolotnikAbility.MUD));
         g=load(xml(g));assertEquals(4,g.getPieceState(pos("d4")).cooldown());assertTrue(g.getTurnState().abilityUsed());
-        assertEquals(TurnRejection.ABILITY_ALREADY_USED,g.useAbility(g.getCurrentPlayer(),pos("d4"),null,Ability.AMBUSH));
+        assertEquals(TurnRejection.ABILITY_ALREADY_USED,g.useAbility(g.getCurrentPlayer(),pos("d4"),null,BolotnikAbility.AMBUSH));
         assertEquals(5,g.getTerrain().cells().get(pos("f4")).expiresAfterTurn());
     }
     @Test public void rejectsOrphanHiddenHeroIncompleteFootprintWrongOwnerAndDowngrade()throws Exception {
@@ -45,7 +47,7 @@ public class BolotnikSaveTest {
         invalid(s.replace("HIDDEN_BOG","BOARD"));
     }
     @Test public void rejectsNegativeMissingOrImplausibleMudExpiryAndDuplicateCell()throws Exception {
-        Game g=BolotnikScenario.MUD.createGame(()->0L);assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("d4"),pos("f4"),Ability.MUD));String s=xml(g);
+        Game g=BolotnikScenario.MUD.createGame(()->0L);assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("d4"),pos("f4"),BolotnikAbility.MUD));String s=xml(g);
         invalid(s.replace("expiresAfterTurn=\"5\"","expiresAfterTurn=\"-1\""));
         invalid(s.replace("expiresAfterTurn=\"5\"","expiresAfterTurn=\"500\""));
         invalid(s.replace("expiresAfterTurn=\"5\"",""));
@@ -53,7 +55,7 @@ public class BolotnikSaveTest {
     }
     @Test public void previousFormatThreeRemainsWritableAndPlayableWithoutTerrain()throws Exception {
         String s=xml(BountyCrowScenario.STEAL.createGame(()->0L));assertTrue(s.contains("formatVersion=\"3\""));
-        Game g=load(s);assertEquals(s,xml(g));assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("f6"),null,Ability.STEAL));
+        Game g=load(s);assertEquals(s,xml(g));assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("f6"),null,BountyCrowAbility.STEAL));
         assertTrue(g.getTerrain().cells().isEmpty());assertEquals(10,g.getEconomy().whiteHalves());
     }
 }

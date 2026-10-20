@@ -1,5 +1,13 @@
 package game.persistence;
 
+import game.heroes.faun.FaunAbility;
+import game.heroes.ares.AresAbility;
+import game.heroes.clownganger.ClowngangerAbility;
+import game.heroes.moleminer.MoleminerAbility;
+import game.heroes.zeus.ZeusAbility;
+import game.heroes.chronomlin.ChronomlinAbility;
+import game.heroes.kikimora.KikimoraAbility;
+
 import game.core.Game;
 import game.draft.*;
 import game.summoning.*;
@@ -7,7 +15,7 @@ import game.heroes.izba.IzbaRules;
 import game.heroes.ginseng.GinsengRules;
 import game.heroes.faun.FaunRules;
 import game.heroes.ares.AresRules;
-import game.heroes.Ability;
+import game.heroes.Abilities;
 import game.heroes.bolotnik.BolotnikRules;
 import game.terrain.*;
 import game.economy.*;
@@ -96,9 +104,9 @@ public final class GameSaveFile {
             SnapshotValidator.validate(s);
             boolean extended = !s.lumeshardRules().equals(LumeshardRules.prototype()) || s.pieces().values().stream()
                     .anyMatch(piece -> piece.hero() == HeroType.LUMESHARD_BISHOP || piece.isBlinded());
-            boolean kikiExtension=!s.heroRules().kikimora().equals(game.heroes.kikimora.KikimoraRules.prototype()) || s.pieces().values().stream().anyMatch(p->p.hero()==HeroType.KIKIMORA_BISHOP || p.isPotted()) || s.events().stream().anyMatch(e->Set.of(GameEvent.Kind.YARN,GameEvent.Kind.CLAY_POT,GameEvent.Kind.YARN_STUN).contains(e.kind()) || e.copiedAbility()==Ability.YARN || e.copiedAbility()==Ability.CLAY_POT) || (s.draft()!=null && s.draft().rules().catalogVersion()>9);
-            boolean chronoExtension=kikiExtension || !s.heroRules().chronomlin().equals(game.heroes.chronomlin.ChronomlinRules.prototype()) || s.pieces().values().stream().anyMatch(p->p.hero()==HeroType.CHRONOMLIN_PAWN) || s.events().stream().anyMatch(e->e.kind()==GameEvent.Kind.GRAPPLE || e.kind()==GameEvent.Kind.EVOLVE || e.copiedAbility()==Ability.GRAPPLE || e.copiedAbility()==Ability.EVOLVE) || (s.draft()!=null && s.draft().rules().catalogVersion()>8);
-            boolean zeusExtension=chronoExtension || !s.heroRules().zeus().equals(game.heroes.zeus.ZeusRules.prototype()) || s.pieces().values().stream().anyMatch(p->p.hero()==HeroType.ZEUS_ROOK) || !s.lightning().equals(game.heroes.zeus.LightningState.empty()) || s.events().stream().anyMatch(e->e.copiedAbility()==Ability.CHAIN_LIGHTNING || e.copiedAbility()==Ability.THUNDERSTORM || e.kind()==GameEvent.Kind.CHAIN_LIGHTNING || e.kind()==GameEvent.Kind.THUNDERSTORM) || (s.draft()!=null && s.draft().rules().catalogVersion()>7);
+            boolean kikiExtension=!s.heroRules().kikimora().equals(game.heroes.kikimora.KikimoraRules.prototype()) || s.pieces().values().stream().anyMatch(p->p.hero()==HeroType.KIKIMORA_BISHOP || p.isPotted()) || s.events().stream().anyMatch(e->Set.of(GameEvent.Kind.YARN,GameEvent.Kind.CLAY_POT,GameEvent.Kind.YARN_STUN).contains(e.kind()) || e.copiedAbility()==KikimoraAbility.YARN || e.copiedAbility()==KikimoraAbility.CLAY_POT) || (s.draft()!=null && s.draft().rules().catalogVersion()>9);
+            boolean chronoExtension=kikiExtension || !s.heroRules().chronomlin().equals(game.heroes.chronomlin.ChronomlinRules.prototype()) || s.pieces().values().stream().anyMatch(p->p.hero()==HeroType.CHRONOMLIN_PAWN) || s.events().stream().anyMatch(e->e.kind()==GameEvent.Kind.GRAPPLE || e.kind()==GameEvent.Kind.EVOLVE || e.copiedAbility()==ChronomlinAbility.GRAPPLE || e.copiedAbility()==ChronomlinAbility.EVOLVE) || (s.draft()!=null && s.draft().rules().catalogVersion()>8);
+            boolean zeusExtension=chronoExtension || !s.heroRules().zeus().equals(game.heroes.zeus.ZeusRules.prototype()) || s.pieces().values().stream().anyMatch(p->p.hero()==HeroType.ZEUS_ROOK) || !s.lightning().equals(game.heroes.zeus.LightningState.empty()) || s.events().stream().anyMatch(e->e.copiedAbility()==ZeusAbility.CHAIN_LIGHTNING || e.copiedAbility()==ZeusAbility.THUNDERSTORM || e.kind()==GameEvent.Kind.CHAIN_LIGHTNING || e.kind()==GameEvent.Kind.THUNDERSTORM) || (s.draft()!=null && s.draft().rules().catalogVersion()>7);
             boolean minerExtension=zeusExtension || !s.heroRules().moleminer().equals(game.heroes.moleminer.MoleminerRules.prototype()) || s.pieces().values().stream().anyMatch(p->p.hero()==HeroType.MOLEMINER_PAWN || p.status()==PieceState.Status.DESTROYED) || !s.mines().equals(game.heroes.moleminer.MineState.empty()) || (s.draft()!=null && s.draft().rules().catalogVersion()>6);
             boolean clownExtension=minerExtension || !s.heroRules().clownganger().equals(game.heroes.clownganger.ClowngangerRules.prototype()) || s.pieces().values().stream().anyMatch(p->p.hero()==HeroType.CLOWNGANGER_KNIGHT || p.hero()==HeroType.ILLUSION || p.isBoxed()) || s.events().stream().anyMatch(e->Set.of(GameEvent.Kind.BOX,GameEvent.Kind.ILLUSION,GameEvent.Kind.ILLUSION_HIT).contains(e.kind())) || (s.draft()!=null && s.draft().rules().catalogVersion()>5);
             boolean aresExtension =clownExtension || !s.heroRules().ares().equals(AresRules.prototype()) || s.pieces().values().stream().anyMatch(p -> p.hero() == HeroType.ARES_BISHOP || p.isStunned())
@@ -367,17 +375,17 @@ public final class GameSaveFile {
             for (Element entry : children(one(root, "events"), "event", 100_000)) {
                 GameEvent event = new GameEvent(number(entry, "sequence"), number(entry, "turn"), enumeration(entry, "kind", GameEvent.Kind.class),
                         enumeration(entry, "color", FigureColor.class), optionalLong(entry, "actorId"), optionalLong(entry, "targetId"),
-                        position(entry, "from"), position(entry, "to"), text(entry, "message"), formatVersion >= 7 ? optionalEnum(entry, "copiedAbility", Ability.class) : null, formatVersion >= 7 && bool(entry, "borrowed"));
+                        position(entry, "from"), position(entry, "to"), text(entry, "message"), formatVersion >= 7 ? optionalAbility(entry, "copiedAbility") : null, formatVersion >= 7 && bool(entry, "borrowed"));
                 require(formatVersion >= 4 || !Set.of(GameEvent.Kind.MUD, GameEvent.Kind.AMBUSH, GameEvent.Kind.BOG_CAPTURE).contains(event.kind()), "Bolotnik events require format 4");
                 require(formatVersion >= 6 || !Set.of(GameEvent.Kind.SUMMON_YAGA, GameEvent.Kind.YAGA_BIRTH, GameEvent.Kind.YAGA_MATURE, GameEvent.Kind.REPLACE).contains(event.kind()), "Summoning events require format 6");
                 require(formatVersion >= 7 || (!entry.hasAttribute("borrowed") && !entry.hasAttribute("copiedAbility") && event.kind() != GameEvent.Kind.DISPLACE && event.kind() != GameEvent.Kind.COPY_SPELL), "Ginseng events require format 7");
-                require(formatVersion >= 8 || (event.kind() != GameEvent.Kind.CLOUD && event.kind() != GameEvent.Kind.INVISIBILITY && event.copiedAbility() != Ability.CLOUD && event.copiedAbility() != Ability.INVISIBILITY), "Faun events require format 8");
-                require(formatVersion >=14 || (!Set.of(GameEvent.Kind.YARN,GameEvent.Kind.CLAY_POT,GameEvent.Kind.YARN_STUN).contains(event.kind()) && event.copiedAbility()!=Ability.YARN && event.copiedAbility()!=Ability.CLAY_POT),"Kikimora events require format 14");
-                require(formatVersion>=13 || (event.kind()!=GameEvent.Kind.GRAPPLE && event.kind()!=GameEvent.Kind.EVOLVE && event.copiedAbility()!=Ability.GRAPPLE && event.copiedAbility()!=Ability.EVOLVE),"Chronomlin events require format 13");
-                require(formatVersion>=12 || (!Set.of(GameEvent.Kind.CHAIN_LIGHTNING,GameEvent.Kind.THUNDERSTORM,GameEvent.Kind.LIGHTNING_HIT,GameEvent.Kind.LIGHTNING_RESET,GameEvent.Kind.LIGHTNING_DISCHARGE,GameEvent.Kind.LIGHTNING_CAPTURE).contains(event.kind()) && event.copiedAbility()!=Ability.CHAIN_LIGHTNING && event.copiedAbility()!=Ability.THUNDERSTORM),"Zeus events require format 12");
-                require(formatVersion>=11 || (!Set.of(GameEvent.Kind.PLANT_MINE,GameEvent.Kind.DETONATE,GameEvent.Kind.MINE_TRIGGER,GameEvent.Kind.MINE_CAPTURE,GameEvent.Kind.BLAST_AREA,GameEvent.Kind.BLAST_CAPTURE,GameEvent.Kind.BLAST_DEATH).contains(event.kind()) && event.copiedAbility()!=Ability.PLANT_MINE && event.copiedAbility()!=Ability.DETONATE),"Moleminer events require format 11");
-                require(formatVersion>=10 || (!Set.of(GameEvent.Kind.BOX,GameEvent.Kind.ILLUSION,GameEvent.Kind.ILLUSION_HIT).contains(event.kind()) && event.copiedAbility()!=Ability.BOX && event.copiedAbility()!=Ability.ILLUSION),"Clownganger events require format 10");
-                require(formatVersion>=9 || (!Set.of(GameEvent.Kind.SPEAR, GameEvent.Kind.STUN, GameEvent.Kind.ARES_REVENGE).contains(event.kind()) && event.copiedAbility() != Ability.SPEAR), "Ares events require format 9");
+                require(formatVersion >= 8 || (event.kind() != GameEvent.Kind.CLOUD && event.kind() != GameEvent.Kind.INVISIBILITY && event.copiedAbility() != FaunAbility.CLOUD && event.copiedAbility() != FaunAbility.INVISIBILITY), "Faun events require format 8");
+                require(formatVersion >=14 || (!Set.of(GameEvent.Kind.YARN,GameEvent.Kind.CLAY_POT,GameEvent.Kind.YARN_STUN).contains(event.kind()) && event.copiedAbility()!=KikimoraAbility.YARN && event.copiedAbility()!=KikimoraAbility.CLAY_POT),"Kikimora events require format 14");
+                require(formatVersion>=13 || (event.kind()!=GameEvent.Kind.GRAPPLE && event.kind()!=GameEvent.Kind.EVOLVE && event.copiedAbility()!=ChronomlinAbility.GRAPPLE && event.copiedAbility()!=ChronomlinAbility.EVOLVE),"Chronomlin events require format 13");
+                require(formatVersion>=12 || (!Set.of(GameEvent.Kind.CHAIN_LIGHTNING,GameEvent.Kind.THUNDERSTORM,GameEvent.Kind.LIGHTNING_HIT,GameEvent.Kind.LIGHTNING_RESET,GameEvent.Kind.LIGHTNING_DISCHARGE,GameEvent.Kind.LIGHTNING_CAPTURE).contains(event.kind()) && event.copiedAbility()!=ZeusAbility.CHAIN_LIGHTNING && event.copiedAbility()!=ZeusAbility.THUNDERSTORM),"Zeus events require format 12");
+                require(formatVersion>=11 || (!Set.of(GameEvent.Kind.PLANT_MINE,GameEvent.Kind.DETONATE,GameEvent.Kind.MINE_TRIGGER,GameEvent.Kind.MINE_CAPTURE,GameEvent.Kind.BLAST_AREA,GameEvent.Kind.BLAST_CAPTURE,GameEvent.Kind.BLAST_DEATH).contains(event.kind()) && event.copiedAbility()!=MoleminerAbility.PLANT_MINE && event.copiedAbility()!=MoleminerAbility.DETONATE),"Moleminer events require format 11");
+                require(formatVersion>=10 || (!Set.of(GameEvent.Kind.BOX,GameEvent.Kind.ILLUSION,GameEvent.Kind.ILLUSION_HIT).contains(event.kind()) && event.copiedAbility()!=ClowngangerAbility.BOX && event.copiedAbility()!=ClowngangerAbility.ILLUSION),"Clownganger events require format 10");
+                require(formatVersion>=9 || (!Set.of(GameEvent.Kind.SPEAR, GameEvent.Kind.STUN, GameEvent.Kind.ARES_REVENGE).contains(event.kind()) && event.copiedAbility() != AresAbility.SPEAR), "Ares events require format 9");
                 events.add(event);
             }
             Element white = one(root, "whiteCaptures"), black = one(root, "blackCaptures");
@@ -445,7 +453,7 @@ public final class GameSaveFile {
 
     private static void attrs(Element element, Object... pairs) {
         for (int i = 0; i < pairs.length; i += 2)
-            if (pairs[i + 1] != null) element.setAttribute(pairs[i].toString(), pairs[i + 1].toString());
+            if (pairs[i + 1] != null) element.setAttribute(pairs[i].toString(), pairs[i + 1] instanceof Abilities ability ? ability.id() : pairs[i + 1].toString());
     }
 
     private static void writeClock(Element entry, ClockSnapshot clock) {
@@ -521,6 +529,11 @@ public final class GameSaveFile {
 
     private static <E extends Enum<E>> E enumeration(Element entry, String attribute, Class<E> type) {
         return Enum.valueOf(type, text(entry, attribute));
+    }
+
+    private static Abilities optionalAbility(Element entry, String attribute) {
+        return entry.hasAttribute(attribute)
+                ? game.heroes.HeroRegistry.standard().abilityById(text(entry, attribute)) : null;
     }
 
     private static <E extends Enum<E>> E optionalEnum(Element entry, String attribute, Class<E> type) {

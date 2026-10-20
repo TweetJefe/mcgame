@@ -1,8 +1,9 @@
 package game.persistence;
+
+import game.heroes.clownganger.ClowngangerAbility;
 import game.moves.TurnRejection;
 import game.core.*;
 import game.heroes.*;
-import game.heroes.clownganger.ClowngangerTest;
 import game.draft.*;
 import org.junit.Test;
 import java.nio.charset.StandardCharsets;
@@ -18,7 +19,7 @@ public class ClowngangerSaveTest {
         Game g=withIllusion();move(g,"c2","e3");String s=xml(g);assertTrue(s.contains("formatVersion=\"10\""));g=load(s);assertEquals(s,xml(g));move(g,"d2","f3");String both=xml(g);g=load(both);assertEquals(both,xml(g));assertEquals(TurnRejection.MOVE_ALREADY_USED,g.moveFigure(g.getCurrentPlayer(),pos("e3"),pos("c2")));end(g);assertEquals(xml(g),xml(load(xml(g))));
     }
     @Test public void boxRulesExpiryOriginAndFormatCannotBeForged()throws Exception{
-        Game g=basic();cast(g,"c2","a1",Ability.BOX);String s=xml(g);assertEquals(s,xml(load(s)));invalid(s.replace("boxedThroughTurn=\"3\"","boxedThroughTurn=\"5\""));invalid(s.replace("boxedThroughTurn=\"3\"","boxedThroughTurn=\"0\""));invalid(s.replace("formatVersion=\"10\"","formatVersion=\"9\""));invalid(s.replaceAll("(?s)<clowngangerRules [^>]*/>",""));invalid(s.replace("boxTurns=\"1\"","boxTurns=\"2\""));invalid(s.replaceAll(" boxedThroughTurn=\"0\"",""));
+        Game g=basic();cast(g,"c2","a1",ClowngangerAbility.BOX);String s=xml(g);assertEquals(s,xml(load(s)));invalid(s.replace("boxedThroughTurn=\"3\"","boxedThroughTurn=\"5\""));invalid(s.replace("boxedThroughTurn=\"3\"","boxedThroughTurn=\"0\""));invalid(s.replace("formatVersion=\"10\"","formatVersion=\"9\""));invalid(s.replaceAll("(?s)<clowngangerRules [^>]*/>",""));invalid(s.replace("boxTurns=\"1\"","boxTurns=\"2\""));invalid(s.replaceAll(" boxedThroughTurn=\"0\"",""));
     }
     @Test public void dummyWithoutBirthAndDuplicateIdentityAreRejected()throws Exception{
         String s=xml(withIllusion());invalid(s.replaceAll("kind=\"ILLUSION\"","kind=\"TELEPORT\""));invalid(s.replace("hero=\"ILLUSION\"","hero=\"NONE\""));invalid(s.replace("hero=\"ILLUSION\"","hero=\"CLOWNGANGER_KNIGHT\""));

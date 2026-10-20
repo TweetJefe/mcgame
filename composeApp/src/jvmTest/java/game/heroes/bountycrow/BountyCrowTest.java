@@ -1,11 +1,7 @@
 package game.heroes.bountycrow;
 
-import game.moves.AbilityRejection;
-import game.moves.EconomyRejection;
-import game.moves.MovementRejection;
-import game.moves.StatusRejection;
-import game.moves.Success;
-import game.moves.TurnRejection;
+import game.heroes.pudge.PudgeAbility;
+
 import game.core.Game;
 import game.economy.*;
 import game.heroes.*;
@@ -43,8 +39,8 @@ public class BountyCrowTest {
     private Game scenario(BountyCrowScenario scenario) { return scenario.createGame(() -> 0L); }
     private void play(Game g, String from, String to) { assertEquals(Success.SUCCESS, g.moveFigure(g.getCurrentPlayer(), pos(from), pos(to))); }
     private void end(Game g) { assertEquals(Success.SUCCESS, g.endTurn(g.getCurrentPlayer())); }
-    private MoveResult cast(Game g, String from, String to, Ability a) { return g.useAbility(g.getCurrentPlayer(), pos(from), to == null ? null : pos(to), a); }
-    private void mark(Game g, String from, String to) { assertEquals(Success.SUCCESS, cast(g, from, to, Ability.BOUNTY)); }
+    private MoveResult cast(Game g, String from, String to, Abilities a) { return g.useAbility(g.getCurrentPlayer(), pos(from), to == null ? null : pos(to), a); }
+    private void mark(Game g, String from, String to) { assertEquals(Success.SUCCESS, cast(g, from, to, BountyCrowAbility.BOUNTY)); }
     private long gold(Game g, FigureColor side) { return g.getEconomy().balanceHalves(side); }
     private void reject(Game g, MoveResult result, java.util.function.Supplier<MoveResult> action) {
         var before = g.getSnapshot(); assertEquals(result, action.get()); assertEquals(before, g.getSnapshot());
@@ -57,8 +53,8 @@ public class BountyCrowTest {
     }
     @Test public void bountyIsGlobalIgnoresBlockersAndPreviewsDoNotChangeState() {
         Game g = Game.fromSnapshot(Game.mobaPrototype(HeroRules.prototype(), 600).getSnapshot(), () -> 0L); var before = g.getSnapshot();
-        assertTrue(g.getAbilityTargets(pos("b2"), Ability.BOUNTY).contains(pos("h8")));
-        assertTrue(g.getAbilityTargets(pos("b2"), Ability.BOUNTY).contains(pos("a7")));
+        assertTrue(g.getAbilityTargets(pos("b2"), BountyCrowAbility.BOUNTY).contains(pos("h8")));
+        assertTrue(g.getAbilityTargets(pos("b2"), BountyCrowAbility.BOUNTY).contains(pos("a7")));
         assertEquals(before, g.getSnapshot()); mark(g, "b2", "h8");
         assertEquals(3, g.getPieceState(pos("b2")).cooldown()); assertEquals(1, g.getEconomy().marks().size());
         assertEquals(0, gold(g, WHITE)); assertFalse(g.getTurnState().moveUsed()); assertTrue(g.getTurnState().abilityUsed());
@@ -66,11 +62,11 @@ public class BountyCrowTest {
     }
     @Test public void invalidTargetsAndWrongAbilitiesPreserveEverything() {
         Game g = scenario(BountyCrowScenario.BOUNTY);
-        reject(g, AbilityRejection.INVALID_ABILITY_TARGET, () -> cast(g, "b2", "e1", Ability.BOUNTY));
-        reject(g, AbilityRejection.INVALID_ABILITY_TARGET, () -> cast(g, "b2", "e3", Ability.BOUNTY));
-        reject(g, StatusRejection.KING_IMMUNE, () -> cast(g, "b2", "h8", Ability.BOUNTY));
-        reject(g, AbilityRejection.NO_ABILITY, () -> cast(g, "b2", "e4", Ability.HOOK));
-        reject(g, AbilityRejection.ULTIMATE_NOT_READY, () -> cast(g, "b2", null, Ability.STEAL));
+        reject(g, AbilityRejection.INVALID_ABILITY_TARGET, () -> cast(g, "b2", "e1", BountyCrowAbility.BOUNTY));
+        reject(g, AbilityRejection.INVALID_ABILITY_TARGET, () -> cast(g, "b2", "e3", BountyCrowAbility.BOUNTY));
+        reject(g, StatusRejection.KING_IMMUNE, () -> cast(g, "b2", "h8", BountyCrowAbility.BOUNTY));
+        reject(g, AbilityRejection.NO_ABILITY, () -> cast(g, "b2", "e4", PudgeAbility.HOOK));
+        reject(g, AbilityRejection.ULTIMATE_NOT_READY, () -> cast(g, "b2", null, BountyCrowAbility.STEAL));
     }
     @Test public void otherAllyCollectsBaseAndBountyOnce() {
         Game g = scenario(BountyCrowScenario.BOUNTY); mark(g, "b2", "e4"); play(g, "e1", "e4");
@@ -127,39 +123,39 @@ public class BountyCrowTest {
     @Test public void ultimateTransfersTwoGoldAndNeedsOrdinaryMovementToFinish() {
         Game g = scenario(BountyCrowScenario.STEAL); assertEquals(6, gold(g, WHITE)); assertEquals(6, gold(g, BLACK));
         assertEquals(2, g.getPieceState(pos("f6")).ultimateCharge());
-        assertEquals(Success.SUCCESS, cast(g, "f6", null, Ability.STEAL));
+        assertEquals(Success.SUCCESS, cast(g, "f6", null, BountyCrowAbility.STEAL));
         assertEquals(10, gold(g, WHITE)); assertEquals(2, gold(g, BLACK)); assertEquals(0, g.getPieceState(pos("f6")).ultimateCharge());
         reject(g, TurnRejection.MOVE_REQUIRED, () -> g.endTurn(g.getCurrentPlayer()));
-        reject(g, TurnRejection.ABILITY_ALREADY_USED, () -> cast(g, "f6", "h3", Ability.BOUNTY));
+        reject(g, TurnRejection.ABILITY_ALREADY_USED, () -> cast(g, "f6", "h3", BountyCrowAbility.BOUNTY));
         play(g, "f6", "f7"); end(g);
     }
     @Test public void theftCanFollowOrdinaryMove() {
         Game g = scenario(BountyCrowScenario.STEAL); play(g, "f6", "f7");
-        assertEquals(Success.SUCCESS, cast(g, "f7", null, Ability.STEAL)); end(g); assertEquals(10, gold(g, WHITE));
+        assertEquals(Success.SUCCESS, cast(g, "f7", null, BountyCrowAbility.STEAL)); end(g); assertEquals(10, gold(g, WHITE));
     }
     @Test public void theftTakesOnlyTheAvailableFractionalBalance() {
         var b = board("a1", "h8"); put(b, Pawn.class, WHITE, "d4"); put(b, Pawn.class, BLACK, "e5"); put(b, Pawn.class, BLACK, "f6");
         put(b, Pawn.class, BLACK, "g4"); put(b, Pawn.class, WHITE, "h3");
         Game g = create(b, Map.of(pos("d4"), HeroType.BOUNTY_CROW_PAWN, pos("g4"), HeroType.BOUNTY_CROW_PAWN), HeroRules.prototype(), WHITE);
         play(g, "d4", "e5"); end(g); play(g, "g4", "h3"); end(g); play(g, "e5", "f6"); end(g); play(g, "h8", "g8"); end(g);
-        assertEquals(3, gold(g, BLACK)); assertEquals(Success.SUCCESS, cast(g, "f6", null, Ability.STEAL));
+        assertEquals(3, gold(g, BLACK)); assertEquals(Success.SUCCESS, cast(g, "f6", null, BountyCrowAbility.STEAL));
         assertEquals(0, gold(g, BLACK)); assertEquals(9, gold(g, WHITE));
     }
     @Test public void emptyWalletRejectsTheftWithoutConsumingCharge() {
         var b = board("a1", "h8"); put(b, Pawn.class, WHITE, "d4"); put(b, Pawn.class, BLACK, "e5"); put(b, Pawn.class, BLACK, "f6");
         Game g = create(b, "d4"); play(g, "d4", "e5"); end(g); play(g, "h8", "g8"); end(g); play(g, "e5", "f6"); end(g); play(g, "g8", "h8"); end(g);
-        reject(g, EconomyRejection.NO_GOLD_TO_STEAL, () -> cast(g, "f6", null, Ability.STEAL)); assertEquals(2, g.getPieceState(pos("f6")).ultimateCharge());
+        reject(g, EconomyRejection.NO_GOLD_TO_STEAL, () -> cast(g, "f6", null, BountyCrowAbility.STEAL)); assertEquals(2, g.getPieceState(pos("f6")).ultimateCharge());
     }
     @Test public void cooldownCountsOwnTurnsAndDoesNotBlockUltimate() {
         Game g = scenario(BountyCrowScenario.STEAL); mark(g, "f6", "h3"); play(g, "a1", "b1"); end(g);
         play(g, "g8", "h8"); end(g); assertEquals(2, g.getPieceState(pos("f6")).cooldown());
-        reject(g, AbilityRejection.ABILITY_COOLDOWN, () -> cast(g, "f6", "h3", Ability.BOUNTY));
-        assertEquals(Success.SUCCESS, cast(g, "f6", null, Ability.STEAL));
+        reject(g, AbilityRejection.ABILITY_COOLDOWN, () -> cast(g, "f6", "h3", BountyCrowAbility.BOUNTY));
+        assertEquals(Success.SUCCESS, cast(g, "f6", null, BountyCrowAbility.STEAL));
     }
     @Test public void purelyFinancialAbilitiesCannotLeaveOwnKingInCheck() {
         var b = board("a1", "h8"); put(b, Pawn.class, WHITE, "b2"); put(b, Rook.class, BLACK, "a8"); put(b, Pawn.class, BLACK, "g7");
         Game g = create(b, "b2"); assertTrue(g.isInCheck());
-        reject(g, MovementRejection.KING_IN_CHECK, () -> cast(g, "b2", "g7", Ability.BOUNTY));
+        reject(g, MovementRejection.KING_IN_CHECK, () -> cast(g, "b2", "g7", BountyCrowAbility.BOUNTY));
     }
     @Test public void promotionKeepsIdentitySkillsAndPassive() throws Exception {
         var b = board("a1", "h6"); put(b, Pawn.class, WHITE, "b7"); put(b, Pawn.class, BLACK, "c7");
@@ -186,7 +182,7 @@ public class BountyCrowTest {
         var b = board("a1", "h8"); put(b, Rook.class, WHITE, "d4"); put(b, Pawn.class, WHITE, "e4"); put(b, Rook.class, BLACK, "d8");
         HeroRules rules = new HeroRules(PudgeRules.sandbox(), game.heroes.lumeshard.LumeshardRules.prototype());
         Game g = create(b, Map.of(pos("d4"), HeroType.PUDGE_ROOK, pos("e4"), HeroType.BOUNTY_CROW_PAWN), rules, WHITE);
-        assertEquals(Success.SUCCESS, cast(g, "d4", "e4", Ability.SWALLOW)); play(g, "a1", "b1"); end(g); play(g, "d8", "d4");
+        assertEquals(Success.SUCCESS, cast(g, "d4", "e4", PudgeAbility.SWALLOW)); play(g, "a1", "b1"); end(g); play(g, "d8", "d4");
         assertEquals(HeroType.BOUNTY_CROW_PAWN, g.getPieceState(pos("d4")).hero());
         assertEquals(11, gold(g, WHITE)); assertEquals(10, gold(g, BLACK)); assertEquals(1, g.getPieceState(pos("d4")).ultimateCharge());
         GameSaveFile.encode(g.getSnapshot());
@@ -196,7 +192,7 @@ public class BountyCrowTest {
         Game g = create(b, Map.of(pos("b2"), HeroType.BOUNTY_CROW_PAWN, pos("e5"), HeroType.PUDGE_ROOK),
                 new HeroRules(PudgeRules.sandbox(), game.heroes.lumeshard.LumeshardRules.prototype()), WHITE);
         long target = g.getPieceState(pos("e4")).id(); mark(g, "b2", "e4"); play(g, "a1", "b1"); end(g);
-        assertEquals(Success.SUCCESS, cast(g, "e5", "e4", Ability.SWALLOW)); play(g, "h8", "g8"); end(g);
+        assertEquals(Success.SUCCESS, cast(g, "e5", "e4", PudgeAbility.SWALLOW)); play(g, "h8", "g8"); end(g);
         assertNotNull(g.getEconomy().mark(target)); assertEquals(PieceState.Status.SWALLOWED, g.getPieceState(target).status());
         g = Game.fromSnapshot(GameSaveFile.decode(GameSaveFile.encode(g.getSnapshot())), () -> 0L);
         play(g, "b1", "a1"); end(g); play(g, "g8", "h8"); end(g); play(g, "a1", "b1"); end(g);

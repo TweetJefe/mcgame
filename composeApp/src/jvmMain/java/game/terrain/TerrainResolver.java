@@ -1,5 +1,7 @@
 package game.terrain;
 
+import game.heroes.bolotnik.BolotnikAbility;
+
 import game.moves.AbilityRejection;
 import game.moves.MovementRejection;
 import game.moves.StatusRejection;
@@ -36,12 +38,12 @@ public final class TerrainResolver {
     }
 
     public static Placement place(TerrainState terrain, Map<Long, PieceState> before, PieceState actor,
-                                  Position square, Ability ability, long turn, HeroRules rules) {
-        if (ability != Ability.MUD && ability != Ability.AMBUSH)
+                                  Position square, Abilities ability, long turn, HeroRules rules) {
+        if (ability != BolotnikAbility.MUD && ability != BolotnikAbility.AMBUSH)
             return new Placement(Success.SUCCESS, terrain, List.of());
         var cells = new HashMap<>(terrain.cells());
         var footprint = new ArrayList<Position>();
-        if (ability == Ability.MUD) footprint.add(square);
+        if (ability == BolotnikAbility.MUD) footprint.add(square);
         else
             for (int c = Math.max(0, actor.position().getColumn() - 1); c <= Math.min(7, actor.position().getColumn() + 1); c++)
                 footprint.add(new Position(actor.position().getRow(), c));
@@ -56,8 +58,8 @@ public final class TerrainResolver {
         }
         Long firstEnemy = null;
         for (Position p : footprint) {
-            cells.put(p, new MudCell(actor.id(), ability == Ability.MUD ? MudCell.Kind.MUD : MudCell.Kind.AMBUSH,
-                    ability == Ability.MUD ? Math.addExact(turn, 2L * rules.bolotnik().mudTurns()) : 0));
+            cells.put(p, new MudCell(actor.id(), ability == BolotnikAbility.MUD ? MudCell.Kind.MUD : MudCell.Kind.AMBUSH,
+                    ability == BolotnikAbility.MUD ? Math.addExact(turn, 2L * rules.bolotnik().mudTurns()) : 0));
             PieceState occupant = at(before, p);
             if (firstEnemy == null && occupant != null && !occupant.isPotted() && occupant.color() != actor.color()) firstEnemy = occupant.id();
         }

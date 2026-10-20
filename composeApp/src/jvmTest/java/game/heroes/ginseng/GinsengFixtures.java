@@ -1,5 +1,7 @@
 package game.heroes.ginseng;
 
+import game.heroes.pudge.PudgeAbility;
+
 import game.core.Game;
 import game.heroes.*;
 import game.state.*;
@@ -35,8 +37,8 @@ public final class GinsengFixtures {
         return charged(create(b,Map.of(pos("e2"),HeroType.PUDGE_ROOK)),"c2","e2");
     }
     public static Game readyHook() {
-        Game g=hook();ok(g.useAbility(g.getCurrentPlayer(),pos("e2"),pos("e5"),Ability.HOOK));
-        play(g,"b1","a3");play(g,"g8","f6");ok(g.useAbility(g.getCurrentPlayer(),pos("c2"),pos("e2"),Ability.COPY_SPELL));
+        Game g=hook();ok(g.useAbility(g.getCurrentPlayer(),pos("e2"),pos("e5"),PudgeAbility.HOOK));
+        play(g,"b1","a3");play(g,"g8","f6");ok(g.useAbility(g.getCurrentPlayer(),pos("c2"),pos("e2"),GinsengAbility.COPY_SPELL));
         play(g,"a3","b1");play(g,"f6","g8");return g;
     }
     private static void play(Game g,String a,String b){ok(g.moveFigure(g.getCurrentPlayer(),pos(a),pos(b)));ok(g.endTurn(g.getCurrentPlayer()));}

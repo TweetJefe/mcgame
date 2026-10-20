@@ -14,7 +14,7 @@ import java.util.List;
 public interface Hero {
     HeroType type();
 
-    List<Ability> abilities();
+    List<Abilities> abilities();
 
     /** Eligible initial chess bodies; promotions and copied spells retain their own state rules. */
     default boolean supports(Class<? extends Figure> figureType) {
@@ -22,13 +22,13 @@ public interface Hero {
     }
 
     /** Declarative targeting shared by execution and target discovery. */
-    default HeroTargeting targeting(Ability ability) {
-        return HeroTargeting.square(HeroTargeting.Permission.ILLUSION);
+    default HeroTargeting targeting(Abilities ability) {
+        return ability.targeting();
     }
 
     /** Candidate requests; the engine validates each preview and the remaining turn. */
     default List<AbilityRequest> requests(HeroActionContext context, PieceState actor,
-                                         Ability ability, boolean borrowed) {
+                                         Abilities ability, boolean borrowed) {
         if (!targeting(ability).requiresTarget())
             return List.of(new AbilityRequest(actor.position(), ability, null, null, borrowed));
         return context.field().getGameField().keySet().stream()
@@ -36,14 +36,14 @@ public interface Hero {
     }
 
     /** Checks the actor's own ability requirements, without validating a target or turn budgets. */
-    MoveResult availability(PieceState actor, Ability ability);
+    MoveResult availability(PieceState actor, Abilities ability);
 
     /**
      * Checks availability and proposes the effect. Target and square may be null for abilities
      * that do not need them; the implementation validates the targeting it requires.
      */
     HeroEffect preview(HeroActionContext context, PieceState actor, PieceState target,
-                       Position square, Ability ability);
+                       Position square, Abilities ability);
 
     /** Returns the actor's state after one capture, including any earned ultimate charge. */
     PieceState afterCapture(PieceState actor);

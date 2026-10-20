@@ -1,12 +1,13 @@
 package game.core;
 
+import game.heroes.pudge.PudgeAbility;
+
 import game.moves.AbilityRejection;
 import game.moves.ItemRejection;
 import game.moves.MovementRejection;
 import game.moves.StatusRejection;
 import game.moves.Success;
 import game.moves.TurnRejection;
-import game.heroes.Ability;
 import game.heroes.HeroType;
 import game.heroes.pudge.PudgeRules;
 import game.history.GameEvent;
@@ -64,10 +65,10 @@ public class MobaGameTest {
         return game.moveFigure(game.getCurrentPlayer(), pos(from), pos(to));
     }
     private MoveResult hook(Game game, String from, String to) {
-        return game.useAbility(game.getCurrentPlayer(), pos(from), pos(to), Ability.HOOK);
+        return game.useAbility(game.getCurrentPlayer(), pos(from), pos(to), PudgeAbility.HOOK);
     }
     private MoveResult swallow(Game game, String from, String to) {
-        return game.useAbility(game.getCurrentPlayer(), pos(from), pos(to), Ability.SWALLOW);
+        return game.useAbility(game.getCurrentPlayer(), pos(from), pos(to), PudgeAbility.SWALLOW);
     }
     private void reject(Game game, MoveResult result, java.util.function.Supplier<MoveResult> command) {
         GameSnapshot before = game.getSnapshot();
@@ -120,7 +121,7 @@ public class MobaGameTest {
         var board = board("a1", "h8"); put(board, Rook.class, WHITE, "e2"); put(board, Knight.class, BLACK, "f5");
         Game game = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK));
         assertEquals(Success.SUCCESS, move(game, "e2", "f2"));
-        assertTrue(game.getAbilityTargets(pos("f2"), Ability.HOOK).contains(pos("f5")));
+        assertTrue(game.getAbilityTargets(pos("f2"), PudgeAbility.HOOK).contains(pos("f5")));
         assertEquals(Success.SUCCESS, hook(game, "f2", "f5"));
         assertTrue(game.getFigureByPosition(pos("f3")) instanceof Knight);
         assertSame(game.getWhitePlayer(), game.getCurrentPlayer()); assertConsistent(game);
@@ -132,7 +133,7 @@ public class MobaGameTest {
         assertEquals(Success.SUCCESS, hook(game, "e2", "e3"));
         reject(game, TurnRejection.ABILITY_ALREADY_USED, () -> swallow(game, "g2", "g3"));
         reject(game, TurnRejection.ABILITY_ALREADY_USED, () -> hook(game, "g2", "g3"));
-        assertTrue(game.getAbilityTargets(pos("g2"), Ability.SWALLOW).isEmpty());
+        assertTrue(game.getAbilityTargets(pos("g2"), PudgeAbility.SWALLOW).isEmpty());
     }
     @Test public void hookWorksInAllEightDirectionsUpToThreeStepsAndStopsAdjacent() {
         for (int dr = -1; dr <= 1; dr++) for (int dc = -1; dc <= 1; dc++) {
@@ -142,7 +143,7 @@ public class MobaGameTest {
             board.put(target, factory.createFigure(Knight.class, target, BLACK));
             Game game = create(board, Map.of(pos("d4"), HeroType.PUDGE_ROOK));
             long id = game.getPieceState(target).id();
-            assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("d4"), target, Ability.HOOK));
+            assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("d4"), target, PudgeAbility.HOOK));
             assertEquals(id, game.getPieceState(landing).id()); assertEquals(0, game.getWhitePlayer().getPoints());
             assertTrue(game.getTurnState().abilityUsed()); assertFalse(game.getTurnState().moveUsed()); assertConsistent(game);
         }
@@ -159,7 +160,7 @@ public class MobaGameTest {
         Game game = game();
         reject(game, AbilityRejection.NO_ABILITY, () -> hook(game, "d2", "e5"));
         reject(game, AbilityRejection.INVALID_ABILITY, () -> game.useAbility(game.getCurrentPlayer(), pos("e2"), pos("e5"), null));
-        assertTrue(game.getAbilityTargets(pos("d2"), Ability.HOOK).isEmpty());
+        assertTrue(game.getAbilityTargets(pos("d2"), PudgeAbility.HOOK).isEmpty());
     }
     @Test public void hookNeverIgnoresBlockersOrPullsKings() {
         var board = board("a1", "h8"); put(board, Rook.class, WHITE, "e2"); put(board, Knight.class, BLACK, "e5");
@@ -170,7 +171,7 @@ public class MobaGameTest {
         reject(game, AbilityRejection.ABILITY_OUT_OF_RANGE, () -> hook(game, "e2", "e6"));
         reject(game, AbilityRejection.INVALID_ABILITY_TARGET, () -> hook(game, "e2", "f2"));
         reject(game, StatusRejection.KING_IMMUNE, () -> hook(game, "e2", "h8"));
-        reject(game, MovementRejection.OUT_OF_BOUNDS, () -> game.useAbility(game.getCurrentPlayer(), pos("e2"), null, Ability.HOOK));
+        reject(game, MovementRejection.OUT_OF_BOUNDS, () -> game.useAbility(game.getCurrentPlayer(), pos("e2"), null, PudgeAbility.HOOK));
     }
     @Test public void hookMayOpenIndirectCheckButCannotExposeOwnKing() {
         var board = board("a1", "e8"); put(board, Rook.class, WHITE, "e1"); put(board, Rook.class, WHITE, "d7");
@@ -244,7 +245,7 @@ public class MobaGameTest {
     }
     @Test public void snapshotsCollectionsAndQueryPreviewsAreImmutableAndPure() {
         Game game = game(); GameSnapshot before = game.getSnapshot();
-        assertTrue(game.getAbilityTargets(pos("e2"), Ability.HOOK).contains(pos("e5")));
+        assertTrue(game.getAbilityTargets(pos("e2"), PudgeAbility.HOOK).contains(pos("e5")));
         game.getLegalMoves(pos("e2")); assertEquals(before, game.getSnapshot());
         assertThrows(UnsupportedOperationException.class, () -> before.pieces().clear());
         assertThrows(UnsupportedOperationException.class, () -> before.events().clear());
@@ -267,11 +268,11 @@ public class MobaGameTest {
     }
     @Test public void wrongPlayersAndClassicModeCannotUseMobaCommands() {
         Game game = game();
-        reject(game, TurnRejection.WRONG_PLAYER, () -> game.useAbility(game.getBlackPlayer(), pos("e2"), pos("e5"), Ability.HOOK));
+        reject(game, TurnRejection.WRONG_PLAYER, () -> game.useAbility(game.getBlackPlayer(), pos("e2"), pos("e5"), PudgeAbility.HOOK));
         reject(game, TurnRejection.WRONG_PLAYER, () -> game.endTurn(new Player(true)));
         Game classic = new Game(8);
         assertEquals(TurnRejection.UNSUPPORTED_ACTION, classic.endTurn(classic.getCurrentPlayer()));
-        assertEquals(TurnRejection.UNSUPPORTED_ACTION, classic.useAbility(classic.getCurrentPlayer(), pos("a1"), pos("a2"), Ability.HOOK));
+        assertEquals(TurnRejection.UNSUPPORTED_ACTION, classic.useAbility(classic.getCurrentPlayer(), pos("a1"), pos("a2"), PudgeAbility.HOOK));
         assertEquals(GameMode.CLASSIC, classic.getMode());
     }
 
@@ -475,7 +476,7 @@ public class MobaGameTest {
         assertEquals(Success.SUCCESS, game.endTurn(game.getCurrentPlayer()));
         assertFalse(game.getLegalMoves(pos("a2")).getCanMove().isEmpty());
         reject(game, TurnRejection.NO_MOVE_AFTER_ABILITY, () -> hook(game, "a2", "a5"));
-        assertFalse(game.getAbilityTargets(pos("a2"), Ability.HOOK).contains(pos("a5")));
+        assertFalse(game.getAbilityTargets(pos("a2"), PudgeAbility.HOOK).contains(pos("a5")));
         assertFalse(game.getTurnState().abilityUsed()); assertConsistent(game);
     }
     @Test public void nestedAlliedPudgeIsReleasedWithItsOwnPassengerIntact() {

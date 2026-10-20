@@ -1,4 +1,6 @@
 package game.persistence;
+
+import game.heroes.ginseng.GinsengAbility;
 import game.core.*;
 import game.heroes.*;
 import game.heroes.ares.AresTest;
@@ -24,7 +26,7 @@ public class ChronomlinSaveTest {
         Game g=ready();evolve(g,"c2");g=load(xml(g));cycle(g);g=AresTest.charge(g,"c2",1);evolve(g,"c2");g=load(xml(g));assertEquals(Knight.class,g.getPieceState(pos("c2")).type());cycle(g);g=AresTest.charge(g,"c2",1);evolve(g,"c2");g=load(xml(g));assertEquals(Rook.class,g.getPieceState(pos("c2")).type());move(g,"c2","c3");end(g);AresTest.roundtrip(g);
     }
     @Test public void evolvedGinsengAndItsNewAbilityCopyRoundtrip()throws Exception{
-        Game g=ginsengReady();long id=g.getPieceState(pos("e2")).id();borrowed(g,id,Ability.EVOLVE,null);String s=xml(g);g=load(s);assertEquals(s,xml(g));assertEquals(Knight.class,g.getPieceState(id).type());cycle(g);g=AresTest.charge(g,"e2",2);g.useAbility(g.getCurrentPlayer(),pos("e2"),pos("c2"),Ability.COPY_SPELL);g=load(xml(g));cycle(g);borrowed(g,id,Ability.EVOLVE,null);assertEquals(Rook.class,g.getPieceState(id).type());AresTest.roundtrip(g);
+        Game g=ginsengReady();long id=g.getPieceState(pos("e2")).id();borrowed(g,id,ChronomlinAbility.EVOLVE,null);String s=xml(g);g=load(s);assertEquals(s,xml(g));assertEquals(Knight.class,g.getPieceState(id).type());cycle(g);g=AresTest.charge(g,"e2",2);g.useAbility(g.getCurrentPlayer(),pos("e2"),pos("c2"),GinsengAbility.COPY_SPELL);g=load(xml(g));cycle(g);borrowed(g,id,ChronomlinAbility.EVOLVE,null);assertEquals(Rook.class,g.getPieceState(id).type());AresTest.roundtrip(g);
     }
     @Test public void forgedFormMissingRulesAndDowngradeAreRejected()throws Exception{
         Game g=ready();evolve(g,"c2");String s=xml(g);invalid(s.replace("formatVersion=\"13\"","formatVersion=\"12\""));invalid(s.replaceAll("(?s)<chronomlinRules [^>]*/>",""));invalid(s.replace("type=\"Bishop\"","type=\"Rook\""));invalid(s.replace("kind=\"EVOLVE\"","kind=\"STEAL\""));

@@ -1,9 +1,8 @@
 package game.heroes.izba;
 
-import game.moves.AbilityRejection;
-import game.moves.MovementRejection;
-import game.moves.Success;
-import game.moves.TurnRejection;
+import game.heroes.pudge.PudgeAbility;
+import game.heroes.bolotnik.BolotnikAbility;
+
 import game.core.Game;
 import game.draft.*;
 import game.heroes.*;
@@ -24,7 +23,7 @@ public class IzbaTest {
     private void move(Game g,String a,String b){assertEquals(Success.SUCCESS,g.moveFigure(g.getCurrentPlayer(),pos(a),pos(b)));}
     private void end(Game g){assertEquals(Success.SUCCESS,g.endTurn(g.getCurrentPlayer()));}
     private void waitTurn(Game g,String a,String b){move(g,a,b);end(g);}
-    private void summon(Game g,String square){assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos(square),null,Ability.SUMMON_YAGA));}
+    private void summon(Game g,String square){assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos(square),null,IzbaAbility.SUMMON_YAGA));}
     private PieceState baby(Game g){return g.getSnapshot().pieces().values().stream().filter(p->p.hero()==HeroType.BABA_YAGA_PAWN).findFirst().orElseThrow();}
     private Game reload(Game g)throws Exception{return Game.fromSnapshot(GameSaveFile.decode(GameSaveFile.encode(g.getSnapshot())),()->0L);}
     @Test public void onlyIzbaIsDraftableAndTwoRookHomesAreAvailable() {
@@ -38,20 +37,20 @@ public class IzbaTest {
     }
     @Test public void ultimateUsesOneAbilityButDoesNotReplaceMandatoryMoveAndPreviewsDoNotReroll()throws Exception {
         Game g=standard(81);var before=g.getSnapshot();
-        for(int i=0;i<3;i++){g.getLegalMoves(pos("e2"));g.getAbilityTargets(pos("e2"),Ability.SUMMON_YAGA);g.getAbilityAvailability(pos("e2"),Ability.SUMMON_YAGA);}
-        assertEquals(before,g.getSnapshot());assertEquals(AbilityRejection.INVALID_ABILITY_TARGET,g.useAbility(g.getCurrentPlayer(),pos("e2"),pos("e3"),Ability.SUMMON_YAGA));assertEquals(before,g.getSnapshot());
+        for(int i=0;i<3;i++){g.getLegalMoves(pos("e2"));g.getAbilityTargets(pos("e2"),IzbaAbility.SUMMON_YAGA);g.getAbilityAvailability(pos("e2"),IzbaAbility.SUMMON_YAGA);}
+        assertEquals(before,g.getSnapshot());assertEquals(AbilityRejection.INVALID_ABILITY_TARGET,g.useAbility(g.getCurrentPlayer(),pos("e2"),pos("e3"),IzbaAbility.SUMMON_YAGA));assertEquals(before,g.getSnapshot());
         Game twin=reload(g);summon(g,"e2");summon(twin,"e2");assertArrayEquals(GameSaveFile.encode(g.getSnapshot()),GameSaveFile.encode(twin.getSnapshot()));
         assertNotEquals(before.summons().randomState(),g.getSummons().randomState());assertEquals(0,g.getPieceState(pos("e2")).ultimateCharge());
         assertTrue(g.getTurnState().abilityUsed());assertFalse(g.getTurnState().moveUsed());
         assertEquals(TurnRejection.MOVE_REQUIRED,g.endTurn(g.getCurrentPlayer()));
-        assertEquals(TurnRejection.ABILITY_ALREADY_USED,g.useAbility(g.getCurrentPlayer(),pos("e2"),null,Ability.SUMMON_YAGA));
+        assertEquals(TurnRejection.ABILITY_ALREADY_USED,g.useAbility(g.getCurrentPlayer(),pos("e2"),null,IzbaAbility.SUMMON_YAGA));
         PieceState p=baby(g);assertEquals(Pawn.class,p.type());assertEquals(WHITE,p.color());assertTrue(p.position().getRow()<2);assertEquals(3,p.inventory().size());
         assertEquals(0,g.getEconomy().whiteHalves());assertEquals(0,g.getEconomy().blackHalves());
     }
     @Test public void chargeComesFromOwnCapturesIncludingPawnsAndNoActiveSkillExists() {
         var b=board("a1","h8");put(b,Rook.class,WHITE,"e2");put(b,Pawn.class,BLACK,"e4");put(b,Pawn.class,BLACK,"e5");put(b,Knight.class,BLACK,"g8");
         Game g=create(b,Map.of(pos("e2"),HeroType.IZBA_ROOK),WHITE,0);
-        assertEquals(AbilityRejection.ULTIMATE_NOT_READY,g.getAbilityAvailability(pos("e2"),Ability.SUMMON_YAGA));assertEquals(List.of(Ability.SUMMON_YAGA),HeroAbilities.abilities(HeroType.IZBA_ROOK));
+        assertEquals(AbilityRejection.ULTIMATE_NOT_READY,g.getAbilityAvailability(pos("e2"),IzbaAbility.SUMMON_YAGA));assertEquals(List.of(IzbaAbility.SUMMON_YAGA),HeroAbilities.abilities(HeroType.IZBA_ROOK));
         move(g,"e2","e4");assertEquals(1,g.getPieceState(pos("e4")).ultimateCharge());end(g);waitTurn(g,"g8","f6");
         move(g,"e4","e5");assertEquals(2,g.getPieceState(pos("e5")).ultimateCharge());summon(g,"e5");assertEquals(0,g.getPieceState(pos("e5")).ultimateCharge());
     }
@@ -109,7 +108,7 @@ public class IzbaTest {
     @Test public void aHouseKilledByPudgeCounterCaptureAlsoSummons()throws Exception {
         var b=board("a1","h8");put(b,Rook.class,WHITE,"d2");put(b,Rook.class,BLACK,"d4");put(b,Knight.class,BLACK,"e3");put(b,Knight.class,BLACK,"g8");
         Game g=charge(create(b,Map.of(pos("d2"),HeroType.IZBA_ROOK,pos("d4"),HeroType.PUDGE_ROOK),BLACK,0),"d4");
-        assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("d4"),pos("e3"),Ability.SWALLOW));waitTurn(g,"g8","f6");
+        assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("d4"),pos("e3"),PudgeAbility.SWALLOW));waitTurn(g,"g8","f6");
         move(g,"d2","d4");assertEquals(HeroType.BABA_YAGA_PAWN,baby(g).hero());assertEquals(Knight.class,g.getPieceState(pos("d4")).type());
         assertEquals(10,g.getEconomy().whiteHalves());assertEquals(10,g.getEconomy().blackHalves());assertArrayEquals(GameSaveFile.encode(g.getSnapshot()),GameSaveFile.encode(reload(g).getSnapshot()));
     }
@@ -117,7 +116,7 @@ public class IzbaTest {
         var b=board("a1","h8");put(b,Rook.class,WHITE,"c2");put(b,Rook.class,WHITE,"e2");put(b,Knight.class,WHITE,"b1");put(b,Knight.class,BLACK,"g8");
         Game g=charge(create(b,Map.of(pos("c2"),HeroType.IZBA_ROOK,pos("e2"),HeroType.PUDGE_ROOK),WHITE,seedFor(12,2)),"c2","e2");summon(g,"c2");
         PieceState p=baby(g);assertEquals(pos("e1"),p.position());waitTurn(g,"b1","c3");waitTurn(g,"g8","f6");
-        assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("e2"),pos("e1"),Ability.SWALLOW));waitTurn(g,"c3","b1");waitTurn(g,"f6","g8");
+        assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("e2"),pos("e1"),PudgeAbility.SWALLOW));waitTurn(g,"c3","b1");waitTurn(g,"f6","g8");
         waitTurn(g,"b1","c3");waitTurn(g,"g8","f6");waitTurn(g,"c3","b1");
         assertEquals(HeroType.IZBA_ROOK,g.getSnapshot().pieces().get(p.id()).hero());assertEquals(PieceState.Status.SWALLOWED,g.getSnapshot().pieces().get(p.id()).status());
         assertEquals(Long.valueOf(p.id()),g.getPieceState(pos("e2")).storedPieceId());assertArrayEquals(GameSaveFile.encode(g.getSnapshot()),GameSaveFile.encode(reload(g).getSnapshot()));
@@ -136,7 +135,7 @@ public class IzbaTest {
         put(b,Rook.class,WHITE,"h1");put(b,Rook.class,WHITE,"b3");put(b,Rook.class,BLACK,"a1");put(b,Pawn.class,BLACK,"b2");put(b,Knight.class,BLACK,"g8");
         Game g=charge(create(b,Map.of(pos("h1"),HeroType.IZBA_ROOK,pos("a1"),HeroType.PUDGE_ROOK),BLACK,seedFor(15,0)),"h1","a1");
         long pudge=g.getPieceState(pos("a1")).id(),passenger=g.getPieceState(pos("b2")).id();
-        assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("a1"),pos("b2"),Ability.SWALLOW));waitTurn(g,"g8","f6");move(g,"b3","b2");summon(g,"h1");
+        assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("a1"),pos("b2"),PudgeAbility.SWALLOW));waitTurn(g,"g8","f6");move(g,"b3","b2");summon(g,"h1");
         assertEquals(PieceState.Status.REPLACED,g.getSnapshot().pieces().get(pudge).status());assertEquals(PieceState.Status.REPLACED,g.getSnapshot().pieces().get(passenger).status());
         assertEquals(0,g.getEconomy().whiteHalves());assertEquals(0,g.getEconomy().blackHalves());assertArrayEquals(GameSaveFile.encode(g.getSnapshot()),GameSaveFile.encode(reload(g).getSnapshot()));
     }
@@ -145,7 +144,7 @@ public class IzbaTest {
         // Home squares are sorted by row/file; c2 is the 9th of the 13 empty cells.
         var empty=new ArrayList<Position>();for(int r=0;r<2;r++)for(int c=0;c<8;c++){Position p=new Position(r,c);if(b.get(p) instanceof Empty)empty.add(p);}
         Game g=charge(create(b,Map.of(pos("e2"),HeroType.IZBA_ROOK,pos("g4"),HeroType.BOLOTNIK_KNIGHT),BLACK,seedFor(empty.size(),empty.indexOf(pos("c2")))),"e2");
-        assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("g4"),pos("c2"),Ability.MUD));waitTurn(g,"g8","f6");summon(g,"e2");
+        assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("g4"),pos("c2"),BolotnikAbility.MUD));waitTurn(g,"g8","f6");summon(g,"e2");
         assertEquals(HeroType.BOLOTNIK_KNIGHT,g.getPieceState(pos("c2")).hero());assertEquals(PieceState.Status.CAPTURED,baby(g).status());
         var born=g.getEvents().stream().filter(e->e.kind()==game.history.GameEvent.Kind.YAGA_BIRTH).findFirst().orElseThrow();
         var killed=g.getEvents().stream().filter(e->e.kind()==game.history.GameEvent.Kind.BOG_CAPTURE).findFirst().orElseThrow();
@@ -155,7 +154,7 @@ public class IzbaTest {
     @Test public void deathOnEnemyMudAlsoProducesThePassiveSummon()throws Exception {
         var b=board("h1","h8");put(b,Rook.class,WHITE,"e2");put(b,Knight.class,BLACK,"g4");put(b,Knight.class,BLACK,"g8");
         Game g=create(b,Map.of(pos("e2"),HeroType.IZBA_ROOK,pos("g4"),HeroType.BOLOTNIK_KNIGHT),BLACK,0);
-        assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("g4"),pos("e3"),Ability.MUD));waitTurn(g,"g8","f6");move(g,"e2","e3");
+        assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("g4"),pos("e3"),BolotnikAbility.MUD));waitTurn(g,"g8","f6");move(g,"e2","e3");
         assertEquals(HeroType.BOLOTNIK_KNIGHT,g.getPieceState(pos("e3")).hero());assertEquals(WHITE,baby(g).color());
         assertArrayEquals(GameSaveFile.encode(g.getSnapshot()),GameSaveFile.encode(reload(g).getSnapshot()));
     }

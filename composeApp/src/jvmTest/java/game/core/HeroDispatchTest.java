@@ -1,5 +1,7 @@
 package game.core;
 
+import game.heroes.pudge.PudgeAbility;
+
 import game.moves.Success;
 import game.heroes.*;
 import game.scenarios.PudgeScenario;
@@ -18,10 +20,10 @@ import static org.junit.Assert.*;
 public class HeroDispatchTest {
     @Test public void engineUsesRegisteredTargetingRequestsAndEffectsAndRetainsTheRegistry() {
         var snapshot = PudgeScenario.DIAGONAL_HOOK.createGame(() -> 0L).getSnapshot();
-        Hero custom = new AbstractHero(HeroType.PUDGE_ROOK, List.of(Ability.HOOK), null, 0) {
-            @Override public HeroTargeting targeting(Ability ability) { return HeroTargeting.untargeted(); }
+        Hero custom = new AbstractHero(HeroType.PUDGE_ROOK, List.of(PudgeAbility.HOOK), null, 0) {
+            @Override public HeroTargeting targeting(Abilities ability) { return HeroTargeting.untargeted(); }
             @Override protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor,
-                                                            PieceState target, Position square, Ability ability) {
+                                                            PieceState target, Position square, Abilities ability) {
                 return HeroEffect.success(Map.of(actor.id(), actor.withAbilityState(7, 0, null)));
             }
         };
@@ -31,8 +33,8 @@ public class HeroDispatchTest {
                 snapshot.summons(), snapshot.spells(), snapshot.faun(), snapshot.clown(), snapshot.mines(),
                 snapshot.lightning(), heroes);
         List<AbilityRequest> requests = ActionEngine.requests(context, FigureColor.WHITE, pos("e2"),
-                Ability.HOOK, false, snapshot.heroRules());
-        assertEquals(List.of(new AbilityRequest(pos("e2"), Ability.HOOK, null)), requests);
+                PudgeAbility.HOOK, false, snapshot.heroRules());
+        assertEquals(List.of(new AbilityRequest(pos("e2"), PudgeAbility.HOOK, null)), requests);
         var preview = ActionEngine.ability(context, FigureColor.WHITE, requests.getFirst(), snapshot.heroRules());
         assertEquals(Success.SUCCESS, preview.result());
         assertEquals(7, preview.next().at(pos("e2")).cooldown());
@@ -46,7 +48,7 @@ public class HeroDispatchTest {
         PieceState victim = snapshot.pieceAt(pos("h5")), winner = snapshot.pieceAt(pos("e2"));
         Hero reactive = new AbstractHero(HeroType.NONE, List.of(), null, 0) {
             @Override protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor,
-                                                            PieceState target, Position square, Ability ability) {
+                                                            PieceState target, Position square, Abilities ability) {
                 return HeroEffect.empty();
             }
             @Override public HeroEffect onCaptured(HeroActionContext context, PieceState dead,

@@ -1,6 +1,6 @@
 package game.heroes.faun;
 
-import game.heroes.Ability;
+import game.heroes.Abilities;
 import game.heroes.ginseng.SpellState;
 import game.history.GameEvent;
 import game.moves.Capture;
@@ -30,13 +30,13 @@ public record FaunState(List<Cloud> clouds, Map<Long, Invisibility> invisible) {
         return p != null && p.color() != viewer && invisible.containsKey(p.id());
     }
 
-    public FaunState cast(long actor, Ability ability, Position center, long turn, FaunRules rules) {
+    public FaunState cast(long actor, Abilities ability, Position center, long turn, FaunRules rules) {
         var nextClouds = new ArrayList<>(clouds);
         var nextInvisible = new HashMap<>(invisible);
         nextInvisible.remove(actor);
-        if (ability == Ability.CLOUD)
+        if (ability == FaunAbility.CLOUD)
             nextClouds.add(new Cloud(actor, center, turn, Math.addExact(turn, 2L * rules.cloudTurns())));
-        if (ability == Ability.INVISIBILITY)
+        if (ability == FaunAbility.INVISIBILITY)
             nextInvisible.put(actor, new Invisibility(turn, Math.addExact(turn, 2L * rules.invisibilityTurns())));
         return new FaunState(nextClouds, nextInvisible);
     }
@@ -57,12 +57,12 @@ public record FaunState(List<Cloud> clouds, Map<Long, Invisibility> invisible) {
     public static FaunState fromHistory(List<GameEvent> events, FaunRules rules) {
         FaunState state = empty();
         for (GameEvent e : events) {
-            Ability a = SpellState.activeAbility(e.kind());
+            Abilities a = SpellState.activeAbility(e.kind());
             if (a != null) {
                 if (state.silenced(e.from())) throw new IllegalArgumentException("Active cast from a cloud");
-                if (a == Ability.CLOUD && (e.from() == null || e.to() == null || Math.max(Math.abs(e.from().getRow() - e.to().getRow()), Math.abs(e.from().getColumn() - e.to().getColumn())) > 4))
+                if (a == FaunAbility.CLOUD && (e.from() == null || e.to() == null || Math.max(Math.abs(e.from().getRow() - e.to().getRow()), Math.abs(e.from().getColumn() - e.to().getColumn())) > 4))
                     throw new IllegalArgumentException("Cloud center out of range");
-                if (a == Ability.INVISIBILITY && (e.from() == null || !e.from().equals(e.to())))
+                if (a == FaunAbility.INVISIBILITY && (e.from() == null || !e.from().equals(e.to())))
                     throw new IllegalArgumentException("Invisibility changes square");
                 state = state.cast(e.actorId(), a, e.to(), e.turn(), rules);
             } else if (e.kind() == GameEvent.Kind.END_TURN) state = state.expire(e.turn());

@@ -1,5 +1,8 @@
 package game.heroes;
 
+import game.heroes.pudge.PudgeAbility;
+import game.heroes.lumeshard.LumeshardAbility;
+
 import game.moves.AbilityRejection;
 import game.moves.MovementRejection;
 import game.moves.Success;
@@ -26,44 +29,44 @@ public class AbstractHeroTest {
 
     @Test public void availabilityRejectsMissingActorsWrongHeroesAndUnsupportedAbilities() {
         assertEquals(AbilityRejection.INVALID_ABILITY, hero.availability(null, null));
-        assertEquals(MovementRejection.EMPTY_SOURCE, hero.availability(null, Ability.HOOK));
-        assertEquals(MovementRejection.EMPTY_SOURCE, hero.availability(actor.hidden(PieceState.Status.CAPTURED), Ability.HOOK));
-        assertEquals(MovementRejection.EMPTY_SOURCE, hero.availability(actor.hidden(PieceState.Status.SWALLOWED), Ability.HOOK));
-        assertEquals(AbilityRejection.NO_ABILITY, hero.availability(target, Ability.HOOK));
-        assertEquals(AbilityRejection.NO_ABILITY, hero.availability(actor, Ability.LASER));
+        assertEquals(MovementRejection.EMPTY_SOURCE, hero.availability(null, PudgeAbility.HOOK));
+        assertEquals(MovementRejection.EMPTY_SOURCE, hero.availability(actor.hidden(PieceState.Status.CAPTURED), PudgeAbility.HOOK));
+        assertEquals(MovementRejection.EMPTY_SOURCE, hero.availability(actor.hidden(PieceState.Status.SWALLOWED), PudgeAbility.HOOK));
+        assertEquals(AbilityRejection.NO_ABILITY, hero.availability(target, PudgeAbility.HOOK));
+        assertEquals(AbilityRejection.NO_ABILITY, hero.availability(actor, LumeshardAbility.LASER));
     }
 
     @Test public void normalCooldownAndUltimateChargeAreIndependent() {
-        assertEquals(Success.SUCCESS, hero.availability(actor, Ability.HOOK));
-        assertEquals(AbilityRejection.ULTIMATE_NOT_READY, hero.availability(actor, Ability.SWALLOW));
+        assertEquals(Success.SUCCESS, hero.availability(actor, PudgeAbility.HOOK));
+        assertEquals(AbilityRejection.ULTIMATE_NOT_READY, hero.availability(actor, PudgeAbility.SWALLOW));
         PieceState ready = actor.withAbilityState(5, 3, null);
-        assertEquals(AbilityRejection.ABILITY_COOLDOWN, hero.availability(ready, Ability.HOOK));
-        assertEquals(Success.SUCCESS, hero.availability(ready, Ability.SWALLOW));
-        assertEquals(Success.SUCCESS, hero.availability(actor.withAbilityState(0, 9, null), Ability.SWALLOW));
+        assertEquals(AbilityRejection.ABILITY_COOLDOWN, hero.availability(ready, PudgeAbility.HOOK));
+        assertEquals(Success.SUCCESS, hero.availability(ready, PudgeAbility.SWALLOW));
+        assertEquals(Success.SUCCESS, hero.availability(actor.withAbilityState(0, 9, null), PudgeAbility.SWALLOW));
     }
 
     @Test public void heroSpecificRequirementsRunBeforeUltimateChargeValidation() {
         PieceState loaded = actor.withAbilityState(0, 0, target.id());
-        assertEquals(AbilityRejection.ALREADY_SWALLOWED, hero.availability(loaded, Ability.SWALLOW));
+        assertEquals(AbilityRejection.ALREADY_SWALLOWED, hero.availability(loaded, PudgeAbility.SWALLOW));
         var context = new HeroActionContext(field, Map.of(actor.id(), loaded), 0);
         assertEquals(HeroEffect.rejected(AbilityRejection.ALREADY_SWALLOWED),
-                hero.preview(context, loaded, target, target.position(), Ability.SWALLOW));
+                hero.preview(context, loaded, target, target.position(), PudgeAbility.SWALLOW));
     }
 
     @Test public void rejectedPreviewsHaveNoUpdatesOrCaptures() {
         var context = new HeroActionContext(field, Map.of(actor.id(), actor), 0);
         assertEquals(HeroEffect.rejected(AbilityRejection.ULTIMATE_NOT_READY),
-                hero.preview(context, actor, null, null, Ability.SWALLOW));
+                hero.preview(context, actor, null, null, PudgeAbility.SWALLOW));
         assertEquals(HeroEffect.rejected(AbilityRejection.NO_ABILITY),
-                hero.preview(context, actor, target, target.position(), Ability.LASER));
-        assertThrows(NullPointerException.class, () -> hero.preview(null, actor, target, target.position(), Ability.HOOK));
+                hero.preview(context, actor, target, target.position(), LumeshardAbility.LASER));
+        assertThrows(NullPointerException.class, () -> hero.preview(null, actor, target, target.position(), PudgeAbility.HOOK));
     }
 
     @Test public void oneStrategyCanPreviewDifferentPiecesWithoutMutatingSnapshots() {
         PieceState charged = actor.withAbilityState(0, 3, null);
         var context = new HeroActionContext(field, Map.of(charged.id(), charged, target.id(), target), 7);
-        HeroEffect effect = hero.preview(context, charged, target, target.position(), Ability.SWALLOW);
-        assertEquals(PudgeAbilities.preview(field, charged, target, Ability.SWALLOW, rules), effect);
+        HeroEffect effect = hero.preview(context, charged, target, target.position(), PudgeAbility.SWALLOW);
+        assertEquals(PudgeAbilities.preview(field, charged, target, PudgeAbility.SWALLOW, rules), effect);
         assertEquals(Success.SUCCESS, effect.result());
         assertEquals(PieceState.Status.SWALLOWED, effect.updates().get(target.id()).status());
         assertEquals(0, effect.updates().get(charged.id()).ultimateCharge());
@@ -71,9 +74,9 @@ public class AbstractHeroTest {
         assertEquals(target, context.pieceAt(target.position()));
 
         PieceState another = PieceState.initial(3, field.getFigureByPosition(new Position(0, 7)), HeroType.PUDGE_ROOK);
-        assertEquals(AbilityRejection.ULTIMATE_NOT_READY, hero.availability(another, Ability.SWALLOW));
-        assertEquals(Success.SUCCESS, hero.availability(charged, Ability.SWALLOW));
-        assertEquals(effect, hero.preview(context, charged, target, target.position(), Ability.SWALLOW));
+        assertEquals(AbilityRejection.ULTIMATE_NOT_READY, hero.availability(another, PudgeAbility.SWALLOW));
+        assertEquals(Success.SUCCESS, hero.availability(charged, PudgeAbility.SWALLOW));
+        assertEquals(effect, hero.preview(context, charged, target, target.position(), PudgeAbility.SWALLOW));
     }
 
     @Test public void captureChargeIsCappedAndPreservesAllOtherPieceState() {
@@ -89,14 +92,14 @@ public class AbstractHeroTest {
 
     @Test public void zeroThresholdMakesUltimateFreeAndDisablesCaptureCharging() {
         Hero free = new PudgeBehavior(new PudgeRules(0, 0, true, true));
-        assertEquals(Success.SUCCESS, free.availability(actor, Ability.SWALLOW));
+        assertEquals(Success.SUCCESS, free.availability(actor, PudgeAbility.SWALLOW));
         assertSame(actor, free.afterCapture(actor));
     }
 
     @Test public void heroesWithoutActiveUltimatesCanStillChargePassives() {
-        Hero passive = new AbstractHero(HeroType.PUDGE_ROOK, List.of(Ability.HOOK), null, 2) {
+        Hero passive = new AbstractHero(HeroType.PUDGE_ROOK, List.of(PudgeAbility.HOOK), null, 2) {
             @Override protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor,
-                                                             PieceState target, Position square, Ability ability) {
+                                                             PieceState target, Position square, Abilities ability) {
                 throw new AssertionError("Unavailable abilities must not reach the effect hook");
             }
         };
@@ -104,17 +107,17 @@ public class AbstractHeroTest {
         assertEquals(1, passive.afterCapture(cooling).ultimateCharge());
         var context = new HeroActionContext(field, Map.of(cooling.id(), cooling), 0);
         assertEquals(HeroEffect.rejected(AbilityRejection.ABILITY_COOLDOWN),
-                passive.preview(context, cooling, target, target.position(), Ability.HOOK));
+                passive.preview(context, cooling, target, target.position(), PudgeAbility.HOOK));
     }
 
     @Test public void configurationIsCopiedAndValidated() {
-        var abilities = new ArrayList<>(List.of(Ability.HOOK, Ability.SWALLOW));
+        var abilities = new ArrayList<>(List.of(PudgeAbility.HOOK, PudgeAbility.SWALLOW));
         Hero copied = new PudgeBehavior(rules, abilities);
         abilities.clear();
         assertEquals(HeroType.PUDGE_ROOK, copied.type());
-        assertEquals(List.of(Ability.HOOK, Ability.SWALLOW), copied.abilities());
+        assertEquals(List.of(PudgeAbility.HOOK, PudgeAbility.SWALLOW), copied.abilities());
         assertThrows(UnsupportedOperationException.class, () -> copied.abilities().clear());
-        assertThrows(IllegalArgumentException.class, () -> new PudgeBehavior(rules, List.of(Ability.HOOK)));
+        assertThrows(IllegalArgumentException.class, () -> new PudgeBehavior(rules, List.of(PudgeAbility.HOOK)));
     }
 
     /** Test-only adapter demonstrates that migrating a hero need not change its effects. */
@@ -125,18 +128,18 @@ public class AbstractHeroTest {
             this(rules, PudgeAbilities.abilities());
         }
 
-        private PudgeBehavior(PudgeRules rules, List<Ability> abilities) {
-            super(HeroType.PUDGE_ROOK, abilities, Ability.SWALLOW, rules.ultimateCaptures());
+        private PudgeBehavior(PudgeRules rules, List<? extends Abilities> abilities) {
+            super(HeroType.PUDGE_ROOK, abilities, PudgeAbility.SWALLOW, rules.ultimateCaptures());
             this.rules = rules;
         }
 
-        @Override protected MoveResult availabilitySpecific(PieceState actor, Ability ability) {
-            return ability == Ability.SWALLOW && actor.storedPieceId() != null
+        @Override protected MoveResult availabilitySpecific(PieceState actor, Abilities ability) {
+            return ability == PudgeAbility.SWALLOW && actor.storedPieceId() != null
                     ? AbilityRejection.ALREADY_SWALLOWED : Success.SUCCESS;
         }
 
         @Override protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor,
-                                                         PieceState target, Position square, Ability ability) {
+                                                         PieceState target, Position square, Abilities ability) {
             return PudgeAbilities.preview(context.field(), actor, target, ability, rules);
         }
     }

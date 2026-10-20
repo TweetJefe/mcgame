@@ -1,5 +1,9 @@
 package game.heroes.bolotnik;
 
+import game.heroes.pudge.PudgeAbility;
+import game.heroes.lumeshard.LumeshardAbility;
+import game.heroes.bountycrow.BountyCrowAbility;
+
 import game.moves.AbilityRejection;
 import game.moves.MovementRejection;
 import game.moves.StatusRejection;
@@ -40,9 +44,9 @@ public class BolotnikTest {
         var s=g.getSnapshot();var pieces=new HashMap<>(s.pieces());PieceState p=s.pieceAt(pos(square));pieces.put(p.id(),p.withAbilityState(p.cooldown(),2,null));
         return Game.fromSnapshot(new GameSnapshot(s.version(),s.mode(),s.field(),pieces,s.turn(),s.active(),s.castlingRights(),s.enPassantTarget(),s.halfmoveClock(),s.repetitions(),s.clock(),s.outcome(),s.moves(),s.events(),s.whitePoints(),s.blackPoints(),s.whiteCaptures(),s.blackCaptures(),s.drawOffer(),s.heroRules(),s.economy(),s.terrain()),()->0L);
     }
-    private MoveResult cast(Game g,String from,String target,Ability a) { return g.useAbility(g.getCurrentPlayer(),pos(from),target==null?null:pos(target),a); }
-    private void mud(Game g,String from,String target) { assertEquals(Success.SUCCESS,cast(g,from,target,Ability.MUD)); }
-    private void ambush(Game g,String from) { assertEquals(Success.SUCCESS,cast(g,from,null,Ability.AMBUSH)); }
+    private MoveResult cast(Game g,String from,String target,Abilities a) { return g.useAbility(g.getCurrentPlayer(),pos(from),target==null?null:pos(target),a); }
+    private void mud(Game g,String from,String target) { assertEquals(Success.SUCCESS,cast(g,from,target,BolotnikAbility.MUD)); }
+    private void ambush(Game g,String from) { assertEquals(Success.SUCCESS,cast(g,from,null,BolotnikAbility.AMBUSH)); }
     private void move(Game g,String from,String to) { assertEquals(Success.SUCCESS,g.moveFigure(g.getCurrentPlayer(),pos(from),pos(to))); }
     private void end(Game g) { assertEquals(Success.SUCCESS,g.endTurn(g.getCurrentPlayer())); }
     private void reject(Game g,MoveResult expected,java.util.function.Supplier<MoveResult> command) { var before=g.getSnapshot();assertEquals(expected,command.get());assertEquals(before,g.getSnapshot()); }
@@ -53,11 +57,11 @@ public class BolotnikTest {
     }
     @Test public void radiusIsTheWholeFourSquareAreaAndFriendlyTargetsAreAllowed() {
         var b=board("a1","h8");put(b,Knight.class,WHITE,"b2");put(b,Pawn.class,WHITE,"b3");put(b,Pawn.class,WHITE,"f6");put(b,Pawn.class,BLACK,"e5");
-        Game g=create(b,"b2");assertTrue(g.getAbilityTargets(pos("b2"),Ability.MUD).contains(pos("f6")));
-        reject(g,AbilityRejection.ABILITY_OUT_OF_RANGE,()->cast(g,"b2","h7",Ability.MUD));
-        reject(g,AbilityRejection.INVALID_ABILITY_TARGET,()->cast(g,"b2","e5",Ability.MUD));
-        reject(g,StatusRejection.KING_IMMUNE,()->cast(g,"b2","a1",Ability.MUD));
-        var before=g.getSnapshot();g.getAbilityTargets(pos("b2"),Ability.MUD);assertEquals(before,g.getSnapshot());
+        Game g=create(b,"b2");assertTrue(g.getAbilityTargets(pos("b2"),BolotnikAbility.MUD).contains(pos("f6")));
+        reject(g,AbilityRejection.ABILITY_OUT_OF_RANGE,()->cast(g,"b2","h7",BolotnikAbility.MUD));
+        reject(g,AbilityRejection.INVALID_ABILITY_TARGET,()->cast(g,"b2","e5",BolotnikAbility.MUD));
+        reject(g,StatusRejection.KING_IMMUNE,()->cast(g,"b2","a1",BolotnikAbility.MUD));
+        var before=g.getSnapshot();g.getAbilityTargets(pos("b2"),BolotnikAbility.MUD);assertEquals(before,g.getSnapshot());
         mud(g,"b2","f6");assertEquals(Pawn.class,g.getPieceState(pos("f6")).type());assertEquals(4,g.getPieceState(pos("b2")).cooldown());
         assertFalse(g.getTurnState().moveUsed());reject(g,TurnRejection.MOVE_REQUIRED,()->g.endTurn(g.getCurrentPlayer()));
     }
@@ -116,7 +120,7 @@ public class BolotnikTest {
         var b=board("a1","h8");put(b,Knight.class,WHITE,"d4");Game g=charged(create(b,"d4"),"d4");long id=g.getPieceState(pos("d4")).id();
         ambush(g,"d4");
         for(int i=0;i<4;i++) { move(g,i%2==0?"a1":"b1",i%2==0?"b1":"a1");end(g);move(g,i%2==0?"h8":"g8",i%2==0?"g8":"h8");end(g); }
-        reject(g,MovementRejection.EMPTY_SOURCE,()->cast(g,"d4","f4",Ability.MUD));
+        reject(g,MovementRejection.EMPTY_SOURCE,()->cast(g,"d4","f4",BolotnikAbility.MUD));
         assertEquals(PieceState.Status.HIDDEN_BOG,g.getPieceState(id).status());assertEquals(3,g.getTerrain().cells().size());GameSaveFile.encode(g.getSnapshot());
     }
     @Test public void ultimateImmediatelyTakesTheEnemyClosestToAAndClearsAllItsCells() throws Exception {
@@ -135,7 +139,7 @@ public class BolotnikTest {
     @Test public void anyKingInTheUltimateFootprintRejectsTheEntireCast() {
         for(boolean friendly:List.of(true,false)) {
             var b=board(friendly?"e4":"a1",friendly?"h8":"e4");put(b,Knight.class,WHITE,"d4");
-            Game g=charged(create(b,"d4"),"d4");reject(g,StatusRejection.KING_IMMUNE,()->cast(g,"d4",null,Ability.AMBUSH));
+            Game g=charged(create(b,"d4"),"d4");reject(g,StatusRejection.KING_IMMUNE,()->cast(g,"d4",null,BolotnikAbility.AMBUSH));
         }
     }
     @Test public void mudExpiresAfterTwoFollowingOwnerTurnsAndCooldownAfterFourStarts() {
@@ -152,17 +156,17 @@ public class BolotnikTest {
         mud(g,bolotnik,mudSquare);move(g,"a2","a3");end(g);move(g,"h8","g8");end(g);return g;
     }
     @Test public void hookLandingTriggersMudAndRetainsTheMandatoryMoveBudget() throws Exception {
-        Game g=hookSetup("d3","a1","f2");assertEquals(Success.SUCCESS,cast(g,"d2","d5",Ability.HOOK));
+        Game g=hookSetup("d3","a1","f2");assertEquals(Success.SUCCESS,cast(g,"d2","d5",PudgeAbility.HOOK));
         assertEquals(HeroType.BOLOTNIK_KNIGHT,g.getPieceState(pos("d3")).hero());assertEquals(2,g.getEconomy().whiteHalves());
         assertFalse(g.getTurnState().moveUsed());assertTrue(g.getTurnState().abilityUsed());GameSaveFile.encode(g.getSnapshot());
     }
     @Test public void hookCannotPullAnEnemyThroughIntermediateMud() {
-        Game g=hookSetup("d4","a1","e2");reject(g,AbilityRejection.MUD_BLOCKED,()->cast(g,"d2","d5",Ability.HOOK));
+        Game g=hookSetup("d4","a1","e2");reject(g,AbilityRejection.MUD_BLOCKED,()->cast(g,"d2","d5",PudgeAbility.HOOK));
     }
     @Test public void teleportLandingTriggersMudAndTheCapturedCasterStillSpendsTheAbility() throws Exception {
         var b=board("a1","h8");put(b,Knight.class,WHITE,"b2");put(b,Bishop.class,BLACK,"f6");
         Game g=charged(create(b,Map.of(pos("b2"),HeroType.BOLOTNIK_KNIGHT,pos("f6"),HeroType.LUMESHARD_BISHOP),HeroRules.prototype()),"f6");
-        mud(g,"b2","d4");move(g,"a1","b1");end(g);assertEquals(Success.SUCCESS,cast(g,"f6","d4",Ability.TELEPORT));
+        mud(g,"b2","d4");move(g,"a1","b1");end(g);assertEquals(Success.SUCCESS,cast(g,"f6","d4",LumeshardAbility.TELEPORT));
         assertEquals(HeroType.BOLOTNIK_KNIGHT,g.getPieceState(pos("d4")).hero());assertEquals(6,g.getEconomy().whiteHalves());
         assertTrue(g.getTurnState().abilityUsed());assertFalse(g.getTurnState().moveUsed());GameSaveFile.encode(g.getSnapshot());
     }
@@ -170,7 +174,7 @@ public class BolotnikTest {
         var b=board("d1","h8");put(b,Knight.class,WHITE,"d4");put(b,Rook.class,WHITE,"f3");put(b,Pawn.class,WHITE,"a2");put(b,Rook.class,BLACK,"d8");put(b,Pawn.class,BLACK,"f6");
         Game g=create(b,Map.of(pos("d4"),HeroType.BOLOTNIK_KNIGHT,pos("f3"),HeroType.PUDGE_ROOK),HeroRules.prototype());
         mud(g,"d4","f4");move(g,"a2","a3");end(g);move(g,"h8","g8");end(g);
-        reject(g,MovementRejection.KING_IN_CHECK,()->cast(g,"f3","f6",Ability.HOOK));
+        reject(g,MovementRejection.KING_IN_CHECK,()->cast(g,"f3","f6",PudgeAbility.HOOK));
     }
     @Test public void steppingOnMudCannotGiveTheActingKingAnIndirectKnightCheck() {
         var b=board("a1","h5");put(b,Knight.class,WHITE,"d4");put(b,Rook.class,BLACK,"f8");Game g=create(b,"d4");
@@ -181,7 +185,7 @@ public class BolotnikTest {
         var b=board("a1","h8");put(b,Knight.class,WHITE,"f2");put(b,Pawn.class,WHITE,"a2");put(b,Rook.class,BLACK,"d8");put(b,Pawn.class,BLACK,"e8");
         var rules=new HeroRules(PudgeRules.sandbox(),LumeshardRules.prototype());
         Game g=create(b,Map.of(pos("f2"),HeroType.BOLOTNIK_KNIGHT,pos("d8"),HeroType.PUDGE_ROOK),rules);
-        mud(g,"f2","d4");move(g,"a2","a3");end(g);assertEquals(Success.SUCCESS,cast(g,"d8","e8",Ability.SWALLOW));move(g,"d8","d4");
+        mud(g,"f2","d4");move(g,"a2","a3");end(g);assertEquals(Success.SUCCESS,cast(g,"d8","e8",PudgeAbility.SWALLOW));move(g,"d8","d4");
         assertEquals(Pawn.class,g.getPieceState(pos("d4")).type());assertEquals(BLACK,g.getPieceState(pos("d4")).color());
         assertEquals(10,g.getEconomy().whiteHalves());assertEquals(6,g.getEconomy().blackHalves());assertTrue(g.getTerrain().cells().isEmpty());GameSaveFile.encode(g.getSnapshot());
     }
@@ -189,7 +193,7 @@ public class BolotnikTest {
         var b=board("a1","h8");put(b,Knight.class,WHITE,"d4");put(b,Pawn.class,WHITE,"b2");put(b,Rook.class,BLACK,"f8");
         Game g=create(b,Map.of(pos("d4"),HeroType.BOLOTNIK_KNIGHT,pos("b2"),HeroType.BOUNTY_CROW_PAWN),HeroRules.prototype());
         mud(g,"d4","f4");move(g,"a1","b1");end(g);move(g,"h8","g8");end(g);
-        assertEquals(Success.SUCCESS,cast(g,"b2","f8",Ability.BOUNTY));move(g,"b1","a1");end(g);move(g,"f8","f4");
+        assertEquals(Success.SUCCESS,cast(g,"b2","f8",BountyCrowAbility.BOUNTY));move(g,"b1","a1");end(g);move(g,"f8","f4");
         assertEquals(13,g.getEconomy().whiteHalves());assertTrue(g.getEconomy().marks().isEmpty());assertEquals(1,g.getPieceState(pos("f4")).ultimateCharge());GameSaveFile.encode(g.getSnapshot());
     }
     @Test public void killingTheOwnerRemovesItsUntriggeredMud() throws Exception {
@@ -229,13 +233,13 @@ public class BolotnikTest {
         var b=board("a1","h8");put(b,Knight.class,WHITE,"d4");put(b,Rook.class,WHITE,"c4");put(b,Rook.class,BLACK,"f8");
         Game g=create(b,Map.of(pos("d4"),HeroType.BOLOTNIK_KNIGHT,pos("c4"),HeroType.PUDGE_ROOK),new HeroRules(PudgeRules.sandbox(),LumeshardRules.prototype()));
         long id=g.getPieceState(pos("d4")).id();mud(g,"d4","f4");move(g,"a1","b1");end(g);move(g,"h8","g8");end(g);
-        assertEquals(Success.SUCCESS,cast(g,"c4","d4",Ability.SWALLOW));move(g,"b1","a1");end(g);move(g,"f8","f4");
+        assertEquals(Success.SUCCESS,cast(g,"c4","d4",PudgeAbility.SWALLOW));move(g,"b1","a1");end(g);move(g,"f8","f4");
         assertEquals(id,g.getPieceState(pos("f4")).id());assertNull(g.getPieceState(pos("c4")).storedPieceId());GameSaveFile.encode(g.getSnapshot());
     }
     @Test public void immediateUltimateCaptureAlsoHonorsLoadedPudgesReaction() throws Exception {
         var b=board("a1","h8");put(b,Knight.class,WHITE,"f5");put(b,Rook.class,BLACK,"e5");put(b,Pawn.class,BLACK,"d5");
         Game g=charged(create(b,Map.of(pos("f5"),HeroType.BOLOTNIK_KNIGHT,pos("e5"),HeroType.PUDGE_ROOK),new HeroRules(PudgeRules.sandbox(),LumeshardRules.prototype())),"f5");
-        move(g,"a1","b1");end(g);assertEquals(Success.SUCCESS,cast(g,"e5","d5",Ability.SWALLOW));move(g,"h8","g8");end(g);
+        move(g,"a1","b1");end(g);assertEquals(Success.SUCCESS,cast(g,"e5","d5",PudgeAbility.SWALLOW));move(g,"h8","g8");end(g);
         ambush(g,"f5");assertEquals(Pawn.class,g.getPieceState(pos("e5")).type());assertEquals(BLACK,g.getPieceState(pos("e5")).color());
         assertEquals(10,g.getEconomy().whiteHalves());assertEquals(6,g.getEconomy().blackHalves());assertTrue(g.getTerrain().cells().isEmpty());GameSaveFile.encode(g.getSnapshot());
     }
