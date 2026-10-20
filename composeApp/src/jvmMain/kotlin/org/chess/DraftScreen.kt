@@ -26,7 +26,7 @@ import model.figures.*
 private fun draftSide(side: FigureColor) = if (side == FigureColor.WHITE) "Белые" else "Чёрные"
 private fun draftCell(square: Position) = "${'a' + square.column}${square.row + 1}"
 private fun heroBadge(hero: HeroType) = when (hero) {
-    HeroType.PUDGE_ROOK -> "П"; HeroType.LUMESHARD_BISHOP -> "L"
+    HeroType.KIKIMORA_BISHOP -> "Ки"; HeroType.CHRONOMLIN_PAWN -> "Ch"; HeroType.ZEUS_ROOK -> "Z"; HeroType.MOLEMINER_PAWN -> "M"; HeroType.CLOWNGANGER_KNIGHT -> "Кл"; HeroType.PUDGE_ROOK -> "П"; HeroType.LUMESHARD_BISHOP -> "L"
     HeroType.BOUNTY_CROW_PAWN -> "C"; HeroType.BOLOTNIK_KNIGHT -> "Б"; HeroType.IZBA_ROOK -> "И"; HeroType.FAUN_KNIGHT -> "F"; HeroType.ARES_BISHOP -> "A"; HeroType.GINSENG_BISHOP -> "G"; else -> ""
 }
 
@@ -101,7 +101,7 @@ fun DraftScreen(draft: Draft, onStart: (DraftSnapshot) -> Unit, onBack: () -> Un
                     if (snapshot.isComplete) Button(onClick = { onStart(snapshot) }) { Text("Начать партию") }
                 }
                 error?.let { Text(it, color = Color.Red) }
-                Text(if(snapshot.rules().catalogVersion()>=5) "Остальные фигуры обычные. Ульты: Ares — 1 взятие, остальные — 2. Пешки считаются." else "Остальные фигуры остаются обычными. Ульты заряжаются за 2 собственных взятия, включая пешки.", fontSize = 12.sp, color = Color.Gray)
+                Text(if(snapshot.rules().catalogVersion()>=9) "Ульты: Ares, Clownganger, Chronomlin — 1 взятие; остальные — 2. Пешки считаются." else if(snapshot.rules().catalogVersion()>=5) "Остальные фигуры обычные. Ульты: Ares и Clownganger — 1 взятие, остальные — 2. Пешки считаются." else "Остальные фигуры остаются обычными. Ульты заряжаются за 2 собственных взятия, включая пешки.", fontSize = 12.sp, color = Color.Gray)
             }
             Spacer(Modifier.width(24.dp))
             Column(Modifier.width(440.dp).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {

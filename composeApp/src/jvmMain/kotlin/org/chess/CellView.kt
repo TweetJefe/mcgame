@@ -1,5 +1,8 @@
 package org.chess
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,7 +41,11 @@ fun CellView(
     isAmbush: Boolean = false,
     isInvisible: Boolean = false,
     isCloud: Boolean = false,
-    isStunned: Boolean = false
+    isMine: Boolean = false,
+    isBoxed: Boolean = false,
+    isStunned: Boolean = false,
+    lightningLabel: String? = null,
+    isPotted: Boolean = false
 ) {
     val isDark = (x + y) % 2 == 0
     val baseColor = if (isDark) Color(0xFF769656) else Color(0xFFEEEED2)
@@ -72,7 +79,14 @@ fun CellView(
         // Рисуем слой подсветки
         Box(Modifier.fillMaxSize().background(overlayColor))
 
-        if (figure != null && figure !is Empty) {
+        if (isPotted) {
+            Canvas(Modifier.size(42.dp).padding(bottom=5.dp)) {
+                drawOval(Color(0xFFB87543),topLeft=Offset(size.width*.12f,size.height*.21f),size=Size(size.width*.76f,size.height*.71f))
+                drawRect(Color(0xFFB87543),topLeft=Offset(size.width*.31f,size.height*.09f),size=Size(size.width*.38f,size.height*.24f))
+                drawOval(Color(0xFF633820),topLeft=Offset(size.width*.26f,size.height*.04f),size=Size(size.width*.48f,size.height*.17f))
+            }
+            Text("Горшок",fontSize=10.sp,color=Color(0xFF4A2C16),modifier=Modifier.align(Alignment.BottomCenter))
+        } else if (figure != null && figure !is Empty) {
             // Твоя логика отрисовки фигур
             val symbol = when (figure) {
                 is Pawn -> if (figure.color == FigureColor.WHITE) "♙" else "♟"
@@ -85,12 +99,15 @@ fun CellView(
             }
             Text(text = symbol, fontSize = 40.sp, color = if (isInvisible) Color.Black.copy(alpha=0.4f) else Color.Black)
             if (isInvisible) Text("Невид",fontSize=10.sp,color=Color.White,modifier=Modifier.align(Alignment.TopStart).background(Color(0xFF44577A)))
+            lightningLabel?.let { label -> Text(label,color=Color.Black,fontSize=10.sp,modifier=Modifier.align(Alignment.BottomStart).background(Color(0xFF80DEEA)).padding(horizontal=2.dp)) }
             heroLabel?.let { label ->
                 Text(label, color = Color.White, fontSize = 12.sp,
                     modifier = Modifier.align(Alignment.BottomEnd).background(Color(0xFF6A5ACD)).padding(horizontal = 3.dp))
             }
             if (isBountyMarked) Text("+1,5", color = Color.Black, fontSize = 11.sp,
                 modifier = Modifier.align(Alignment.TopEnd).background(Color(0xFFFFD54F)).padding(horizontal = 2.dp))
+            if (isMine) Text("Мина",color=Color.White,fontSize=10.sp,modifier=Modifier.align(Alignment.BottomStart).background(Color(0xFF444444)).padding(horizontal=2.dp))
+            if (isBoxed) Text("Коробка",color=Color.White,fontSize=10.sp,modifier=Modifier.align(Alignment.TopCenter).background(Color(0xFF795548)).padding(horizontal=2.dp))
             if (isStunned) Text("Стан",color=Color.Black,fontSize=11.sp,modifier=Modifier.align(Alignment.BottomStart).background(Color(0xFFFFBD59)).padding(horizontal=2.dp))
             if (isBlinded) Text("Осл", color = Color.White, fontSize = 11.sp,
                 modifier = Modifier.align(Alignment.TopStart).background(Color(0xFFC65D00)).padding(horizontal = 2.dp))

@@ -24,7 +24,7 @@ public final class TerrainValidator {
             PieceState owner = s.pieces().get(cell.ownerId());
             require(owner != null && (owner.hero() == HeroType.BOLOTNIK_KNIGHT || owner.hero() == HeroType.GINSENG_BISHOP) && !owner.isRemoved(), "Invalid terrain owner");
             PieceState occupant = s.pieceAt(entry.getKey());
-            require(occupant == null || occupant.color() == owner.color(), "Unresolved enemy on mud");
+            require(occupant == null || occupant.isPotted() || owner.isPotted() || occupant.color() == owner.color() || occupant.hero()==HeroType.ILLUSION, "Unresolved enemy on mud");
             if (cell.kind() == MudCell.Kind.MUD) {
                 require(cell.expiresAfterTurn() >= s.turn().number() && cell.expiresAfterTurn() - s.turn().number() <= 2L * s.bolotnikRules().mudTurns(), "Invalid mud expiry");
                 require(s.events().stream().anyMatch(e -> e.kind() == GameEvent.Kind.MUD && Objects.equals(e.actorId(), owner.id())

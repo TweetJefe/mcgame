@@ -87,7 +87,7 @@ public class FaunTest {
     }
     @Test public void faunCanBeDraftedIntoEitherKnightSlotAndBabaRemainsExcluded()throws Exception {
         for(String square:List.of("b1","g1")){
-            Draft d=new Draft();assertEquals(5,d.getSnapshot().rules().catalogVersion());assertEquals(8,HeroCatalog.heroes().size());
+            Draft d=new Draft();assertEquals(10,d.getSnapshot().rules().catalogVersion());assertEquals(13,HeroCatalog.heroes().size());
             d.ban(WHITE,HeroType.PUDGE_ROOK);d.ban(BLACK,HeroType.IZBA_ROOK);assertEquals(DraftActionResult.SUCCESS,d.pick(WHITE,HeroType.FAUN_KNIGHT,pos(square)));d.finishPicks(BLACK);d.finishPicks(WHITE);
             Game g=Game.mobaFromDraft(d.getSnapshot(),HeroRules.prototype(),600,()->0L);assertEquals(HeroType.FAUN_KNIGHT,g.getPieceState(pos(square)).hero());roundtrip(g);
         }

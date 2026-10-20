@@ -19,8 +19,8 @@ public class DraftGameTest {
     @Test public void ginsengUsesEitherBishopSlotAndCannotShareOneWithLumeshard() {
         for(String square:List.of("c1","f1","c8","f8")) {
             boolean white=square.endsWith("1");var side=white?WHITE:BLACK;
-            Draft d=new Draft();assertEquals(5,d.getSnapshot().rules().catalogVersion());
-            assertEquals(8,HeroCatalog.heroes().size());
+            Draft d=new Draft();assertEquals(10,d.getSnapshot().rules().catalogVersion());
+            assertEquals(13,HeroCatalog.heroes().size());
             assertEquals(DraftActionResult.SUCCESS,d.ban(WHITE,PUDGE_ROOK));
             assertEquals(DraftActionResult.SUCCESS,d.ban(BLACK,IZBA_ROOK));
             if(!white)assertEquals(DraftActionResult.SUCCESS,d.finishPicks(WHITE));

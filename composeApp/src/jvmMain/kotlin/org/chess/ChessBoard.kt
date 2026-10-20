@@ -4,6 +4,7 @@ import game.core.Game
 import game.economy.GoldRules
 import game.terrain.MudCell
 import game.heroes.faun.FaunView
+import game.heroes.clownganger.ClownView
 import game.heroes.AbilityRequest
 import game.heroes.Ability
 import game.heroes.HeroType
@@ -55,7 +56,7 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
     val outcome = snapshot.outcome()
     val currentPlayer = if (snapshot.active() == FigureColor.WHITE) game.whitePlayer else game.blackPlayer
     val selected = selectedId?.let { snapshot.pieces()[it] }?.takeIf {
-        it.status() == PieceState.Status.BOARD && it.color() == snapshot.active()
+        it.status() == PieceState.Status.BOARD && !it.isPotted && it.color() == snapshot.active()
     }
     val selectedPos = selected?.position()
     val legal = remember(snapshot.version(), selectedId, selectedAbility) {
@@ -138,7 +139,7 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                             val actualPiece = snapshot.pieceAt(square)
                             val visible = FaunView.visible(snapshot, actualPiece)
                             val figure = if (visible) snapshot.field().getFigureByPosition(square) else null
-                            val piece = if (visible) actualPiece else null
+                            val piece = if (visible) ClownView.displayed(snapshot,actualPiece) else null
                             val own = piece?.color() == snapshot.active()
                             val isMove = legal.canMove.contains(square)
                             val isCapture = legal.canAttack.contains(square)
@@ -148,6 +149,12 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                                     HeroType.PUDGE_ROOK -> if (piece.storedPieceId() != null) "П●" else "П"
                                     HeroType.LUMESHARD_BISHOP -> "L"
                                     HeroType.BOUNTY_CROW_PAWN -> "C"
+                                    HeroType.KIKIMORA_BISHOP -> "Ки"
+                                    HeroType.CHRONOMLIN_PAWN -> "Ch"
+                                    HeroType.ZEUS_ROOK -> "Z"
+                                    HeroType.MOLEMINER_PAWN -> "M"
+                                    HeroType.CLOWNGANGER_KNIGHT -> "Кл"
+                                    HeroType.ILLUSION -> "Коп"
                                     HeroType.FAUN_KNIGHT -> "F"
                                     HeroType.ARES_BISHOP -> if (piece.ultimateCharge() >= snapshot.heroRules().ares().revengeCaptures()) "A●" else "A"
                                     HeroType.GINSENG_BISHOP -> if (piece.storedPieceId() != null) "G●" else "G"
@@ -156,8 +163,14 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                                         HeroType.BOLOTNIK_KNIGHT -> "Б"
                                     else -> null
                                 },
+                                lightningLabel = if (visible && actualPiece != null) snapshot.lightning().charges().entries
+                                    .filter { it.key.targetId() == actualPiece.id() }.sortedBy { it.key.casterId() }
+                                    .joinToString(" ") { (if (snapshot.pieces()[it.key.casterId()]?.hero() == HeroType.ZEUS_ROOK) "Z" else "G") + it.value.count() }.ifEmpty { null } else null,
+                                isPotted = actualPiece?.isPotted == true,
                                 isBlinded = piece?.isBlinded == true,
                                 isStunned = piece?.isStunned == true,
+                                isBoxed = piece?.isBoxed == true,
+                                isMine = snapshot.mines().cells()[square]?.let { snapshot.pieces()[it.ownerId()]?.color() == snapshot.active() } == true,
                                 isInvisible = piece?.let { snapshot.faun().invisible().containsKey(it.id()) } == true,
                                 isCloud = snapshot.faun().silenced(square),
                                 isMud = snapshot.terrain().cells().containsKey(square),
@@ -261,7 +274,7 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                             else ((origin.transformsAfterTurn() - snapshot.turn().number()) / 2 + 1).coerceAtLeast(1)
                         Text("Станет Избой: осталось завершить своих ходов — $remaining", fontSize = 13.sp)
                     }
-                    if (selected.hero() != HeroType.NONE && selected.hero() != HeroType.BABA_YAGA_PAWN && selected.hero() != HeroType.IZBA_ROOK && selected.hero() != HeroType.GINSENG_BISHOP && selected.hero() != HeroType.FAUN_KNIGHT && selected.hero() != HeroType.ARES_BISHOP) {
+                    if (selected.hero() != HeroType.NONE && selected.hero() != HeroType.BABA_YAGA_PAWN && selected.hero() != HeroType.IZBA_ROOK && selected.hero() != HeroType.GINSENG_BISHOP && selected.hero() != HeroType.FAUN_KNIGHT && selected.hero() != HeroType.ARES_BISHOP && selected.hero() != HeroType.CLOWNGANGER_KNIGHT && selected.hero() != HeroType.ILLUSION && selected.hero() != HeroType.MOLEMINER_PAWN && selected.hero() != HeroType.ZEUS_ROOK && selected.hero() != HeroType.CHRONOMLIN_PAWN && selected.hero() != HeroType.KIKIMORA_BISHOP) {
                         val pudge = selected.hero() == HeroType.PUDGE_ROOK
                         val lume = selected.hero() == HeroType.LUMESHARD_BISHOP
                         val crow = selected.hero() == HeroType.BOUNTY_CROW_PAWN
@@ -297,10 +310,56 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                             }
                         }
                     }
-                } else if (moba) Text("Выберите свою фигуру. Пудж — П, Lumeshard — L, Crow — C, Bolotnik — Б, Изба — И, Ginseng — G, Faun — F, Ares — A.", fontSize = 13.sp, color = Color.Gray)
+                } else if (moba) Text("Выберите свою фигуру. Пудж — П, Lumeshard — L, Crow — C, Bolotnik — Б, Изба — И, Ginseng — G, Faun — F, Ares — A, Clownganger — Кл, Moleminer — M, Zeus — Z, Chronomlin — Ch, Kikimora — Ки.", fontSize = 13.sp, color = Color.Gray)
             }
             val hidden = snapshot.pieces().values.filter { it.status() == PieceState.Status.HIDDEN_BOG }
             if (hidden.isNotEmpty()) Text("В болоте: " + hidden.joinToString { if (it.color() == FigureColor.WHITE) if (it.hero() == HeroType.GINSENG_BISHOP) "белый Ginseng" else "белый Bolotnik" else if (it.hero() == HeroType.GINSENG_BISHOP) "чёрный Ginseng" else "чёрный Bolotnik" } + ". Выход только при срабатывании.", fontSize = 12.sp, color = Color(0xFF275D38))
+            if(moba && selected?.hero()==HeroType.KIKIMORA_BISHOP){
+                Text("Пряжа: КД ${selected.cooldown()}. Горшок: ${selected.ultimateCharge()} / ${snapshot.heroRules().kikimora().ultimateCaptures()}",fontSize=13.sp)
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                    Button(enabled=game.getAbilityAvailability(selectedPos,Ability.YARN).isSuccess,onClick={chooseAbility(Ability.YARN)}){Text("Связать пряжей")}
+                    Button(enabled=game.getAbilityAvailability(selectedPos,Ability.CLAY_POT).isSuccess,onClick={chooseAbility(Ability.CLAY_POT)}){Text("Глиняный горшок")}
+                }
+                if(selectedAbility==Ability.YARN)Text("Враг в радиусе 2. Другая фигура за целью по направлению броска усиливает стан до 2 ходов.",fontSize=13.sp)
+                if(selectedAbility==Ability.CLAY_POT)Text("Любая соседняя фигура, кроме короля: вечное неуязвимое препятствие. Можно сдвинуть способностью.",fontSize=13.sp)
+            }
+            if(moba && selected?.hero()==HeroType.CHRONOMLIN_PAWN){
+                Text("Притяжение: КД ${selected.cooldown()}. Улучшение: ${selected.ultimateCharge()} / ${snapshot.heroRules().chronomlin().ultimateCaptures()}",fontSize=13.sp)
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                    Button(enabled=game.getAbilityAvailability(selectedPos,Ability.GRAPPLE).isSuccess,onClick={chooseAbility(Ability.GRAPPLE)}){Text("Притянуться")}
+                    Button(enabled=game.getAbilityAvailability(selectedPos,Ability.EVOLVE).isSuccess,onClick={val actor=selectedPos;clearSelection();updateView(game.useAbility(currentPlayer,actor,null,Ability.EVOLVE))}){Text("Улучшиться")}
+                }
+                Text("Пешка → слон → конь → ладья. Способности сохраняются.",fontSize=13.sp)
+                if(selectedAbility==Ability.GRAPPLE)Text("Выберите первую фигуру по прямой, включая короля. Приземление перед ней, без взятия.",fontSize=13.sp)
+            }
+            if(moba && selected?.hero()==HeroType.ZEUS_ROOK){
+                Text("Молния: КД ${selected.cooldown()}. Ульта: ${selected.ultimateCharge()} / ${snapshot.heroRules().zeus().ultimateCaptures()}",fontSize=13.sp)
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                    Button(enabled=game.getAbilityAvailability(selectedPos,Ability.CHAIN_LIGHTNING).isSuccess,onClick={chooseAbility(Ability.CHAIN_LIGHTNING)}){Text("Цепная молния")}
+                    Button(enabled=game.getAbilityAvailability(selectedPos,Ability.THUNDERSTORM).isSuccess,onClick={val actor=selectedPos;clearSelection();updateView(game.useAbility(currentPlayer,actor,null,Ability.THUNDERSTORM))}){Text("Разряд")}
+                }
+                Text("Третий заряд убивает. Разряд выбирает случайного врага с зарядом этого героя. Z и G — разные заряды.",fontSize=13.sp)
+                if(selectedAbility==Ability.CHAIN_LIGHTNING)Text("Выберите врага в радиусе 3; цепь поразит до 3 целей.",fontSize=13.sp)
+            }
+            if(moba && selected?.hero()==HeroType.MOLEMINER_PAWN){
+                Text("Мина: КД ${selected.cooldown()}. Ульта: ${selected.ultimateCharge()} / ${snapshot.heroRules().moleminer().ultimateCaptures()}",fontSize=13.sp)
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                    Button(enabled=game.getAbilityAvailability(selectedPos,Ability.PLANT_MINE).isSuccess,onClick={val actor=selectedPos;clearSelection();updateView(game.useAbility(currentPlayer,actor,null,Ability.PLANT_MINE))}){Text("Заложить мину")}
+                    Button(enabled=game.getAbilityAvailability(selectedPos,Ability.DETONATE).isSuccess,onClick={chooseAbility(Ability.DETONATE)}){Text("Прыжок и взрыв")}
+                }
+                if(selectedAbility==Ability.DETONATE)Text("Клетка в радиусе 3. Случайный квадрат 2×2: погибнут герой и все внутри, кроме королей и фигур в коробках.",fontSize=13.sp)
+            }
+            if(moba && selected?.hero()==HeroType.CLOWNGANGER_KNIGHT){
+                Text("Коробка: радиус 3, КД ${selected.cooldown()}. Ульта: ${selected.ultimateCharge()} / ${snapshot.heroRules().clownganger().ultimateCaptures()}",fontSize=13.sp)
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                    Button(enabled=game.getAbilityAvailability(selectedPos,Ability.BOX).isSuccess,onClick={chooseAbility(Ability.BOX)}){Text("Спрятать в коробку")}
+                    Button(enabled=game.getAbilityAvailability(selectedPos,Ability.ILLUSION).isSuccess,onClick={chooseAbility(Ability.ILLUSION)}){Text("Создать иллюзию")}
+                }
+                if(selectedAbility==Ability.BOX)Text("Выберите союзника, себя или иллюзию в радиусе 3",fontSize=13.sp)
+                if(selectedAbility==Ability.ILLUSION)Text("Выберите свободную соседнюю клетку",fontSize=13.sp)
+            }
+            if(moba && selected?.hero()==HeroType.ILLUSION)Text("Иллюзия: не берёт фигуры. Может сходить вместе с оригиналом.",fontSize=13.sp)
+            if(moba && selected?.isBoxed==true)Text("В коробке: защищена и не действует до конца следующего собственного хода",fontSize=13.sp)
             if (moba && selected?.hero() == HeroType.ARES_BISHOP) {
                 Text("Копьё: 3 прямо / 2 по диагонали • КД ${selected.cooldown()}",fontSize=13.sp)
                 Text("Пассивная ульта: ${selected.ultimateCharge()} / ${snapshot.heroRules().ares().revengeCaptures()} • заберёт взявшую его фигуру",fontSize=13.sp)
@@ -344,7 +403,7 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                     val ready = game.getAbilityAvailability(selectedPos, copy.ability(), true)
                     Text("Копия: ${copy.ability().displayName} • одно применение", fontSize = 13.sp)
                     Button(enabled = ready.isSuccess, onClick = {
-                        if (copy.ability() in listOf(Ability.STEAL, Ability.AMBUSH, Ability.SUMMON_YAGA, Ability.INVISIBILITY)) {
+                        if (copy.ability() in listOf(Ability.STEAL, Ability.AMBUSH, Ability.SUMMON_YAGA, Ability.INVISIBILITY, Ability.PLANT_MINE, Ability.THUNDERSTORM, Ability.EVOLVE)) {
                             val request = AbilityRequest(selectedPos, copy.ability(), null, null, true)
                             clearSelection(); updateView(game.useAbility(currentPlayer, request))
                         } else chooseAbility(copy.ability(), true)
