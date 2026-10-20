@@ -13,10 +13,9 @@ public final class Queen extends Figure {
         fillMoves();
     }
 
-    public Queen(FigureColor color){
+    public Queen(FigureColor color) {
         super(null, color, null, "Queen", 9);
     }
-
 
 
     @Override
@@ -37,16 +36,16 @@ public final class Queen extends Figure {
     public synchronized void computeFutureMovesAndAttacks() {
         canMove = new ArrayList<>();
         canAttack = new ArrayList<>();
-        for(var move : moves){
+        for (var move : moves) {
             var positionToUpdate = this.position;
-            while(true) {
+            while (true) {
                 positionToUpdate = positionToUpdate.addPosition(move);
-                if(!checkMovePosition(this.color, positionToUpdate, this.field)){
+                if (!checkMovePosition(this.color, positionToUpdate, this.field)) {
                     break;
-                }else{
-                    if(field.getFigureByPosition(positionToUpdate).getColor().equals(FigureColor.NONE)){
+                } else {
+                    if (field.getFigureByPosition(positionToUpdate).getColor().equals(FigureColor.NONE)) {
                         canMove.add(positionToUpdate);
-                    }else{
+                    } else {
                         canAttack.add(positionToUpdate);
                         break;
                     }

@@ -9,6 +9,11 @@ public enum Promotion {
 
     private final Class<? extends Figure> figureType;
 
-    Promotion(Class<? extends Figure> figureType) { this.figureType = figureType; }
-    public Class<? extends Figure> getFigureType() { return figureType; }
+    Promotion(Class<? extends Figure> figureType) {
+        this.figureType = figureType;
+    }
+
+    public Class<? extends Figure> getFigureType() {
+        return figureType;
+    }
 }

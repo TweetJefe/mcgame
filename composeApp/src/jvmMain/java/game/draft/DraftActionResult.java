@@ -6,7 +6,16 @@ public enum DraftActionResult {
     HERO_PICKED("Этот герой уже выбран и недоступен обеим сторонам"), INVALID_SQUARE("Выберите подходящую стартовую клетку своей стороны"),
     SQUARE_OCCUPIED("На этой клетке уже выбран другой герой"), PICK_LIMIT("Состав уже заполнен");
     private final String message;
-    DraftActionResult(String message) { this.message=message; }
-    public String getMessage() { return message; }
-    public boolean isSuccess() { return this==SUCCESS; }
+
+    DraftActionResult(String message) {
+        this.message = message;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public boolean isSuccess() {
+        return this == SUCCESS;
+    }
 }

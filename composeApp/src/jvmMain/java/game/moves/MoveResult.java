@@ -1,7 +1,9 @@
 package game.moves;
 
 
-/** Rejected requests preserve chess state; elapsed thinking time still counts. */
+/**
+ * Rejected requests preserve chess state; elapsed thinking time still counts.
+ */
 public enum MoveResult {
     MUD_BLOCKED("Путь перекрыт вражеским болотом"),
     TERRAIN_OCCUPIED("Клетка уже занята другим болотом"),

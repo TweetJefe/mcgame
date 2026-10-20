@@ -5,6 +5,12 @@ public record LumeshardRules(int laserCooldown, int blindnessTurns, int ultimate
         if (laserCooldown < 0 || blindnessTurns < 1 || ultimateCaptures < 0)
             throw new IllegalArgumentException("Invalid Lumeshard parameters");
     }
-    public static LumeshardRules prototype() { return new LumeshardRules(3, 1, 2); }
-    public static LumeshardRules sandbox() { return new LumeshardRules(0, 1, 0); }
+
+    public static LumeshardRules prototype() {
+        return new LumeshardRules(3, 1, 2);
+    }
+
+    public static LumeshardRules sandbox() {
+        return new LumeshardRules(0, 1, 0);
+    }
 }

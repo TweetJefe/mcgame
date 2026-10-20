@@ -15,7 +15,7 @@ public final class Bishop extends Figure {
         fillMoves();
     }
 
-    public Bishop(FigureColor color){
+    public Bishop(FigureColor color) {
         super(null, color, null, "Bishop", 5);
     }
 
@@ -34,16 +34,16 @@ public final class Bishop extends Figure {
     public synchronized void computeFutureMovesAndAttacks() {
         canMove = new ArrayList<>();
         canAttack = new ArrayList<>();
-        for(var move : moves){
+        for (var move : moves) {
             var positionToUpdate = this.position;
-            while(true) {
+            while (true) {
                 positionToUpdate = positionToUpdate.addPosition(move);
-                if(!checkMovePosition(this.color, positionToUpdate, this.field)){
+                if (!checkMovePosition(this.color, positionToUpdate, this.field)) {
                     break;
-                }else{
-                    if(field.getFigureByPosition(positionToUpdate).getColor().equals(FigureColor.NONE)){
+                } else {
+                    if (field.getFigureByPosition(positionToUpdate).getColor().equals(FigureColor.NONE)) {
                         canMove.add(positionToUpdate);
-                    }else{
+                    } else {
                         canAttack.add(positionToUpdate);
                         break;
                     }

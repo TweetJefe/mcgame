@@ -3,12 +3,17 @@ package game.economy;
 import game.heroes.HeroType;
 import game.moves.Capture;
 import game.state.PieceState;
+
 import java.util.List;
 import java.util.Map;
 
-/** Pure financial effects, prepared before publishing the corresponding board action. */
+/**
+ * Pure financial effects, prepared before publishing the corresponding board action.
+ */
 public final class GoldEngine {
-    private GoldEngine() {}
+    private GoldEngine() {
+    }
+
     public static EconomyState captures(EconomyState economy, List<Capture> captures,
                                         Map<Long, PieceState> before, Map<Long, PieceState> after,
                                         GoldRules rules, long turn) {

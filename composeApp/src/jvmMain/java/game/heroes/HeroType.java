@@ -4,8 +4,15 @@ package game.heroes;
 public enum HeroType {
     NONE("Обычная фигура"), PUDGE_ROOK("Пудж-Ладья"), LUMESHARD_BISHOP("Lumeshard-Слон"), BOUNTY_CROW_PAWN("Bounty Crow-Пешка"), BOLOTNIK_KNIGHT("Bolotnik-Конь"), IZBA_ROOK("Изба-Ладья"), BABA_YAGA_PAWN("Баба-яга"), GINSENG_BISHOP("Ginseng-Слон"), FAUN_KNIGHT("Faun-Конь"), ARES_BISHOP("Ares-Слон");
     private final String name;
-    HeroType(String name) { this.name = name; }
-    public String getName() { return name; }
+
+    HeroType(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
+
     public boolean supports(Class<? extends model.Figure> type) {
         return switch (this) {
             case NONE -> false;

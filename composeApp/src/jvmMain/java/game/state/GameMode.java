@@ -1,4 +1,4 @@
 package game.state;
 
 
-public enum GameMode { CLASSIC, MOBA }
+public enum GameMode {CLASSIC, MOBA}
