@@ -8,7 +8,6 @@ import game.heroes.AbstractHero;
 import game.heroes.Abilities;
 import game.heroes.HeroActionContext;
 import game.heroes.HeroEffect;
-import game.heroes.HeroType;
 import game.heroes.AbilityRequest;
 import game.moves.MoveResult;
 import game.moves.Capture;
@@ -32,7 +31,7 @@ public final class PudgeHero extends AbstractHero {
     private final PudgeRules rules;
 
     public PudgeHero(PudgeRules rules) {
-        super(HeroType.PUDGE_ROOK, PudgeAbility.getAbilities(), PudgeAbility.SWALLOW,
+        super(PudgeDefinition.INSTANCE, PudgeAbility.getAbilities(), PudgeAbility.SWALLOW,
                 Objects.requireNonNull(rules, "rules").ultimateCaptures());
         this.rules = rules;
     }

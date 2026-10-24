@@ -1,7 +1,5 @@
 package game.heroes;
 
-import game.heroes.pudge.PudgeHero;
-
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
@@ -80,11 +78,9 @@ public final class HeroRegistry {
 
     public static HeroRegistry fromRules(HeroRules rules) {
         Objects.requireNonNull(rules, "rules");
-        Hero pudge = new PudgeHero(rules.pudge());
-        HeroRegistry registry = new HeroRegistry().register(pudge);
-        // Temporary adapters are removed individually as each hero gets its own strategy.
-        for (HeroType type : HeroType.values())
-            if (!registry.heroes.containsKey(type)) registry = registry.register(new LegacyHero(type, rules, pudge));
+        HeroRegistry registry = new HeroRegistry();
+        for (HeroDefinition<?> definition : rules.definitions())
+            registry = registry.register(definition.create(rules));
         return registry;
     }
 }

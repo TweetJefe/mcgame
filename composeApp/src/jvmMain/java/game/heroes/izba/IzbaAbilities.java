@@ -21,7 +21,7 @@ public final class IzbaAbilities {
     public static MoveResult availability(PieceState actor, Abilities ability, IzbaRules rules) {
         if (ability == null) return AbilityRejection.INVALID_ABILITY;
         if (actor == null || actor.status() != PieceState.Status.BOARD) return MovementRejection.EMPTY_SOURCE;
-        if (actor.hero() != HeroType.IZBA_ROOK || ability != IzbaAbility.SUMMON_YAGA) return AbilityRejection.NO_ABILITY;
+        if (actor.hero() != HeroType.IZBA || ability != IzbaAbility.SUMMON_YAGA) return AbilityRejection.NO_ABILITY;
         return actor.ultimateCharge() < rules.ultimateCaptures() ? AbilityRejection.ULTIMATE_NOT_READY : Success.SUCCESS;
     }
 

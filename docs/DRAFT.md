@@ -65,10 +65,10 @@
 
 ```java
 Draft draft = new Draft();
-draft.ban(FigureColor.WHITE, HeroType.BOUNTY_CROW_PAWN);
-draft.ban(FigureColor.BLACK, HeroType.BOLOTNIK_KNIGHT);
-draft.pick(FigureColor.WHITE, HeroType.PUDGE_ROOK, new Position(0, 7)); // h1
-draft.pick(FigureColor.BLACK, HeroType.LUMESHARD_BISHOP, new Position(7, 5)); // f8
+draft.ban(FigureColor.WHITE, HeroType.BOUNTY_CROW);
+draft.ban(FigureColor.BLACK, HeroType.BOLOTNIK);
+draft.pick(FigureColor.WHITE, HeroType.PUDGE, new Position(0, 7)); // h1
+draft.pick(FigureColor.BLACK, HeroType.LUMESHARD, new Position(7, 5)); // f8
 draft.finishPicks(FigureColor.WHITE); // Можно отказаться от оставшихся Избы, Ginseng, Faun и Ares.
 draft.finishPicks(FigureColor.BLACK);
 Game game = Game.mobaFromDraft(draft.getSnapshot(), HeroRules.prototype(), 600);

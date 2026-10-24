@@ -14,11 +14,15 @@ import java.util.List;
 public interface Hero {
     HeroType type();
 
+    default HeroDefinition<?> definition() {
+        return HeroDefinitions.get(type());
+    }
+
     List<Abilities> abilities();
 
     /** Eligible initial chess bodies; promotions and copied spells retain their own state rules. */
     default boolean supports(Class<? extends Figure> figureType) {
-        return type().supports(figureType);
+        return definition().supports(figureType);
     }
 
     /** Declarative targeting shared by execution and target discovery. */
@@ -51,7 +55,7 @@ public interface Hero {
     /** Human-readable history text after a successful action; must not change either snapshot. */
     default String abilityMessage(HeroActionContext before, HeroActionContext after, PieceState actor,
                                    PieceState target, AbilityRequest request) {
-        return type().getName() + ": " + request.ability().getDisplayName();
+        return definition().displayName() + ": " + request.ability().getDisplayName();
     }
 
     /**

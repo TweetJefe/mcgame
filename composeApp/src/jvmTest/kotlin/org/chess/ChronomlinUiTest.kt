@@ -23,7 +23,7 @@ class ChronomlinUiTest {
         val g=ChronomlinTest.basic()
         ImageComposeScene(1200,800){MaterialTheme{Surface(Modifier.fillMaxSize()){ChessBoard(g)}}}.use{
             it.render().close();click(it,226f,522f);save(it,"chronomlin-controls");click(it,700f,340f);save(it,"chronomlin-targets");click(it,226f,282f)
-            assertEquals(HeroType.CHRONOMLIN_PAWN,g.getPieceState(pos("c5")).hero());assertFalse(g.turnState.moveUsed());save(it,"chronomlin-grapple")
+            assertEquals(HeroType.CHRONOMLIN,g.getPieceState(pos("c5")).hero());assertFalse(g.turnState.moveUsed());save(it,"chronomlin-grapple")
         }
     }}
     @Test fun evolutionButtonChangesThePieceWithoutAskingForACell(){SwingUtilities.invokeAndWait{
@@ -33,9 +33,9 @@ class ChronomlinUiTest {
         }
     }}
     @Test fun twelfthHeroCanBeScrolledAndPickedIntoAPawnHome(){SwingUtilities.invokeAndWait{
-        val d=Draft(DraftRules(1,6,9));d.ban(model.FigureColor.WHITE,HeroType.PUDGE_ROOK);d.ban(model.FigureColor.BLACK,HeroType.IZBA_ROOK)
+        val d=Draft(DraftRules(1,6,9));d.ban(model.FigureColor.WHITE,HeroType.PUDGE);d.ban(model.FigureColor.BLACK,HeroType.IZBA)
         ImageComposeScene(1200,800){MaterialTheme{DraftScreen(d,{}, {})}}.use{
-            it.render().close();it.scrollDraftToLastHero();save(it,"chronomlin-draft");click(it,150f,580f);click(it,840f,399f);click(it,100f,677f);assertEquals(HeroType.CHRONOMLIN_PAWN,d.snapshot.assignments()[pos("a2")]);save(it,"chronomlin-picked")
+            it.render().close();it.scrollDraftToLastHero();save(it,"chronomlin-draft");click(it,150f,580f);click(it,840f,399f);click(it,100f,677f);assertEquals(HeroType.CHRONOMLIN,d.snapshot.assignments()[pos("a2")]);save(it,"chronomlin-picked")
         }
     }}
     private fun click(s:ImageComposeScene,x:Float,y:Float){s.sendPointerEvent(PointerEventType.Press,Offset(x,y),button=PointerButton.Primary);s.sendPointerEvent(PointerEventType.Release,Offset(x,y),button=PointerButton.Primary);s.render().close()}

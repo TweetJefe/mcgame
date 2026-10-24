@@ -30,7 +30,7 @@ public class AresSaveTest {
     }
     @Test public void theNewCatalogUsesXmlNineEvenWhenAresIsBannedAndPreviousCatalogRemainsEight()throws Exception {
         for(int catalog:new int[]{4,5}) {
-            var d=new Draft(new DraftRules(1,6,catalog));d.ban(WHITE,catalog==5?HeroType.ARES_BISHOP:HeroType.FAUN_KNIGHT);d.ban(BLACK,HeroType.IZBA_ROOK);d.finishPicks(WHITE);d.finishPicks(BLACK);
+            var d=new Draft(new DraftRules(1,6,catalog));d.ban(WHITE,catalog==5?HeroType.ARES:HeroType.FAUN);d.ban(BLACK,HeroType.IZBA);d.finishPicks(WHITE);d.finishPicks(BLACK);
             Game g=Game.mobaFromDraft(d.getSnapshot(),HeroRules.prototype(),600,()->0L);String s=xml(g);assertTrue(s.contains("formatVersion=\""+(catalog==5?9:8)+"\""));assertEquals(s,xml(load(s)));assertEquals(d.getSnapshot(),load(s).getDraft());
             if(catalog==5)invalid(s.replace("catalogVersion=\"5\"","catalogVersion=\"4\""));
         }

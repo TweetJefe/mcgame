@@ -56,7 +56,8 @@ import java.util.Map;
  */
 final class ActionEngine {
     record Context(Field field, Map<Long, PieceState> pieces, CastlingRights rights, Position ep, EconomyState economy,
-                   long turn, TerrainState terrain, SummonState summons, SpellState spells, FaunState faun, ClownState clown, MineState mines, LightningState lightning, HeroRegistry heroes) {
+                   long turn, TerrainState terrain, SummonState summons, SpellState spells, FaunState faun,
+                   ClownState clown, MineState mines, LightningState lightning, HeroRegistry heroes) {
         Context {
             pieces = Map.copyOf(pieces);
             java.util.Objects.requireNonNull(heroes, "heroes");
@@ -88,10 +89,14 @@ final class ActionEngine {
     static Preview move(Context context, FigureColor side, Position from, Position to, Promotion promotion,
                         GameMode mode, HeroRules rules) {
         PieceState source = context.at(from);
-        if (source != null && source.color() == side && source.isPotted())return Preview.rejected(StatusRejection.POTTED);
-        if(mode==GameMode.MOBA && source!=null && context.clown().movementTurn()==context.turn() && !context.clown().canMove(source.id(),context.turn(),true,context.pieces()))return Preview.rejected(TurnRejection.MOVE_ALREADY_USED);
-        if(source!=null && source.color()==side && source.isBoxed())return Preview.rejected(StatusRejection.BOXED);
-        if(source!=null && source.color()==side && source.isStunned()) return Preview.rejected(StatusRejection.STUNNED);
+        if (source != null && source.color() == side && source.isPotted())
+            return Preview.rejected(StatusRejection.POTTED);
+        if (mode == GameMode.MOBA && source != null && context.clown().movementTurn() == context.turn() && !context.clown().canMove(source.id(), context.turn(), true, context.pieces()))
+            return Preview.rejected(TurnRejection.MOVE_ALREADY_USED);
+        if (source != null && source.color() == side && source.isBoxed())
+            return Preview.rejected(StatusRejection.BOXED);
+        if (source != null && source.color() == side && source.isStunned())
+            return Preview.rejected(StatusRejection.STUNNED);
         MoveResult validation = MoveValidator.validate(context.field(), side, from, to, context.rights(), context.ep(), promotion, mode == GameMode.MOBA ? AttackRules.blindSquares(context.pieces()) : Set.of(),
                 context.terrain().hostileSquares(context.pieces(), side), context.terrain().hostileSquares(context.pieces(), MoveValidator.opposite(side)), mode != GameMode.MOBA);
         if (!validation.isSuccess()) return Preview.rejected(validation);
@@ -102,21 +107,26 @@ final class ActionEngine {
         boolean castle = MoveValidator.isCastling(figure, from, to);
         if (castle && context.at(MoveValidator.rookSource(from, to)).isStunned())
             return Preview.rejected(StatusRejection.STUNNED);
-        if(figure instanceof King && (context.mines().hostile(to,context.pieces(),side) || castle && context.mines().hostile(new Position(from.getRow(),from.getColumn()+Integer.signum(to.getColumn()-from.getColumn())),context.pieces(),side)))return Preview.rejected(StatusRejection.KING_IMMUNE);
+        if (figure instanceof King && (context.mines().hostile(to, context.pieces(), side) || castle && context.mines().hostile(new Position(from.getRow(), from.getColumn() + Integer.signum(to.getColumn() - from.getColumn())), context.pieces(), side)))
+            return Preview.rejected(StatusRejection.KING_IMMUNE);
         boolean ep = MoveValidator.isEnPassant(oldBoard, side, from, to, context.ep());
         Position captureSquare = ep ? new Position(from.getRow(), to.getColumn()) : to;
         Figure victim = oldBoard.get(captureSquare);
         PieceState victimState = context.at(captureSquare);
-        if(victimState!=null && victimState.isPotted())return Preview.rejected(StatusRejection.POTTED);
-        if(castle && context.at(MoveValidator.rookSource(from,to)).isPotted())return Preview.rejected(StatusRejection.POTTED);
-        if(victimState!=null && victimState.isBoxed())return Preview.rejected(StatusRejection.BOXED);
-        if(moving.hero()==game.heroes.HeroType.ILLUSION && victimState!=null)return Preview.rejected(StatusRejection.ILLUSION_CANNOT_CAPTURE);
-        if(castle && context.at(MoveValidator.rookSource(from,to)).isBoxed())return Preview.rejected(StatusRejection.BOXED);
-        if(victimState!=null && victimState.hero()==game.heroes.HeroType.ILLUSION){
-            if(moving.isBlinded())return Preview.rejected(StatusRejection.BLINDED_CANNOT_CAPTURE);
-            Context hit=new Context(context.field(),context.pieces(),context.rights(),null,context.economy(),context.turn(),context.terrain(),context.summons(),context.spells(),context.faun(),context.clown().hit(victimState.id()),context.mines(),context.lightning(),context.heroes());
-            if(AttackRules.isInCheck(hit.field().getGameField(),hit.pieces(),side,hit.terrain()))return Preview.rejected(MovementRejection.KING_IN_CHECK);
-            return recordMove(new Preview(Success.SUCCESS,hit,List.of()),moving.id());
+        if (victimState != null && victimState.isPotted()) return Preview.rejected(StatusRejection.POTTED);
+        if (castle && context.at(MoveValidator.rookSource(from, to)).isPotted())
+            return Preview.rejected(StatusRejection.POTTED);
+        if (victimState != null && victimState.isBoxed()) return Preview.rejected(StatusRejection.BOXED);
+        if (moving.hero() == game.heroes.HeroType.ILLUSION && victimState != null)
+            return Preview.rejected(StatusRejection.ILLUSION_CANNOT_CAPTURE);
+        if (castle && context.at(MoveValidator.rookSource(from, to)).isBoxed())
+            return Preview.rejected(StatusRejection.BOXED);
+        if (victimState != null && victimState.hero() == game.heroes.HeroType.ILLUSION) {
+            if (moving.isBlinded()) return Preview.rejected(StatusRejection.BLINDED_CANNOT_CAPTURE);
+            Context hit = new Context(context.field(), context.pieces(), context.rights(), null, context.economy(), context.turn(), context.terrain(), context.summons(), context.spells(), context.faun(), context.clown().hit(victimState.id()), context.mines(), context.lightning(), context.heroes());
+            if (AttackRules.isInCheck(hit.field().getGameField(), hit.pieces(), side, hit.terrain()))
+                return Preview.rejected(MovementRejection.KING_IN_CHECK);
+            return recordMove(new Preview(Success.SUCCESS, hit, List.of()), moving.id());
         }
         if (mode == GameMode.MOBA && moving.isBlinded() && victimState != null)
             return Preview.rejected(StatusRejection.BLINDED_CANNOT_CAPTURE);
@@ -151,14 +161,14 @@ final class ActionEngine {
         }
         Position nextEp = figure instanceof Pawn && Math.abs(to.getRow() - from.getRow()) == 2
                 ? new Position((from.getRow() + to.getRow()) / 2, from.getColumn()) : null;
-        var preview=finish(context, states, rights, nextEp, captures, context.terrain(), List.of(), side, mode, rules);
-        return mode==GameMode.MOBA?recordMove(preview,moving.id()):preview;
+        var preview = finish(context, states, rights, nextEp, captures, context.terrain(), List.of(), side, mode, rules);
+        return mode == GameMode.MOBA ? recordMove(preview, moving.id()) : preview;
     }
 
-    private static Preview recordMove(Preview preview,long actor){
-        if(!preview.result().isSuccess())return preview;
-        var n=preview.next();
-        return new Preview(preview.result(),new Context(n.field(),n.pieces(),n.rights(),n.ep(),n.economy(),n.turn(),n.terrain(),n.summons(),n.spells(),n.faun(),n.clown().move(actor,n.turn()),n.mines(),n.lightning(),n.heroes()),preview.captures());
+    private static Preview recordMove(Preview preview, long actor) {
+        if (!preview.result().isSuccess()) return preview;
+        var n = preview.next();
+        return new Preview(preview.result(), new Context(n.field(), n.pieces(), n.rights(), n.ep(), n.economy(), n.turn(), n.terrain(), n.summons(), n.spells(), n.faun(), n.clown().move(actor, n.turn()), n.mines(), n.lightning(), n.heroes()), preview.captures());
     }
 
     static MoveResult abilityReady(Context context, FigureColor side, Position actorSquare, Abilities ability, HeroRules rules) {
@@ -171,20 +181,21 @@ final class ActionEngine {
         PieceState actor = context.at(actorSquare);
         if (actor == null) return MovementRejection.EMPTY_SOURCE;
         if (actor.color() != side) return MovementRejection.WRONG_FIGURE_COLOR;
-        if(actor.isPotted())return StatusRejection.POTTED;
-        if(actor.isBoxed())return StatusRejection.BOXED;
+        if (actor.isPotted()) return StatusRejection.POTTED;
+        if (actor.isBoxed()) return StatusRejection.BOXED;
         if (actor.isStunned()) return StatusRejection.STUNNED;
         if (context.faun().silenced(actorSquare)) return StatusRejection.SILENCED;
         MoveResult ready;
         if (borrowed) {
             var stored = context.spells().borrowed().get(actor.id());
-            if (actor.hero() != game.heroes.HeroType.GINSENG_BISHOP || stored == null || stored.ability() != ability)
+            if (actor.hero() != game.heroes.HeroType.GINSENG || stored == null || stored.ability() != ability)
                 return AbilityRejection.NO_BORROWED_ABILITY;
             if (!stored.isReady(context.turn())) return AbilityRejection.BORROWED_NOT_READY;
             ready = BorrowedEffects.availability(actor, ability, rules);
         } else ready = context.heroes().get(actor.hero()).availability(actor, ability);
         if (!ready.isSuccess()) return ready;
-        if(ability==ZeusAbility.THUNDERSTORM && ZeusAbilities.charged(context.pieces(),context.lightning(),actor).isEmpty())return AbilityRejection.NO_CHARGED_TARGETS;
+        if (ability == ZeusAbility.THUNDERSTORM && ZeusAbilities.charged(context.pieces(), context.lightning(), actor).isEmpty())
+            return AbilityRejection.NO_CHARGED_TARGETS;
         if ((ability == BountyCrowAbility.BOUNTY || ability == BountyCrowAbility.STEAL) && !context.economy().enabled())
             return EconomyRejection.ECONOMY_DISABLED;
         if (ability == BountyCrowAbility.STEAL && context.economy().balanceHalves(MoveValidator.opposite(side)) == 0)
@@ -208,13 +219,20 @@ final class ActionEngine {
         HeroActionContext heroContext = context.heroContext();
         MoveResult targeting = behavior.targeting(ability).validate(heroContext, actor, request);
         if (!targeting.isSuccess()) return Preview.rejected(targeting);
-        HeroEffect effect; ZeusAbilities.Result zeus=null;
+        HeroEffect effect;
+        ZeusAbilities.Result zeus = null;
         Abilities copied = ability == GinsengAbility.COPY_SPELL && target != null ? context.spells().lastUsed().get(target.id()) : null;
-        if(ability==MoleminerAbility.PLANT_MINE && context.mines().cells().containsKey(actorSquare))return Preview.rejected(AbilityRejection.TERRAIN_OCCUPIED);
-        if(ability==KikimoraAbility.YARN || ability==KikimoraAbility.CLAY_POT)effect=game.heroes.kikimora.KikimoraAbilities.preview(context.pieces(),actor,target,ability,context.turn(),rules.kikimora(),request.borrowed());
-        else if(ability==ZeusAbility.CHAIN_LIGHTNING || ability==ZeusAbility.THUNDERSTORM){zeus=ZeusAbilities.cast(context.field(),context.pieces(),actor,target,ability,context.lightning(),context.summons(),context.turn(),rules,request.borrowed());effect=zeus.effect();}
-        else if(ability==MoleminerAbility.PLANT_MINE || ability==MoleminerAbility.DETONATE)effect=MoleminerAbilities.preview(actor,targetSquare,ability,rules.moleminer(),request.borrowed());
-        else if(ability==ClowngangerAbility.BOX || ability==ClowngangerAbility.ILLUSION)effect=ClowngangerAbilities.preview(context.field(),actor,target,targetSquare,ability,context.turn(),rules.clownganger(),request.borrowed());
+        if (ability == MoleminerAbility.PLANT_MINE && context.mines().cells().containsKey(actorSquare))
+            return Preview.rejected(AbilityRejection.TERRAIN_OCCUPIED);
+        if (ability == KikimoraAbility.YARN || ability == KikimoraAbility.CLAY_POT)
+            effect = game.heroes.kikimora.KikimoraAbilities.preview(context.pieces(), actor, target, ability, context.turn(), rules.kikimora(), request.borrowed());
+        else if (ability == ZeusAbility.CHAIN_LIGHTNING || ability == ZeusAbility.THUNDERSTORM) {
+            zeus = ZeusAbilities.cast(context.field(), context.pieces(), actor, target, ability, context.lightning(), context.summons(), context.turn(), rules, request.borrowed());
+            effect = zeus.effect();
+        } else if (ability == MoleminerAbility.PLANT_MINE || ability == MoleminerAbility.DETONATE)
+            effect = MoleminerAbilities.preview(actor, targetSquare, ability, rules.moleminer(), request.borrowed());
+        else if (ability == ClowngangerAbility.BOX || ability == ClowngangerAbility.ILLUSION)
+            effect = ClowngangerAbilities.preview(context.field(), actor, target, targetSquare, ability, context.turn(), rules.clownganger(), request.borrowed());
         else if (ability == AresAbility.SPEAR)
             effect = AresAbilities.spear(context.field(), context.pieces(), actor, targetSquare, context.turn(), rules.ares(), context.terrain(), request.borrowed());
         else if (ability == GinsengAbility.DISPLACE)
@@ -228,32 +246,38 @@ final class ActionEngine {
         var board = new HashMap<>(field.getGameField());
         var states = new HashMap<>(context.pieces());
         CastlingRights rights = applyEffect(field, board, states, context.rights(), effect);
-        if(ability==ChronomlinAbility.GRAPPLE && TerrainGeometry.blocksRay(actor.position(),effect.updates().get(actor.id()).position(),context.terrain().hostileSquares(context.pieces(),actor.color())))return Preview.rejected(AbilityRejection.MUD_BLOCKED);
+        if (ability == ChronomlinAbility.GRAPPLE && TerrainGeometry.blocksRay(actor.position(), effect.updates().get(actor.id()).position(), context.terrain().hostileSquares(context.pieces(), actor.color())))
+            return Preview.rejected(AbilityRejection.MUD_BLOCKED);
         TerrainResolver.Placement placement = TerrainResolver.place(context.terrain(), context.pieces(), actor, targetSquare, ability, context.turn(), rules);
         if (!placement.result().isSuccess()) return Preview.rejected(placement.result());
-        SummonState summons =zeus==null?context.summons():zeus.summons();
+        SummonState summons = zeus == null ? context.summons() : zeus.summons();
         if (ability == IzbaAbility.SUMMON_YAGA) {
             var summoned = SummonResolver.cast(states, summons, actor, context.turn(), side, rules, placement.terrain());
             if (!summoned.result().isSuccess()) return Preview.rejected(summoned.result());
             states = new HashMap<>(summoned.pieces());
             summons = summoned.summons();
         }
-        ClownState clown=context.clown();
-        if(zeus!=null)for(long id:zeus.illusionHits())clown=clown.hit(id);
-        if(ability==ClowngangerAbility.ILLUSION){
-            if(states.size()>=SummonState.MAX_IDENTITIES)return Preview.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
-            for(var i:clown.illusions().values())if(i.sourceId()==actor.id() && !states.get(i.id()).isRemoved())return Preview.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
-            long id=Math.addExact(states.keySet().stream().mapToLong(Long::longValue).max().orElse(0),1);
-            var choice=summons.choose(2);summons=new SummonState(true,choice.nextState(),summons.records());
-            Position bornAt=choice.index()==0?actor.position():targetSquare;
-            if(choice.index()==0)states.put(actor.id(),states.get(actor.id()).placed(targetSquare,actor.type()));
-            states.put(id,new PieceState(id,actor.type(),actor.color(),bornAt,PieceState.Status.BOARD,game.heroes.HeroType.ILLUSION,0,0,java.util.List.of(game.state.ItemSlot.empty(),game.state.ItemSlot.empty(),game.state.ItemSlot.empty()),null,actor.blindTurns(),null));
-            clown=clown.create(id,actor.id(),bornAt,context.turn(),rules.clownganger());
+        ClownState clown = context.clown();
+        if (zeus != null) for (long id : zeus.illusionHits()) clown = clown.hit(id);
+        if (ability == ClowngangerAbility.ILLUSION) {
+            if (states.size() >= SummonState.MAX_IDENTITIES)
+                return Preview.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
+            for (var i : clown.illusions().values())
+                if (i.sourceId() == actor.id() && !states.get(i.id()).isRemoved())
+                    return Preview.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
+            long id = Math.addExact(states.keySet().stream().mapToLong(Long::longValue).max().orElse(0), 1);
+            var choice = summons.choose(2);
+            summons = new SummonState(true, choice.nextState(), summons.records());
+            Position bornAt = choice.index() == 0 ? actor.position() : targetSquare;
+            if (choice.index() == 0) states.put(actor.id(), states.get(actor.id()).placed(targetSquare, actor.type()));
+            states.put(id, new PieceState(id, actor.type(), actor.color(), bornAt, PieceState.Status.BOARD, game.heroes.HeroType.ILLUSION, 0, 0, java.util.List.of(game.state.ItemSlot.empty(), game.state.ItemSlot.empty(), game.state.ItemSlot.empty()), null, actor.blindTurns(), null));
+            clown = clown.create(id, actor.id(), bornAt, context.turn(), rules.clownganger());
         }
         SpellState spells = context.spells().cast(actor.id(), ability, request.borrowed(), context.turn(), target == null ? null : target.id(), copied);
-        MineState mines=context.mines();if(ability==MoleminerAbility.PLANT_MINE)mines=mines.plant(actor.id(),actorSquare,context.turn());
-        Context preparedContext = new Context(context.field(), context.pieces(), context.rights(), context.ep(), context.economy(), context.turn(), context.terrain(), summons, spells, context.faun().cast(actor.id(), ability, targetSquare, context.turn(), rules.faun()),clown,mines,zeus==null?context.lightning():zeus.lightning(),context.heroes());
-        Preview preview = finish(preparedContext, states, rights, context.ep(), effect.captures(), placement.terrain(), placement.immediateEntries(), side, GameMode.MOBA, rules,ability==MoleminerAbility.DETONATE?actor.id():null,targetSquare);
+        MineState mines = context.mines();
+        if (ability == MoleminerAbility.PLANT_MINE) mines = mines.plant(actor.id(), actorSquare, context.turn());
+        Context preparedContext = new Context(context.field(), context.pieces(), context.rights(), context.ep(), context.economy(), context.turn(), context.terrain(), summons, spells, context.faun().cast(actor.id(), ability, targetSquare, context.turn(), rules.faun()), clown, mines, zeus == null ? context.lightning() : zeus.lightning(), context.heroes());
+        Preview preview = finish(preparedContext, states, rights, context.ep(), effect.captures(), placement.terrain(), placement.immediateEntries(), side, GameMode.MOBA, rules, ability == MoleminerAbility.DETONATE ? actor.id() : null, targetSquare);
         if (!preview.result().isSuccess()) return preview;
         EconomyState economy = preview.next().economy();
         if (ability == BountyCrowAbility.BOUNTY) economy = assignBounty(context, actor, target, rules);
@@ -261,7 +285,7 @@ final class ActionEngine {
             economy = economy.apply(new GoldChange(context.turn(), GoldChange.Kind.STEAL, side, actor.id(), null,
                     Math.min(4, economy.balanceHalves(MoveValidator.opposite(side))), 0, 0));
         Context next = preview.next();
-        return new Preview(Success.SUCCESS, new Context(next.field(), next.pieces(), next.rights(), next.ep(), economy, context.turn(), next.terrain(), next.summons(), next.spells(), next.faun(),next.clown(),next.mines(),next.lightning(),next.heroes()), preview.captures());
+        return new Preview(Success.SUCCESS, new Context(next.field(), next.pieces(), next.rights(), next.ep(), economy, context.turn(), next.terrain(), next.summons(), next.spells(), next.faun(), next.clown(), next.mines(), next.lightning(), next.heroes()), preview.captures());
     }
 
     private static EconomyState assignBounty(Context context, PieceState actor, PieceState target, HeroRules rules) {
@@ -272,14 +296,15 @@ final class ActionEngine {
 
     private static Preview finish(Context before, Map<Long, PieceState> states, CastlingRights rights, Position ep,
                                   List<Capture> captures, TerrainState terrain, List<Long> immediate, FigureColor side, GameMode mode, HeroRules rules) {
-        return finish(before,states,rights,ep,captures,terrain,immediate,side,mode,rules,null,null);
+        return finish(before, states, rights, ep, captures, terrain, immediate, side, mode, rules, null, null);
     }
-    private static Preview finish(Context before,Map<Long,PieceState> states,CastlingRights rights,Position ep,List<Capture> captures,TerrainState terrain,List<Long> immediate,FigureColor side,GameMode mode,HeroRules rules,Long bomber,Position landing){
-        var resolved=EffectResolver.resolve(before.field(), before.pieces(), states, terrain,before.summons(),before.mines(),captures,immediate, before.turn(), side, rules,bomber,landing);
+
+    private static Preview finish(Context before, Map<Long, PieceState> states, CastlingRights rights, Position ep, List<Capture> captures, TerrainState terrain, List<Long> immediate, FigureColor side, GameMode mode, HeroRules rules, Long bomber, Position landing) {
+        var resolved = EffectResolver.resolve(before.field(), before.pieces(), states, terrain, before.summons(), before.mines(), captures, immediate, before.turn(), side, rules, bomber, landing);
         if (!resolved.result().isSuccess()) return Preview.rejected(resolved.result());
-        ClownState clown=before.clown();
-        for(long id:resolved.illusionHits())clown=clown.hit(id);
-        var cleaned=clown.clean(resolved.pieces(),0);
+        ClownState clown = before.clown();
+        for (long id : resolved.illusionHits()) clown = clown.hit(id);
+        var cleaned = clown.clean(resolved.pieces(), 0);
         var board = new HashMap<Position, Figure>();
         for (Position square : before.field().getGameField().keySet())
             board.put(square, before.field().createFigure(Empty.class, square, FigureColor.NONE));
@@ -291,40 +316,47 @@ final class ActionEngine {
             if (old.position() != null && (next.position() == null || !old.position().equals(next.position()) || next.isPotted()))
                 rights = removedRookRights(rights, old, old.position());
         }
-        var kings=cleaned.values().stream().filter(p->p.position()!=null && p.type()==King.class).toList();
-        if(kings.size()==2 && Math.max(Math.abs(kings.get(0).position().getRow()-kings.get(1).position().getRow()),Math.abs(kings.get(0).position().getColumn()-kings.get(1).position().getColumn()))<=1)return Preview.rejected(MovementRejection.KING_IN_CHECK);
+        var kings = cleaned.values().stream().filter(p -> p.position() != null && p.type() == King.class).toList();
+        if (kings.size() == 2 && Math.max(Math.abs(kings.get(0).position().getRow() - kings.get(1).position().getRow()), Math.abs(kings.get(0).position().getColumn() - kings.get(1).position().getColumn())) <= 1)
+            return Preview.rejected(MovementRejection.KING_IN_CHECK);
         if (AttackRules.isInCheck(board, cleaned, side, resolved.terrain()))
             return Preview.rejected(MovementRejection.KING_IN_CHECK);
         Field next = mode == GameMode.MOBA ? Field.fromMobaPosition(board) : Field.fromPosition(board);
         EconomyState economy = GoldEngine.captures(before.economy(), resolved.captures(), before.pieces(), resolved.pieces(), rules.gold(), before.turn());
-        for (PieceState p :cleaned.values())
+        for (PieceState p : cleaned.values())
             if (p.isRemoved()) economy = economy.removeMark(p.id());
-        return new Preview(Success.SUCCESS, new Context(next, cleaned, rights, validEp(board, ep,cleaned), economy, before.turn(), resolved.terrain(), resolved.summons(), before.spells(), before.faun().afterCaptures(resolved.captures(),cleaned),clown,resolved.mines(),before.lightning().clean(cleaned),before.heroes()), resolved.captures());
+        return new Preview(Success.SUCCESS, new Context(next, cleaned, rights, validEp(board, ep, cleaned), economy, before.turn(), resolved.terrain(), resolved.summons(), before.spells(), before.faun().afterCaptures(resolved.captures(), cleaned), clown, resolved.mines(), before.lightning().clean(cleaned), before.heroes()), resolved.captures());
     }
 
     static boolean canEnd(Context context, FigureColor side) {
-        var pieces=AttackRules.expireStuns(context.clown().clean(context.pieces(), context.turn()),context.turn());
-        var board=new HashMap<>(context.field().getGameField());
-        for(var old:context.pieces().values())if(old.position()!=null && pieces.get(old.id()).position()==null)board.put(old.position(),context.field().createFigure(Empty.class,old.position(),FigureColor.NONE));
-        return !AttackRules.isInCheck(board,pieces, side, context.terrain().expire(context.turn()));
+        var pieces = AttackRules.expireStuns(context.clown().clean(context.pieces(), context.turn()), context.turn());
+        var board = new HashMap<>(context.field().getGameField());
+        for (var old : context.pieces().values())
+            if (old.position() != null && pieces.get(old.id()).position() == null)
+                board.put(old.position(), context.field().createFigure(Empty.class, old.position(), FigureColor.NONE));
+        return !AttackRules.isInCheck(board, pieces, side, context.terrain().expire(context.turn()));
     }
 
     static boolean canFinishAfterMove(Context context, FigureColor side, boolean abilityRemaining, HeroRules rules) {
         if (canEnd(context, side)) return true;
-        if(abilityRemaining && anyAbility(context, side, rules, next ->canFinishAfterMove(next, side,false,rules)))return true;
-        if(context.clown().movementTurn()==context.turn())for(var piece:context.pieces().values()){
-            if(piece.position()==null || piece.color()!=side || !context.clown().canMove(piece.id(),context.turn(),true,context.pieces()))continue;
-            var candidates=MoveValidator.candidates(context.field(),context.field().getFigureByPosition(piece.position()),context.rights(),context.ep());
-            for(var targets:List.of(candidates.getCanMove(),candidates.getCanAttack()))for(var to:targets){
-                var preview=move(context,side,piece.position(),to,null,GameMode.MOBA,rules);
-                if(preview.result().isSuccess() && canFinishAfterMove(preview.next(),side,abilityRemaining,rules))return true;
-            }
+        if (abilityRemaining && anyAbility(context, side, rules, next -> canFinishAfterMove(next, side, false, rules)))
+            return true;
+        if (context.clown().movementTurn() == context.turn()) for (var piece : context.pieces().values()) {
+            if (piece.position() == null || piece.color() != side || !context.clown().canMove(piece.id(), context.turn(), true, context.pieces()))
+                continue;
+            var candidates = MoveValidator.candidates(context.field(), context.field().getFigureByPosition(piece.position()), context.rights(), context.ep());
+            for (var targets : List.of(candidates.getCanMove(), candidates.getCanAttack()))
+                for (var to : targets) {
+                    var preview = move(context, side, piece.position(), to, null, GameMode.MOBA, rules);
+                    if (preview.result().isSuccess() && canFinishAfterMove(preview.next(), side, abilityRemaining, rules))
+                        return true;
+                }
         }
         return false;
     }
 
     static boolean hasMove(Context context, FigureColor side, GameMode mode, HeroRules rules) {
-        return anyMove(context, side, mode, rules, next -> canFinishAfterMove(next, side,false,rules));
+        return anyMove(context, side, mode, rules, next -> canFinishAfterMove(next, side, false, rules));
     }
 
     private static boolean anyMove(Context context, FigureColor side, GameMode mode, HeroRules rules, java.util.function.Predicate<Context> continuation) {
@@ -383,7 +415,8 @@ final class ActionEngine {
             PieceState old = states.get(entry.getKey()), next = entry.getValue();
             if (old.position() != null) {
                 board.put(old.position(), factory.createFigure(Empty.class, old.position(), FigureColor.NONE));
-                if (!old.position().equals(next.position()) || next.isPotted()) rights = removedRookRights(rights, old, old.position());
+                if (!old.position().equals(next.position()) || next.isPotted())
+                    rights = removedRookRights(rights, old, old.position());
             }
         }
         states.putAll(effect.updates());
@@ -412,7 +445,7 @@ final class ActionEngine {
         return rights;
     }
 
-    private static Position validEp(Map<Position, Figure> board, Position ep,Map<Long,PieceState> pieces) {
+    private static Position validEp(Map<Position, Figure> board, Position ep, Map<Long, PieceState> pieces) {
         if (ep == null) return null;
         FigureColor pawnColor = ep.getRow() == 2 ? FigureColor.WHITE : FigureColor.BLACK;
         int direction = pawnColor == FigureColor.WHITE ? 1 : -1;
@@ -420,6 +453,6 @@ final class ActionEngine {
         Position origin = new Position(ep.getRow() - direction, ep.getColumn());
         Figure pawn = board.get(square);
         return board.get(ep) instanceof Empty && board.get(origin) instanceof Empty
-                && pawn instanceof Pawn && pawn.getColor() == pawnColor && pieces.values().stream().noneMatch(p->p.isPotted() && square.equals(p.position())) ? ep : null;
+                && pawn instanceof Pawn && pawn.getColor() == pawnColor && pieces.values().stream().noneMatch(p -> p.isPotted() && square.equals(p.position())) ? ep : null;
     }
 }

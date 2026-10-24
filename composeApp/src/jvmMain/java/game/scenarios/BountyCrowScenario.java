@@ -69,7 +69,7 @@ public enum BountyCrowScenario implements TrainingScenario {
             put(factory, board, Knight.class, WHITE, "h3");
         }
         Game game = Game.fromMobaPosition(new GamePosition(board, WHITE, CastlingRights.none(), null, 0),
-                Map.of(p(crow), HeroType.BOUNTY_CROW_PAWN), HeroRules.prototype(), time);
+                Map.of(p(crow), HeroType.BOUNTY_CROW), HeroRules.prototype(), time);
         if (this == STEAL) {
             move(game, "d4", "e5");
             end(game);

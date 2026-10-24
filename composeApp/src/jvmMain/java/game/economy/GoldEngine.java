@@ -28,7 +28,7 @@ public final class GoldEngine {
             if (actor == null) actor = before.get(capture.actorId());
             BountyMark mark = next.mark(capture.victimId());
             long bounty = mark != null && mark.expiresAfterTurn() >= turn ? 3 : 0;
-            long passive = actor.hero() == HeroType.BOUNTY_CROW_PAWN ? 1 : 0;
+            long passive = actor.hero() == HeroType.BOUNTY_CROW ? 1 : 0;
             next = next.apply(new GoldChange(turn, GoldChange.Kind.CAPTURE, capture.creditedSide(), capture.actorId(),
                     capture.victimId(), rules.rewardHalves(victim), bounty, passive)).removeMark(capture.victimId());
         }

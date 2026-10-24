@@ -13,7 +13,7 @@ public final class ZeusAbilities{
     }
     public static MoveResult availability(PieceState actor,Abilities ability,ZeusRules rules){
         if(actor==null || actor.position()==null)return MovementRejection.EMPTY_SOURCE;
-        if(actor.hero()!=HeroType.ZEUS_ROOK || !abilities().contains(ability))return AbilityRejection.NO_ABILITY;
+        if(actor.hero()!=HeroType.ZEUS || !abilities().contains(ability))return AbilityRejection.NO_ABILITY;
         if(ability==ZeusAbility.CHAIN_LIGHTNING && actor.cooldown()>0)return AbilityRejection.ABILITY_COOLDOWN;
         if(ability==ZeusAbility.THUNDERSTORM && actor.ultimateCharge()<rules.ultimateCaptures())return AbilityRejection.ULTIMATE_NOT_READY;
         return Success.SUCCESS;

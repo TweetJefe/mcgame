@@ -17,6 +17,7 @@ import java.util.Objects;
  */
 public abstract class AbstractHero implements Hero {
     private final HeroType type;
+    private final HeroDefinition<?> definition;
     private final List<Abilities> abilities;
     private final Abilities ultimateAbility;
     private final int ultimateCaptures;
@@ -29,13 +30,24 @@ public abstract class AbstractHero implements Hero {
      */
     protected AbstractHero(HeroType type, List<? extends Abilities> abilities, Abilities ultimateAbility,
                            int ultimateCaptures) {
-        this.type = Objects.requireNonNull(type, "type");
+        this(HeroDefinitions.get(type), abilities, ultimateAbility, ultimateCaptures);
+    }
+
+    protected AbstractHero(HeroDefinition<?> definition, List<? extends Abilities> abilities,
+                           Abilities ultimateAbility, int ultimateCaptures) {
+        this.definition = Objects.requireNonNull(definition, "definition");
+        this.type = definition.type();
         this.abilities = List.copyOf(abilities);
         if (ultimateCaptures < 0) throw new IllegalArgumentException("Negative ultimate capture threshold");
         if (ultimateAbility != null && !this.abilities.contains(ultimateAbility))
             throw new IllegalArgumentException("Ultimate must be one of the hero's abilities");
         this.ultimateAbility = ultimateAbility;
         this.ultimateCaptures = ultimateCaptures;
+    }
+
+    @Override
+    public final HeroDefinition<?> definition() {
+        return definition;
     }
 
     @Override

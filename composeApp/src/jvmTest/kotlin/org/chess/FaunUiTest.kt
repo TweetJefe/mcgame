@@ -39,10 +39,10 @@ class FaunUiTest {
     }
     @Test fun seventhHeroCanBePickedOnAnAlternateKnightHome() {
         SwingUtilities.invokeAndWait {
-            val draft=Draft(DraftRules(1,6,4));draft.ban(model.FigureColor.WHITE,HeroType.PUDGE_ROOK);draft.ban(model.FigureColor.BLACK,HeroType.IZBA_ROOK)
+            val draft=Draft(DraftRules(1,6,4));draft.ban(model.FigureColor.WHITE,HeroType.PUDGE);draft.ban(model.FigureColor.BLACK,HeroType.IZBA)
             ImageComposeScene(1200,800){MaterialTheme{DraftScreen(draft,{}, {})}}.use {
                 save(it,"faun-catalog");click(it,150f,600f);click(it,1056f,435f);click(it,100f,701f)
-                assertEquals(HeroType.FAUN_KNIGHT,draft.snapshot.assignments()[pos("g1")]);save(it,"faun-picked")
+                assertEquals(HeroType.FAUN,draft.snapshot.assignments()[pos("g1")]);save(it,"faun-picked")
             }
         }
     }

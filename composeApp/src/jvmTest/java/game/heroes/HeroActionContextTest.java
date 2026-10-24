@@ -14,7 +14,7 @@ public class HeroActionContextTest {
     @Test public void contextCopiesTheMapAndLooksUpOnlyBoardPiecesByPosition() {
         Field field = new Field(8);
         Position square = new Position(0, 0);
-        PieceState board = PieceState.initial(1, field.getFigureByPosition(square), HeroType.PUDGE_ROOK);
+        PieceState board = PieceState.initial(1, field.getFigureByPosition(square), HeroType.PUDGE);
         PieceState swallowed = PieceState.initial(2, field.getFigureByPosition(new Position(1, 0)), HeroType.NONE)
                 .hidden(PieceState.Status.SWALLOWED);
         PieceState captured = PieceState.initial(3, field.getFigureByPosition(new Position(1, 1)), HeroType.NONE)

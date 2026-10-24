@@ -24,7 +24,7 @@ public final class GinsengFixtures {
     }
     public static void empty(Map<Position,Figure>b,String square){put(b,Empty.class,NONE,square);}
     public static Game create(Map<Position,Figure>b,Map<Position,HeroType> other) {
-        var heroes=new HashMap<>(other);heroes.put(pos("c2"),HeroType.GINSENG_BISHOP);
+        var heroes=new HashMap<>(other);heroes.put(pos("c2"),HeroType.GINSENG);
         return Game.fromMobaPosition(new GamePosition(b,WHITE,CastlingRights.none(),null,0),heroes,HeroRules.prototype(),()->0L);
     }
     public static Game charged(Game g,String...squares) {
@@ -34,7 +34,7 @@ public final class GinsengFixtures {
     }
     public static Game hook() {
         var b=board();put(b,Rook.class,WHITE,"e2");put(b,Pawn.class,BLACK,"e5");put(b,Pawn.class,BLACK,"a4");put(b,Knight.class,WHITE,"f2");
-        return charged(create(b,Map.of(pos("e2"),HeroType.PUDGE_ROOK)),"c2","e2");
+        return charged(create(b,Map.of(pos("e2"),HeroType.PUDGE)),"c2","e2");
     }
     public static Game readyHook() {
         Game g=hook();ok(g.useAbility(g.getCurrentPlayer(),pos("e2"),pos("e5"),PudgeAbility.HOOK));

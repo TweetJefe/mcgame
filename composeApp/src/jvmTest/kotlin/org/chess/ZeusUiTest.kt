@@ -33,9 +33,9 @@ class ZeusUiTest {
         }
     }}
     @Test fun zeusCanBePickedIntoARookHome(){SwingUtilities.invokeAndWait{
-        val d=Draft(DraftRules(1,6,8));d.ban(model.FigureColor.WHITE,HeroType.PUDGE_ROOK);d.ban(model.FigureColor.BLACK,HeroType.IZBA_ROOK)
+        val d=Draft(DraftRules(1,6,8));d.ban(model.FigureColor.WHITE,HeroType.PUDGE);d.ban(model.FigureColor.BLACK,HeroType.IZBA)
         ImageComposeScene(1200,800){MaterialTheme{DraftScreen(d,{}, {})}}.use{
-            it.render().close();it.scrollDraftToLastHero();save(it,"zeus-draft");click(it,150f,580f);click(it,840f,435f);click(it,100f,677f);assertEquals(HeroType.ZEUS_ROOK,d.snapshot.assignments()[pos("a1")]);save(it,"zeus-picked")
+            it.render().close();it.scrollDraftToLastHero();save(it,"zeus-draft");click(it,150f,580f);click(it,840f,435f);click(it,100f,677f);assertEquals(HeroType.ZEUS,d.snapshot.assignments()[pos("a1")]);save(it,"zeus-picked")
         }
     }}
     private fun click(s:ImageComposeScene,x:Float,y:Float){s.sendPointerEvent(PointerEventType.Press,Offset(x,y),button=PointerButton.Primary);s.sendPointerEvent(PointerEventType.Release,Offset(x,y),button=PointerButton.Primary);s.render().close()}

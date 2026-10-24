@@ -26,8 +26,8 @@ import model.figures.*
 private fun draftSide(side: FigureColor) = if (side == FigureColor.WHITE) "Белые" else "Чёрные"
 private fun draftCell(square: Position) = "${'a' + square.column}${square.row + 1}"
 private fun heroBadge(hero: HeroType) = when (hero) {
-    HeroType.KIKIMORA_BISHOP -> "Ки"; HeroType.CHRONOMLIN_PAWN -> "Ch"; HeroType.ZEUS_ROOK -> "Z"; HeroType.MOLEMINER_PAWN -> "M"; HeroType.CLOWNGANGER_KNIGHT -> "Кл"; HeroType.PUDGE_ROOK -> "П"; HeroType.LUMESHARD_BISHOP -> "L"
-    HeroType.BOUNTY_CROW_PAWN -> "C"; HeroType.BOLOTNIK_KNIGHT -> "Б"; HeroType.IZBA_ROOK -> "И"; HeroType.FAUN_KNIGHT -> "F"; HeroType.ARES_BISHOP -> "A"; HeroType.GINSENG_BISHOP -> "G"; else -> ""
+    HeroType.KIKIMORA -> "Ки"; HeroType.CHRONOMLIN -> "Ch"; HeroType.ZEUS -> "Z"; HeroType.MOLEMINER -> "M"; HeroType.CLOWNGANGER -> "Кл"; HeroType.PUDGE -> "П"; HeroType.LUMESHARD -> "L"
+    HeroType.BOUNTY_CROW -> "C"; HeroType.BOLOTNIK -> "Б"; HeroType.IZBA -> "И"; HeroType.FAUN -> "F"; HeroType.ARES -> "A"; HeroType.GINSENG -> "G"; else -> ""
 }
 
 @Composable

@@ -31,7 +31,7 @@ class IzbaUiTest {
             ImageComposeScene(1200, 800) { MaterialTheme { Surface(Modifier.fillMaxSize()) { ChessBoard(game) } } }.use {
                 it.render().close();click(it,346f,522f);save(it,"izba-ready")
                 click(it,720f,360f)
-                val baby=game.snapshot.pieces().values.single { p->p.hero()==HeroType.BABA_YAGA_PAWN }
+                val baby=game.snapshot.pieces().values.single { p->p.hero()==HeroType.BABA_YAGA }
                 assertEquals(PieceState.Status.BOARD,baby.status());assertTrue(game.turnState.abilityUsed());assertFalse(game.turnState.moveUsed())
                 assertEquals(0,game.getPieceState(Position(1,4)).ultimateCharge())
                 click(it,106f+60f*baby.position().column,582f-60f*baby.position().row);save(it,"izba-yaga-counter")
@@ -42,12 +42,12 @@ class IzbaUiTest {
     }
     @Test fun pickIzbaOnTheSecondRookSquareThroughTheExpandedDraft() {
         SwingUtilities.invokeAndWait {
-            val draft=Draft(game.draft.DraftRules(1,6,2));draft.ban(FigureColor.WHITE,HeroType.PUDGE_ROOK);draft.ban(FigureColor.BLACK,HeroType.LUMESHARD_BISHOP)
+            val draft=Draft(game.draft.DraftRules(1,6,2));draft.ban(FigureColor.WHITE,HeroType.PUDGE);draft.ban(FigureColor.BLACK,HeroType.LUMESHARD)
             ImageComposeScene(1200,800) { MaterialTheme { DraftScreen(draft,{}, {}) } }.use {
                 it.render().close();click(it,150f,555f);click(it,1092f,435f);click(it,95f,679f)
-                assertEquals(HeroType.IZBA_ROOK,draft.snapshot.picksFor(FigureColor.WHITE).single().hero())
+                assertEquals(HeroType.IZBA,draft.snapshot.picksFor(FigureColor.WHITE).single().hero())
                 assertEquals(Position(0,7),draft.snapshot.picksFor(FigureColor.WHITE).single().square())
-                assertFalse(draft.getAvailableHeroes(FigureColor.BLACK).contains(HeroType.IZBA_ROOK));save(it,"izba-draft-picked")
+                assertFalse(draft.getAvailableHeroes(FigureColor.BLACK).contains(HeroType.IZBA));save(it,"izba-draft-picked")
             }
         }
     }

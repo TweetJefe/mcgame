@@ -25,13 +25,13 @@ public final class BorrowedEffects {
     private static PieceState caster(PieceState actual, Abilities ability) {
         HeroType hero = HeroRegistry.standard().ownerOf(ability).type();
         Class<? extends Figure> type = switch (hero) {
-            case ZEUS_ROOK,PUDGE_ROOK, IZBA_ROOK -> Rook.class;
-            case LUMESHARD_BISHOP, ARES_BISHOP -> Bishop.class;
-            case MOLEMINER_PAWN,BOUNTY_CROW_PAWN -> Pawn.class;
+            case ZEUS,PUDGE, IZBA -> Rook.class;
+            case LUMESHARD, ARES -> Bishop.class;
+            case MOLEMINER,BOUNTY_CROW -> Pawn.class;
             default -> Knight.class;
         };
         return new PieceState(actual.id(), type, actual.color(), actual.position(), actual.status(), hero, 0, 0, actual.inventory(),
-                hero == HeroType.PUDGE_ROOK ? actual.storedPieceId() : null, actual.blindTurns(), (hero == HeroType.LUMESHARD_BISHOP || hero == HeroType.ARES_BISHOP) ? actual.startingColor() : null);
+                hero == HeroType.PUDGE ? actual.storedPieceId() : null, actual.blindTurns(), (hero == HeroType.LUMESHARD || hero == HeroType.ARES) ? actual.startingColor() : null);
     }
 
     private static HeroRules freeRules(HeroRules rules) {

@@ -32,7 +32,7 @@ public class PudgeHeroTest {
     @Test public void configurationRequiresRulesAndExposesOnlyPudgeAbilities() {
         assertThrows(NullPointerException.class, () -> new PudgeHero(null));
         var hero = new PudgeHero(RULES);
-        assertEquals(HeroType.PUDGE_ROOK, hero.type());
+        assertEquals(HeroType.PUDGE, hero.type());
         assertEquals(List.of(PudgeAbility.HOOK, PudgeAbility.SWALLOW), hero.abilities());
     }
 
@@ -157,7 +157,7 @@ public class PudgeHeroTest {
         board.put(targetSquare, factory.createFigure(Pawn.class, targetSquare, targetColor));
         if (blocker != null) board.put(blocker, factory.createFigure(Pawn.class, blocker, FigureColor.WHITE));
         Field field = Field.fromMobaPosition(board);
-        PieceState actor = PieceState.initial(1, field.getFigureByPosition(ORIGIN), HeroType.PUDGE_ROOK)
+        PieceState actor = PieceState.initial(1, field.getFigureByPosition(ORIGIN), HeroType.PUDGE)
                 .withBlindness(2).withStun(8);
         PieceState target = PieceState.initial(2, field.getFigureByPosition(targetSquare), HeroType.NONE);
         var pieces = new HashMap<Long, PieceState>();

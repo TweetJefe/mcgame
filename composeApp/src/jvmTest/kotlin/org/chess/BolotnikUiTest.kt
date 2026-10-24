@@ -28,7 +28,7 @@ class BolotnikUiTest {
                 assertEquals(1,game.terrain.cells().size);save(scene,"bolotnik-mud-applied")
                 click(scene,106f,582f);click(scene,166f,582f);click(scene,704f,256f)
                 click(scene,406f,162f);click(scene,406f,402f)
-                assertEquals(HeroType.BOLOTNIK_KNIGHT,game.getPieceState(Position(3,5)).hero())
+                assertEquals(HeroType.BOLOTNIK,game.getPieceState(Position(3,5)).hero())
                 assertTrue(game.terrain.cells().isEmpty());assertEquals(10L,game.economy.whiteHalves());assertEquals(2L,game.economy.blackHalves())
                 save(scene,"bolotnik-mud-triggered")
             }

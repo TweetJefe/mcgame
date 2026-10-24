@@ -44,7 +44,7 @@ public class AbilitiesTest {
         HeroRegistry custom = new HeroRegistry().register(strategy(ExtensionAbility.RENAMED_CONSTANT));
         assertSame(ExtensionAbility.RENAMED_CONSTANT, custom.abilityById("extension.custom"));
         assertNull(custom.findAbility("RENAMED_CONSTANT"));
-        assertSame(custom.get(HeroType.ZEUS_ROOK), custom.ownerOf(ExtensionAbility.RENAMED_CONSTANT));
+        assertSame(custom.get(HeroType.ZEUS), custom.ownerOf(ExtensionAbility.RENAMED_CONSTANT));
         // Distinct enum instances with equal persistence IDs are ambiguous and must fail immediately.
         HeroRegistry pudge = new HeroRegistry().register(new PudgeHero(PudgeRules.prototype()));
         assertThrows(IllegalArgumentException.class, () -> pudge.register(strategy(ConflictingAbility.OTHER_NAME)));
@@ -53,11 +53,11 @@ public class AbilitiesTest {
 
     @Test public void replayRestoresCopiedSpellsAcrossDifferentHeroEnums() {
         List<GameEvent> events = List.of(
-                new GameEvent(1, 1, GameEvent.Kind.HOOK, FigureColor.WHITE, 1L, 3L,
+                GameEvent.abilityUsed(1, 1, PudgeAbility.HOOK, FigureColor.WHITE, 1L, 3L,
                         null, null, "hook"),
-                new GameEvent(2, 1, GameEvent.Kind.COPY_SPELL, FigureColor.WHITE, 2L, 1L,
+                GameEvent.abilityUsed(2, 1, GinsengAbility.COPY_SPELL, FigureColor.WHITE, 2L, 1L,
                         null, null, "copy", PudgeAbility.HOOK, false),
-                new GameEvent(3, 3, GameEvent.Kind.HOOK, FigureColor.WHITE, 2L, 3L,
+                GameEvent.abilityUsed(3, 3, PudgeAbility.HOOK, FigureColor.WHITE, 2L, 3L,
                         null, null, "borrowed hook", null, true));
         SpellState copied = SpellState.fromHistory(events.subList(0, 2));
         assertSame(GinsengAbility.COPY_SPELL, copied.lastUsed().get(2L));
@@ -65,12 +65,13 @@ public class AbilitiesTest {
         SpellState spent = SpellState.fromHistory(events);
         assertSame(PudgeAbility.HOOK, spent.lastUsed().get(2L));
         assertTrue(spent.borrowed().isEmpty());
-        assertNull(SpellState.activeAbility(GameEvent.Kind.COUNTER_CAPTURE));
+        assertNull(SpellState.activeAbility(new GameEvent(1, 1, GameEvent.Kind.COUNTER_CAPTURE,
+                FigureColor.WHITE, 1L, 2L, null, null, "reaction")));
         assertNull(SpellState.activeAbility(null));
     }
 
     private static Hero strategy(Abilities ability) {
-        return new AbstractHero(HeroType.ZEUS_ROOK, List.of(ability), null, 0) {
+        return new AbstractHero(HeroType.ZEUS, List.of(ability), null, 0) {
             @Override protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor,
                                                             PieceState target, Position square, Abilities selected) {
                 return HeroEffect.empty();

@@ -18,7 +18,7 @@ public final class KikimoraAbilities{
     public static MoveResult availability(PieceState actor,Abilities ability,KikimoraRules rules,boolean borrowed){
         if(ability==null)return AbilityRejection.INVALID_ABILITY;
         if(actor==null || actor.position()==null)return MovementRejection.EMPTY_SOURCE;
-        if(actor.hero()!=(borrowed?HeroType.GINSENG_BISHOP:HeroType.KIKIMORA_BISHOP) || !abilities().contains(ability))return AbilityRejection.NO_ABILITY;
+        if(actor.hero()!=(borrowed?HeroType.GINSENG:HeroType.KIKIMORA) || !abilities().contains(ability))return AbilityRejection.NO_ABILITY;
         if(actor.isPotted())return StatusRejection.POTTED;
         if(!borrowed && ability==KikimoraAbility.YARN && actor.cooldown()>0)return AbilityRejection.ABILITY_COOLDOWN;
         if(!borrowed && ability==KikimoraAbility.CLAY_POT && actor.ultimateCharge()<rules.ultimateCaptures())return AbilityRejection.ULTIMATE_NOT_READY;

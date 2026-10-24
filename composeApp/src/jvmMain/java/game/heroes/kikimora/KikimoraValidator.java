@@ -10,12 +10,12 @@ public final class KikimoraValidator{
     public static void validate(GameSnapshot s){
         var pots=new HashSet<Long>();
         for(var e:s.events()){
-            if(SpellState.activeAbility(e.kind())!=null || e.kind()==GameEvent.Kind.MOVE)require(!pots.contains(e.actorId()),"A pot cannot act");
+            if(SpellState.activeAbility(e)!=null || e.kind()==GameEvent.Kind.MOVE)require(!pots.contains(e.actorId()),"A pot cannot act");
             if(e.targetId()!=null && Set.of(GameEvent.Kind.MOVE,GameEvent.Kind.COUNTER_CAPTURE,GameEvent.Kind.BOG_CAPTURE,GameEvent.Kind.ARES_REVENGE,GameEvent.Kind.MINE_CAPTURE,GameEvent.Kind.LIGHTNING_CAPTURE,GameEvent.Kind.BLAST_CAPTURE,GameEvent.Kind.BLAST_DEATH,GameEvent.Kind.REPLACE,GameEvent.Kind.YARN_STUN).contains(e.kind()))require(!pots.contains(e.targetId()),"A pot cannot be captured, replaced or stunned");
-            if(e.kind()==GameEvent.Kind.CLAY_POT){
+            if(e.isAbility(KikimoraAbility.CLAY_POT)){
                 require(e.targetId()!=null && !Objects.equals(e.actorId(),e.targetId()) && pots.add(e.targetId()) && s.pieces().get(e.targetId()).type()!=King.class && distance(e.from(),e.to())==1,"Invalid clay pot conversion");
             }
-            if(e.kind()==GameEvent.Kind.YARN){
+            if(e.isAbility(KikimoraAbility.YARN)){
                 var target=s.pieces().get(e.targetId());var actor=s.pieces().get(e.actorId());
                 require(target!=null && target.type()!=King.class && target.color()!=actor.color() && distance(e.from(),e.to())<=2 && distance(e.from(),e.to())>0 && !pots.contains(target.id()),"Invalid yarn target");
                 var effects=s.events().stream().filter(p->p.kind()==GameEvent.Kind.YARN_STUN && p.turn()==e.turn() && Objects.equals(p.actorId(),e.actorId())).toList();

@@ -1,6 +1,7 @@
 package game.heroes.lumeshard;
 
 import game.heroes.Abilities;
+import game.history.AbilityEventTarget;
 import game.heroes.HeroTargeting;
 
 import java.util.List;
@@ -23,6 +24,13 @@ public enum LumeshardAbility implements Abilities {
         this.id = id;
         this.displayName = displayName;
         this.targeting = targeting;
+    }
+
+    @Override public AbilityEventTarget eventTarget() {
+        return switch (this) {
+            case TELEPORT -> AbilityEventTarget.NONE;
+            default -> AbilityEventTarget.REQUIRED;
+        };
     }
 
     @Override public String id() { return id; }

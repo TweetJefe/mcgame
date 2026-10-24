@@ -22,7 +22,7 @@ import static org.junit.Assert.*;
 public class HeroTargetingTest {
     @Test public void swallowRejectsIllusionsBeforePotAndBoxChecksWhileHookCanMovePots() {
         Field field = new Field(8);
-        PieceState actor = PieceState.initial(1, field.getFigureByPosition(new Position(0, 0)), HeroType.PUDGE_ROOK);
+        PieceState actor = PieceState.initial(1, field.getFigureByPosition(new Position(0, 0)), HeroType.PUDGE);
         Position square = new Position(1, 0);
         PieceState illusion = PieceState.initial(2, field.createFigure(Knight.class, square, FigureColor.WHITE),
                 HeroType.ILLUSION).asPot().withBox(4);
@@ -40,7 +40,7 @@ public class HeroTargetingTest {
 
     @Test public void requestShapeValidationKeepsTheExistingErrorPrecedence() {
         Field field = new Field(8);
-        PieceState actor = PieceState.initial(1, field.getFigureByPosition(new Position(0, 0)), HeroType.PUDGE_ROOK);
+        PieceState actor = PieceState.initial(1, field.getFigureByPosition(new Position(0, 0)), HeroType.PUDGE);
         HeroActionContext context = new HeroActionContext(field, Map.of(1L, actor), 1);
         HeroTargeting targeted = HeroTargeting.square();
         assertEquals(AbilityRejection.INVALID_ABILITY_TARGET, targeted.validate(context, actor,

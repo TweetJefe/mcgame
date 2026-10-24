@@ -1,6 +1,7 @@
 package game.heroes.moleminer;
 
 import game.heroes.Abilities;
+import game.history.AbilityEventTarget;
 import game.heroes.HeroTargeting;
 
 import java.util.List;
@@ -23,6 +24,14 @@ public enum MoleminerAbility implements Abilities {
         this.id = id;
         this.displayName = displayName;
         this.targeting = targeting;
+    }
+
+    @Override public AbilityEventTarget eventTarget() {
+        return switch (this) {
+            case PLANT_MINE -> AbilityEventTarget.NONE;
+            case DETONATE -> AbilityEventTarget.NONE;
+            default -> AbilityEventTarget.REQUIRED;
+        };
     }
 
     @Override public String id() { return id; }

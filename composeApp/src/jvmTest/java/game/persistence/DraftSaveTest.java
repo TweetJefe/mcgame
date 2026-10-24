@@ -11,7 +11,7 @@ import static game.heroes.HeroType.*;
 import static org.junit.Assert.*;
 
 public class DraftSaveTest {
-    private Game game() {return Game.mobaFromDraft(DraftGameTest.selected(PUDGE_ROOK,"h1",LUMESHARD_BISHOP,"f8"),HeroRules.prototype(),600,()->0L);}
+    private Game game() {return Game.mobaFromDraft(DraftGameTest.selected(PUDGE,"h1",LUMESHARD,"f8"),HeroRules.prototype(),600,()->0L);}
     private String xml(Game g)throws Exception {return new String(GameSaveFile.encode(g.getSnapshot()),StandardCharsets.UTF_8);}
     private Game load(String s)throws Exception {return Game.fromSnapshot(GameSaveFile.decode(s.getBytes(StandardCharsets.UTF_8)),()->0L);}
     private void invalid(String s) {assertThrows(java.io.IOException.class,()->GameSaveFile.decode(s.getBytes(StandardCharsets.UTF_8)));}
@@ -39,7 +39,7 @@ public class DraftSaveTest {
         invalid(s.replaceAll("(<action [^>]*square=\")f8", "$1c8"));
     }
     @Test public void draftedBolotnikAndCrowUseFormatFiveWithoutRequiringLumeshard()throws Exception {
-        Game g=Game.mobaFromDraft(DraftGameTest.selected(BOUNTY_CROW_PAWN,"h2",BOLOTNIK_KNIGHT,"b8"),HeroRules.prototype(),600,()->0L);
+        Game g=Game.mobaFromDraft(DraftGameTest.selected(BOUNTY_CROW,"h2",BOLOTNIK,"b8"),HeroRules.prototype(),600,()->0L);
         String s=xml(g);assertTrue(s.contains("formatVersion=\"5\""));assertEquals(s,xml(load(s)));
     }
 }

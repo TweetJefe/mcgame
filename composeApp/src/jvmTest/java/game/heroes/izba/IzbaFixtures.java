@@ -26,7 +26,7 @@ public final class IzbaFixtures {
     }
     public static Game standard(long seed) {
         var b=board("a1","h8");put(b,Rook.class,WHITE,"e2");put(b,Knight.class,WHITE,"b1");put(b,Knight.class,BLACK,"g8");
-        return charge(create(b,Map.of(pos("e2"),HeroType.IZBA_ROOK),WHITE,seed),"e2");
+        return charge(create(b,Map.of(pos("e2"),HeroType.IZBA),WHITE,seed),"e2");
     }
     public static Game charge(Game g,String...squares) {
         var s=g.getSnapshot();var states=new HashMap<>(s.pieces());

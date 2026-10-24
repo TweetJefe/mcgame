@@ -78,7 +78,7 @@ public class PudgeScenarioTest {
     }
     @Test public void ultimateDoesNotShareTheHooksCooldown() {
         Game seed = create(PudgeScenario.ULTIMATE_CHARGE);
-        Game game = Game.fromMobaPosition(seed.getPosition(), Map.of(pos("e2"), HeroType.PUDGE_ROOK), PudgeRules.prototype(), () -> 0L);
+        Game game = Game.fromMobaPosition(seed.getPosition(), Map.of(pos("e2"), HeroType.PUDGE), PudgeRules.prototype(), () -> 0L);
         ability(game, "e2", "e3", PudgeAbility.HOOK); move(game, "e2", "e3"); end(game);
         move(game, "h8", "g8"); end(game);
         move(game, "e3", "f3"); assertEquals(1, game.getPieceState(pos("f3")).cooldown());
@@ -96,7 +96,7 @@ public class PudgeScenarioTest {
             Position target = new Position(1 + dr, 4 + dc);
             board.put(target, seed.getGameField().createFigure(Knight.class, target, WHITE));
             Game game = Game.fromMobaPosition(new GamePosition(board, WHITE, CastlingRights.none(), null, 0),
-                    Map.of(pos("e2"), HeroType.PUDGE_ROOK), PudgeRules.sandbox(), () -> 0L);
+                    Map.of(pos("e2"), HeroType.PUDGE), PudgeRules.sandbox(), () -> 0L);
             assertTrue(game.getAbilityTargets(pos("e2"), PudgeAbility.SWALLOW).contains(target));
             assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("e2"), target, PudgeAbility.SWALLOW));
         }

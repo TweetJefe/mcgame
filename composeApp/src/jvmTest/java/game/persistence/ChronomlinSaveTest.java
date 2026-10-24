@@ -32,7 +32,7 @@ public class ChronomlinSaveTest {
         Game g=ready();evolve(g,"c2");String s=xml(g);invalid(s.replace("formatVersion=\"13\"","formatVersion=\"12\""));invalid(s.replaceAll("(?s)<chronomlinRules [^>]*/>",""));invalid(s.replace("type=\"Bishop\"","type=\"Rook\""));invalid(s.replace("kind=\"EVOLVE\"","kind=\"STEAL\""));
     }
     @Test public void currentCatalogNeedsThirteenWhilePreviousCatalogStillUsesTwelve()throws Exception{
-        for(int version:new int[]{8,9}){var d=new Draft(new DraftRules(1,6,version));d.ban(WHITE,HeroType.PUDGE_ROOK);d.ban(BLACK,HeroType.IZBA_ROOK);d.finishPicks(WHITE);d.finishPicks(BLACK);String s=xml(Game.mobaFromDraft(d.getSnapshot(),HeroRules.prototype(),600,()->0L));assertTrue(s.contains("formatVersion=\""+(version==9?13:12)+"\""));assertEquals(s,xml(load(s)));}
+        for(int version:new int[]{8,9}){var d=new Draft(new DraftRules(1,6,version));d.ban(WHITE,HeroType.PUDGE);d.ban(BLACK,HeroType.IZBA);d.finishPicks(WHITE);d.finishPicks(BLACK);String s=xml(Game.mobaFromDraft(d.getSnapshot(),HeroRules.prototype(),600,()->0L));assertTrue(s.contains("formatVersion=\""+(version==9?13:12)+"\""));assertEquals(s,xml(load(s)));}
     }
     @Test public void promotionAfterAlreadyEvolvingIsRejectedWhenForgedInHistory()throws Exception{
         Game g=ready();evolve(g,"c2");move(g,"c2","d3");String s=xml(g);invalid(s.replace("kind=\"NORMAL\"","kind=\"PROMOTION\" promotion=\"QUEEN\""));assertEquals(s,xml(load(s)));

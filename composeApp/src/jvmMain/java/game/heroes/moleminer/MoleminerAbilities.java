@@ -13,7 +13,7 @@ public final class MoleminerAbilities{
     }
     public static MoveResult availability(PieceState actor,Abilities a,MoleminerRules rules){
         if(actor==null || actor.position()==null)return MovementRejection.EMPTY_SOURCE;
-        if(actor.hero()!=HeroType.MOLEMINER_PAWN || !abilities().contains(a))return AbilityRejection.NO_ABILITY;
+        if(actor.hero()!=HeroType.MOLEMINER || !abilities().contains(a))return AbilityRejection.NO_ABILITY;
         if(a==MoleminerAbility.PLANT_MINE && actor.cooldown()>0)return AbilityRejection.ABILITY_COOLDOWN;
         if(a==MoleminerAbility.DETONATE && actor.ultimateCharge()<rules.ultimateCaptures())return AbilityRejection.ULTIMATE_NOT_READY;
         return Success.SUCCESS;

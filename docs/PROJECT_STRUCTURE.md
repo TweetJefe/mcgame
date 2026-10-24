@@ -1,6 +1,6 @@
 # Структура проекта
 
-Структура обновлена 19 октября 2026 года при добавлении Ares. Java-движок находится в `composeApp/src/jvmMain/java`, Compose-интерфейс — в `composeApp/src/jvmMain/kotlin/org/chess`.
+Структура обновлена 24 октября 2026 года после выделения общего события применения способности. Java-движок находится в `composeApp/src/jvmMain/java`, Compose-интерфейс — в `composeApp/src/jvmMain/kotlin/org/chess`.
 
 ## Пакеты движка
 
@@ -11,20 +11,38 @@
 | `game.summoning` | Создание и превращение фигур: `SummonState`, `SummonRecord`, `SummonResolver`, `SummonValidator`; случайный выбор без изменения живого состояния в preview |
 | `game.state` | Неизменяемые данные: `GameSnapshot`, `GamePosition`, `PieceState`, `TurnState`, `GameMode`, `GameOutcome`, `Termination`, `CastlingRights`, `ClockSnapshot`, `ItemSlot`, `SquareColor` |
 | `game.moves` | Запросы/результаты действий: `AvailableMoves`, интерфейсы `MoveResult` и `Rejection`, успех `Success`, тематические `*Rejection`; `MoveKind`, `Promotion`; описание подготовленного взятия `Capture` |
-| `game.history` | История: `MadeMove`, `GameEvent` |
-| `game.heroes` | Контракты `Hero` и `Abilities`, шаблон `AbstractHero`, неизменяемый `HeroRegistry`, `HeroActionContext`, правила целей `HeroTargeting`; `HeroRules` и `HeroEffect`; фасад `HeroAbilities` и временные адаптеры остальных героев |
-| `game.heroes.pudge` | `PudgeAbility`, `PudgeRules` и `PudgeHero`: хук, проглатывание, заряд, болото, реакция на гибель и журнал; `PudgeAbilities` сохранён как фасад совместимости |
+| `game.history` | История: `MadeMove`, `GameEvent` с общей категорией `ABILITY_USED`, отдельной способностью и политикой `AbilityEventTarget` |
+| `game.heroes` | Контракты `Hero` и `Abilities`, шаблон `AbstractHero`, описания `HeroDefinition<R>` и их список `HeroDefinitions`, неизменяемый `HeroRegistry`, `HeroActionContext`, правила целей `HeroTargeting`; типизированный контейнер `HeroRules`, явный `HeroRulesCodec<R>` и `HeroEffect`; фасад `HeroAbilities` и временные адаптеры остальных героев |
+| `game.heroes.pudge` | `PudgeAbility`, `PudgeRules`, `PudgeDefinition`, `PudgeRulesCodec` и `PudgeHero`: хук, проглатывание, заряд, болото, реакция на гибель и журнал; `PudgeAbilities` сохранён как фасад совместимости |
 | `game.heroes.lumeshard` | `LumeshardRules` и `LumeshardAbilities`: лазер, ослепление, телепорт и заряд |
 | `game.heroes.bountycrow` | `BountyCrowRules`, `BountyCrowAbilities`: метка, заряд и кража |
 | `game.heroes.bolotnik` | `BolotnikRules`, `BolotnikAbilities`: грязь, укрытие и заряд |
 | `game.terrain` | `MudCell`, `TerrainState`, `TerrainResolver`, `TerrainValidator`: клетки болота, срабатывания и проверка скрытых героев |
 | `game.economy` | `GoldRules`, `EconomyState`, `BountyMark`, `GoldChange`, `GoldEngine`, `EconomyValidator`: цены, кошельки, метки и финансовая история |
 | `rules.moba` | `AttackRules`, `TerrainGeometry`: ослепление и вражеское болото в обычных атаках/перемещениях |
-| `game.persistence` | `GameSaveFile`: XML, ограничения чтения, подготовка файла и замена назначения |
+| `game.persistence` | `GameSaveFile`, кодек событий `GameEventXml` и общий обход кодеков параметров `HeroRulesXml`: XML, ограничения чтения, подготовка файла и замена назначения |
 | `game.scenarios` | `TrainingScenario`, `PudgeScenario`, `LumeshardScenario`, `BountyCrowScenario`, `BolotnikScenario`: учебные позиции и подсказки |
 | `model`, `model.figures` | Геометрия доски, координаты и обычные шахматные фигуры; расположение сохранено |
 | `rules.standard` | Легальность шахматных перемещений, структура позиции, материал |
 | `rules.field_filling` | Начальные расстановки; активна 8×8, остальные размеры остаются заглушками |
+
+## Описания и параметры героев
+
+`HeroType` хранит только ID. `HeroDefinition<R>` предоставляет название, набор допустимых
+начальных фигур, тип и стандартные значения правил, кодек и фабрику поведения.
+`HeroDefinitions` — единственное место явной регистрации описаний, доступное без создания
+стратегий. `HeroRules.defaults()` собирает типизированный неизменяемый контейнер;
+`with(definition, parameters)` создаёт новое переопределение для партии.
+Локальные кодеки читают и пишут прежние XML-секции через `HeroRulesXml`.
+Инструкция: [HOW_CREATE_HEROES.md](../.codex/HOW_CREATE_HEROES.md).
+
+## История способностей
+
+`GameEvent.Kind.ABILITY_USED` отделён от `Abilities ability`; состояние восстанавливается
+по каноническому экземпляру способности. Кодек `GameEventXml` сохраняет старые имена
+из XML 1–14 и поддерживает новые ID через общую запись XML 15. Для новых способностей
+общий enum событий не расширяется. Форма ID цели задаётся в enum способности через
+`eventTarget()`, а не перечнем имён в `SnapshotValidator`.
 
 ## Как проходит действие
 
@@ -44,7 +62,7 @@
 
 ## Куда добавлять изменения
 
-Героя размещать в `game.heroes.<имя>` рядом с его параметрами, реализовать через `Hero` / `AbstractHero` и зарегистрировать в `HeroRegistry.fromRules`. Цель миграции — подключение по шаблону через реестр и отображение без изменений ядра. Переход ещё продолжается: состояния и механики остальных героев временно используют прежние общие обработчики. Бюджеты хода, часы и финальная проверка короля остаются ответственностью ядра.
+Героя размещать в `game.heroes.<имя>` рядом с параметрами, описанием и кодеком. Реализовать через `Hero` / `AbstractHero`, добавить его ID в `HeroType` и описание в `HeroDefinitions`. `HeroRegistry.fromRules` создаёт стратегии через фабрики описаний; добавлять в него ветку нового героя не требуется. Цель миграции — подключение по шаблону через реестр и отображение без изменений ядра. Переход ещё продолжается: состояния и механики остальных героев временно используют прежние общие обработчики. Бюджеты хода, часы и финальная проверка короля остаются ответственностью ядра.
 
 Новый способ сохранения относится к `persistence`; учебная расстановка — к `scenarios`; данные партии — к `state`. Поле и шахматная геометрия остаются в `model`/`rules`.
 
@@ -60,7 +78,9 @@ Java-тесты повторяют основные границы: `game.core`,
 `bash gradlew :composeApp:jvmTest`, всего **620 тестов**, без падений и пропусков.
 Способности находятся в enum героев: [ABILITIES.md](ABILITIES.md). Исходная точка из 610 тестов:
 [BUILD_BASELINE.md](BUILD_BASELINE.md). Текущий этап: [HERO_MIGRATION.md](HERO_MIGRATION.md).
-Git-коммиты и индекс не изменяются.
+После выделения описаний и параметров: **630 тестов** (588 Java + 42 UI).
+Сравнение до/после: 1371 запись сценариев Пуджа и 15 конфигураций правил совпали,
+включая XML-сохранения. Git-коммиты и индекс не изменяются.
 
 ## Подготовка матча
 
@@ -113,3 +133,7 @@ XML 9 хранит настройки, срок стана и события; к
 ## Kikimora и постоянное препятствие
 
 Пакет `game.heroes.kikimora` содержит правила пряжи, точный луч второй цели, превращение и проверку журнала. `PieceState.potted` сохраняется всеми неизменяемыми операциями: исходный тип и ID остаются, а ядро, атаки и отображение учитывают препятствие. Все механизмы захвата/массовой гибели и принудительных перемещений проверяют горшок. Общая сверка стана обрабатывает `STUN` и `YARN_STUN` с разными сроками. XML 14 и каталог 10: [KIKIMORA.md](KIKIMORA.md).
+
+После перехода истории на общее событие 24 октября 2026 года: **639 тестов**
+(597 Java + 42 UI), без падений и пропусков. Сквозная проверка охватывает применение
+новой зарегистрированной способности, запись XML 15, загрузку и продолжение партии.

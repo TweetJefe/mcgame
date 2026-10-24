@@ -38,26 +38,26 @@ public record PieceState(long id, Class<? extends Figure> type, FigureColor colo
         Objects.requireNonNull(hero);
         if (!Field.supports(type) || type == Empty.class || (color != FigureColor.WHITE && color != FigureColor.BLACK))
             throw new IllegalArgumentException("A piece state must describe a supported nonempty piece");
-        if (status == Status.HIDDEN_BOG && hero != HeroType.BOLOTNIK_KNIGHT && hero != HeroType.GINSENG_BISHOP)
+        if (status == Status.HIDDEN_BOG && hero != HeroType.BOLOTNIK && hero != HeroType.GINSENG)
             throw new IllegalArgumentException("Only Bolotnik can hide in a bog");
-        if ((hero == HeroType.BOLOTNIK_KNIGHT || hero == HeroType.FAUN_KNIGHT || hero == HeroType.CLOWNGANGER_KNIGHT) && type != Knight.class)
+        if ((hero == HeroType.BOLOTNIK || hero == HeroType.FAUN || hero == HeroType.CLOWNGANGER) && type != Knight.class)
             throw new IllegalArgumentException("Bolotnik is a knight");
-        if ((hero == HeroType.ZEUS_ROOK || hero == HeroType.PUDGE_ROOK || hero == HeroType.IZBA_ROOK) && type != Rook.class)
+        if ((hero == HeroType.ZEUS || hero == HeroType.PUDGE || hero == HeroType.IZBA) && type != Rook.class)
             throw new IllegalArgumentException("Pudge is a rook");
-        if ((hero == HeroType.KIKIMORA_BISHOP || hero == HeroType.LUMESHARD_BISHOP || hero == HeroType.ARES_BISHOP) && (type != Bishop.class || startingColor == null))
+        if ((hero == HeroType.KIKIMORA || hero == HeroType.LUMESHARD || hero == HeroType.ARES) && (type != Bishop.class || startingColor == null))
             throw new IllegalArgumentException("Lumeshard needs a bishop and its starting square color");
-        if ((hero == HeroType.CHRONOMLIN_PAWN || hero == HeroType.MOLEMINER_PAWN || hero == HeroType.BOUNTY_CROW_PAWN || hero == HeroType.BABA_YAGA_PAWN) && type != Pawn.class && type != Queen.class && type != Rook.class && type != Bishop.class && type != Knight.class)
+        if ((hero == HeroType.CHRONOMLIN || hero == HeroType.MOLEMINER || hero == HeroType.BOUNTY_CROW || hero == HeroType.BABA_YAGA) && type != Pawn.class && type != Queen.class && type != Rook.class && type != Bishop.class && type != Knight.class)
             throw new IllegalArgumentException("Crow must be a pawn or its promoted piece");
-        if (hero != HeroType.KIKIMORA_BISHOP && hero != HeroType.LUMESHARD_BISHOP && hero != HeroType.GINSENG_BISHOP && hero != HeroType.ARES_BISHOP && startingColor != null)
+        if (hero != HeroType.KIKIMORA && hero != HeroType.LUMESHARD && hero != HeroType.GINSENG && hero != HeroType.ARES && startingColor != null)
             throw new IllegalArgumentException("Unexpected starting color");
-        if(hero==HeroType.GINSENG_BISHOP && ((type!=Bishop.class && type!=Knight.class && type!=Rook.class) || startingColor==null))throw new IllegalArgumentException("Invalid Ginseng form");
+        if(hero==HeroType.GINSENG && ((type!=Bishop.class && type!=Knight.class && type!=Rook.class) || startingColor==null))throw new IllegalArgumentException("Invalid Ginseng form");
         if(hero==HeroType.ILLUSION && type!=Knight.class && type!=Bishop.class && type!=Rook.class)throw new IllegalArgumentException("Invalid illusion body");
         if(status==Status.DISSOLVED && hero!=HeroType.ILLUSION)throw new IllegalArgumentException("Only an illusion can dissolve");
         if ((status == Status.BOARD) != (position != null))
             throw new IllegalArgumentException("Inconsistent piece placement");
         if (position != null && (position.getRow() < 0 || position.getRow() > 7 || position.getColumn() < 0 || position.getColumn() > 7))
             throw new IllegalArgumentException("Piece position outside board");
-        if (storedPieceId != null && (storedPieceId <= 0 || storedPieceId == id || (hero != HeroType.PUDGE_ROOK && hero != HeroType.GINSENG_BISHOP)))
+        if (storedPieceId != null && (storedPieceId <= 0 || storedPieceId == id || (hero != HeroType.PUDGE && hero != HeroType.GINSENG)))
             throw new IllegalArgumentException("Invalid swallowed piece reference");
         inventory = List.copyOf(inventory);
         if (inventory.size() != 3) throw new IllegalArgumentException("Every piece has exactly three item slots");
@@ -93,7 +93,7 @@ public record PieceState(long id, Class<? extends Figure> type, FigureColor colo
     public static PieceState initial(long id, Figure figure, HeroType hero) {
         return new PieceState(id, figure.getClass(), figure.getColor(), figure.getPosition(), Status.BOARD,
                 hero, 0, 0, List.of(ItemSlot.empty(), ItemSlot.empty(), ItemSlot.empty()), null, 0,
-                (hero == HeroType.KIKIMORA_BISHOP || hero == HeroType.LUMESHARD_BISHOP || hero == HeroType.GINSENG_BISHOP || hero == HeroType.ARES_BISHOP) ? SquareColor.at(figure.getPosition()) : null);
+                (hero == HeroType.KIKIMORA || hero == HeroType.LUMESHARD || hero == HeroType.GINSENG || hero == HeroType.ARES) ? SquareColor.at(figure.getPosition()) : null);
     }
 
     public PieceState placed(Position square, Class<? extends Figure> newType) {

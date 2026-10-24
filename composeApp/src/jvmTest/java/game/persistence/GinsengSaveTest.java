@@ -42,7 +42,7 @@ public class GinsengSaveTest {
         Game restored=load(s);assertEquals(s,xml(restored));assertEquals(PudgeAbility.HOOK,restored.getSpells().lastUsed().get(g.getPieceState(pos("e2")).id()));
     }
     @Test public void latestCatalogCanBeSavedEvenWhenGinsengWasBanned()throws Exception {
-        var d=new Draft(new DraftRules(1,6,3));d.ban(model.FigureColor.WHITE,HeroType.GINSENG_BISHOP);d.ban(model.FigureColor.BLACK,HeroType.IZBA_ROOK);
+        var d=new Draft(new DraftRules(1,6,3));d.ban(model.FigureColor.WHITE,HeroType.GINSENG);d.ban(model.FigureColor.BLACK,HeroType.IZBA);
         d.finishPicks(model.FigureColor.WHITE);d.finishPicks(model.FigureColor.BLACK);
         Game g=Game.mobaFromDraft(d.getSnapshot(),HeroRules.prototype(),600,()->0L);String s=xml(g);
         assertTrue(s.contains("catalogVersion=\"3\""));assertTrue(s.contains("formatVersion=\"7\""));assertEquals(d.getSnapshot(),load(s).getDraft());

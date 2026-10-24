@@ -26,7 +26,7 @@ class ClowngangerUiTest {
                 it.render().close();click(it,226f,522f);click(it,915f,340f);click(it,286f,522f)
                 assertEquals(HeroType.ILLUSION,game.getPieceState(pos("d2")).hero())
                 click(it,346f,462f);click(it,286f,522f);click(it,406f,462f)
-                assertEquals(2,game.moves.size);assertEquals(HeroType.CLOWNGANGER_KNIGHT,game.getPieceState(pos("e3")).hero());assertEquals(HeroType.ILLUSION,game.getPieceState(pos("f3")).hero());save(it,"clown-pair-moved")
+                assertEquals(2,game.moves.size);assertEquals(HeroType.CLOWNGANGER,game.getPieceState(pos("e3")).hero());assertEquals(HeroType.ILLUSION,game.getPieceState(pos("f3")).hero());save(it,"clown-pair-moved")
             }
         }
     }
@@ -43,17 +43,17 @@ class ClowngangerUiTest {
     @Test fun enemySeesMatchingHeroesAndHistoryConcealsCreation(){
         SwingUtilities.invokeAndWait{
             val game=ClowngangerTest.withIllusion();ClowngangerTest.move(game,"b1","a3");ClowngangerTest.end(game)
-            val s=game.snapshot;val dummy=s.pieceAt(pos("d2"));assertEquals(HeroType.CLOWNGANGER_KNIGHT,ClownView.displayed(s,dummy).hero());assertTrue(ClownView.concealed(s,s.events().first()))
+            val s=game.snapshot;val dummy=s.pieceAt(pos("d2"));assertEquals(HeroType.CLOWNGANGER,ClownView.displayed(s,dummy).hero());assertTrue(ClownView.concealed(s,s.events().first()))
             ImageComposeScene(1200,800){MaterialTheme{Surface(Modifier.fillMaxSize()){ChessBoard(game)}}}.use{save(it,"clown-enemy-view")}
         }
     }
     @Test fun ninthHeroCanBeScrolledAndPickedIntoKnightSlot(){
         SwingUtilities.invokeAndWait{
-            val d=Draft(DraftRules(1,6,6));d.ban(model.FigureColor.WHITE,HeroType.PUDGE_ROOK);d.ban(model.FigureColor.BLACK,HeroType.IZBA_ROOK)
+            val d=Draft(DraftRules(1,6,6));d.ban(model.FigureColor.WHITE,HeroType.PUDGE);d.ban(model.FigureColor.BLACK,HeroType.IZBA)
             ImageComposeScene(1200,800){MaterialTheme{DraftScreen(d,{}, {})}}.use{
                 it.render().close();it.scrollDraftToLastHero();save(it,"clown-draft-scroll")
                 click(it,150f,580f);click(it,1056f,435f);click(it,100f,677f)
-                assertEquals(HeroType.CLOWNGANGER_KNIGHT,d.snapshot.assignments()[pos("g1")]);save(it,"clown-draft-picked")
+                assertEquals(HeroType.CLOWNGANGER,d.snapshot.assignments()[pos("g1")]);save(it,"clown-draft-picked")
             }
         }
     }

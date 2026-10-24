@@ -1,5 +1,7 @@
 package game.terrain;
 
+import game.heroes.bolotnik.BolotnikAbility;
+
 import game.heroes.HeroType;
 import game.history.GameEvent;
 import game.state.*;
@@ -22,12 +24,12 @@ public final class TerrainValidator {
         for (var entry : s.terrain().cells().entrySet()) {
             MudCell cell = entry.getValue();
             PieceState owner = s.pieces().get(cell.ownerId());
-            require(owner != null && (owner.hero() == HeroType.BOLOTNIK_KNIGHT || owner.hero() == HeroType.GINSENG_BISHOP) && !owner.isRemoved(), "Invalid terrain owner");
+            require(owner != null && (owner.hero() == HeroType.BOLOTNIK || owner.hero() == HeroType.GINSENG) && !owner.isRemoved(), "Invalid terrain owner");
             PieceState occupant = s.pieceAt(entry.getKey());
             require(occupant == null || occupant.isPotted() || owner.isPotted() || occupant.color() == owner.color() || occupant.hero()==HeroType.ILLUSION, "Unresolved enemy on mud");
             if (cell.kind() == MudCell.Kind.MUD) {
                 require(cell.expiresAfterTurn() >= s.turn().number() && cell.expiresAfterTurn() - s.turn().number() <= 2L * s.bolotnikRules().mudTurns(), "Invalid mud expiry");
-                require(s.events().stream().anyMatch(e -> e.kind() == GameEvent.Kind.MUD && Objects.equals(e.actorId(), owner.id())
+                require(s.events().stream().anyMatch(e -> e.isAbility(BolotnikAbility.MUD) && Objects.equals(e.actorId(), owner.id())
                         && entry.getKey().equals(e.to()) && cell.expiresAfterTurn() - e.turn() == 2L * s.bolotnikRules().mudTurns()), "Mud without matching cast event");
             } else {
                 require(owner.status() == PieceState.Status.HIDDEN_BOG, "Ambush without hidden hero");
@@ -39,7 +41,7 @@ public final class TerrainValidator {
             if (piece.status() != PieceState.Status.HIDDEN_BOG) continue;
             GameEvent cast = null;
             for (GameEvent event : s.events())
-                if (event.kind() == GameEvent.Kind.AMBUSH && Objects.equals(event.actorId(), piece.id())) cast = event;
+                if (event.isAbility(BolotnikAbility.AMBUSH) && Objects.equals(event.actorId(), piece.id())) cast = event;
             require(cast != null, "Hidden hero has no ultimate event");
             var footprint = new HashSet<Position>();
             for (int c = Math.max(0, cast.from().getColumn() - 1); c <= Math.min(7, cast.from().getColumn() + 1); c++)
@@ -51,8 +53,8 @@ public final class TerrainValidator {
             require(footprint.equals(actual), "Incomplete or misplaced ambush footprint");
         }
         for (GameEvent event : s.events())
-            if (event.kind() == GameEvent.Kind.BOG_CAPTURE || event.kind() == GameEvent.Kind.MUD || event.kind() == GameEvent.Kind.AMBUSH)
-                require(s.mode() == GameMode.MOBA && event.actorId() != null && (s.pieces().get(event.actorId()).hero() == HeroType.BOLOTNIK_KNIGHT || s.pieces().get(event.actorId()).hero() == HeroType.GINSENG_BISHOP)
+            if (event.kind() == GameEvent.Kind.BOG_CAPTURE || event.isAbility(BolotnikAbility.MUD) || event.isAbility(BolotnikAbility.AMBUSH))
+                require(s.mode() == GameMode.MOBA && event.actorId() != null && (s.pieces().get(event.actorId()).hero() == HeroType.BOLOTNIK || s.pieces().get(event.actorId()).hero() == HeroType.GINSENG)
                         && s.pieces().get(event.actorId()).color() == event.color(), "Invalid Bolotnik event source");
     }
 

@@ -1,5 +1,4 @@
 package game.heroes.clownganger;
-import game.heroes.HeroType;
 import game.history.GameEvent;
 import game.state.*;
 import model.*;
@@ -42,7 +41,7 @@ public record ClownState(Map<Long,Illusion> illusions,long movementTurn,Long mov
     public static ClownState fromHistory(List<GameEvent> events,ClowngangerRules rules){
         ClownState state=empty();
         for(var e:events){
-            if(e.kind()==GameEvent.Kind.ILLUSION)state=state.create(e.targetId(),e.actorId(),e.to(),e.turn(),rules);
+            if(e.isAbility(ClowngangerAbility.ILLUSION))state=state.create(e.targetId(),e.actorId(),e.to(),e.turn(),rules);
             if(e.kind()==GameEvent.Kind.MOVE)state=state.move(e.actorId(),e.turn());
             if(e.kind()==GameEvent.Kind.ILLUSION_HIT)state=state.hit(e.targetId());
         }

@@ -1,5 +1,7 @@
 package game.heroes;
 
+import game.history.AbilityEventTarget;
+
 import java.util.List;
 
 /** Public ability identity and presentation, implemented by each hero's own enum. */
@@ -13,6 +15,11 @@ public interface Abilities {
     String id();
 
     String getDisplayName();
+
+    /** Whether a successful history entry identifies a target piece rather than only a square. */
+    default AbilityEventTarget eventTarget() {
+        return AbilityEventTarget.REQUIRED;
+    }
 
     /** Targeting follows a copied ability as well as its native owner. */
     default HeroTargeting targeting() {

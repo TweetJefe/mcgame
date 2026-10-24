@@ -21,7 +21,7 @@ public final class FaunAbilities {
     public static MoveResult availability(PieceState actor, Abilities ability, FaunRules rules) {
         if (ability == null) return AbilityRejection.INVALID_ABILITY;
         if (actor == null || actor.status() != PieceState.Status.BOARD) return MovementRejection.EMPTY_SOURCE;
-        if (actor.hero() != HeroType.FAUN_KNIGHT || !abilities().contains(ability)) return AbilityRejection.NO_ABILITY;
+        if (actor.hero() != HeroType.FAUN || !abilities().contains(ability)) return AbilityRejection.NO_ABILITY;
         if (ability == FaunAbility.CLOUD && actor.cooldown() > 0) return AbilityRejection.ABILITY_COOLDOWN;
         if (ability == FaunAbility.INVISIBILITY && actor.ultimateCharge() < rules.ultimateCaptures())
             return AbilityRejection.ULTIMATE_NOT_READY;

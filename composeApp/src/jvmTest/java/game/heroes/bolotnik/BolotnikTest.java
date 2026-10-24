@@ -38,7 +38,7 @@ public class BolotnikTest {
     private Game create(Map<Position,Figure> b,Map<Position,HeroType> heroes,HeroRules rules) {
         return Game.fromMobaPosition(new GamePosition(b,WHITE,CastlingRights.none(),null,0),heroes,rules,()->0L);
     }
-    private Game create(Map<Position,Figure> b,String hero) { return create(b,Map.of(pos(hero),HeroType.BOLOTNIK_KNIGHT),HeroRules.prototype()); }
+    private Game create(Map<Position,Figure> b,String hero) { return create(b,Map.of(pos(hero),HeroType.BOLOTNIK),HeroRules.prototype()); }
     private Game scenario(BolotnikScenario s) { return s.createGame(()->0L); }
     private Game charged(Game g,String square) {
         var s=g.getSnapshot();var pieces=new HashMap<>(s.pieces());PieceState p=s.pieceAt(pos(square));pieces.put(p.id(),p.withAbilityState(p.cooldown(),2,null));
@@ -52,8 +52,8 @@ public class BolotnikTest {
     private void reject(Game g,MoveResult expected,java.util.function.Supplier<MoveResult> command) { var before=g.getSnapshot();assertEquals(expected,command.get());assertEquals(before,g.getSnapshot()); }
     @Test public void standardFactoryAssignsTheTwoKnights() {
         Game g=Game.mobaPrototype(HeroRules.prototype(),600);
-        assertEquals(HeroType.BOLOTNIK_KNIGHT,g.getPieceState(pos("g1")).hero());
-        assertEquals(HeroType.BOLOTNIK_KNIGHT,g.getPieceState(pos("g8")).hero());assertTrue(g.getTerrain().cells().isEmpty());
+        assertEquals(HeroType.BOLOTNIK,g.getPieceState(pos("g1")).hero());
+        assertEquals(HeroType.BOLOTNIK,g.getPieceState(pos("g8")).hero());assertTrue(g.getTerrain().cells().isEmpty());
     }
     @Test public void radiusIsTheWholeFourSquareAreaAndFriendlyTargetsAreAllowed() {
         var b=board("a1","h8");put(b,Knight.class,WHITE,"b2");put(b,Pawn.class,WHITE,"b3");put(b,Pawn.class,WHITE,"f6");put(b,Pawn.class,BLACK,"e5");
@@ -67,7 +67,7 @@ public class BolotnikTest {
     }
     @Test public void mudMayBePlacedUnderItsCaster() {
         var b=board("a1","h8");put(b,Knight.class,WHITE,"d4");Game g=create(b,"d4");mud(g,"d4","d4");
-        assertEquals(HeroType.BOLOTNIK_KNIGHT,g.getPieceState(pos("d4")).hero());assertEquals(1,g.getTerrain().cells().size());
+        assertEquals(HeroType.BOLOTNIK,g.getPieceState(pos("d4")).hero());assertEquals(1,g.getTerrain().cells().size());
         move(g,"d4","f5");assertTrue(g.getTerrain().cells().containsKey(pos("d4")));
     }
     @Test public void friendlyFiguresCanEnterAndCrossTheirOwnMud() {
@@ -95,7 +95,7 @@ public class BolotnikTest {
     }
     @Test public void aKnightLandingOnMudIsCapturedRatherThanBlocked() {
         Game g=scenario(BolotnikScenario.KNIGHT);mud(g,"d4","c3");move(g,"a1","a2");end(g);move(g,"b1","c3");
-        assertEquals(HeroType.BOLOTNIK_KNIGHT,g.getPieceState(pos("c3")).hero());assertEquals(6,g.getEconomy().whiteHalves());
+        assertEquals(HeroType.BOLOTNIK,g.getPieceState(pos("c3")).hero());assertEquals(6,g.getEconomy().whiteHalves());
     }
     @Test public void mudCanBlockARookCheckWithoutDirectlyAttackingTheKing() {
         var b=board("d1","h8");put(b,Knight.class,WHITE,"e2");put(b,Rook.class,BLACK,"d8");
@@ -152,12 +152,12 @@ public class BolotnikTest {
     }
     private Game hookSetup(String mudSquare,String king,String bolotnik) {
         var b=board(king,"h8");put(b,Knight.class,WHITE,bolotnik);put(b,Rook.class,WHITE,"d2");put(b,Pawn.class,WHITE,"a2");put(b,Pawn.class,BLACK,"d5");
-        Game g=create(b,Map.of(pos(bolotnik),HeroType.BOLOTNIK_KNIGHT,pos("d2"),HeroType.PUDGE_ROOK),HeroRules.prototype());
+        Game g=create(b,Map.of(pos(bolotnik),HeroType.BOLOTNIK,pos("d2"),HeroType.PUDGE),HeroRules.prototype());
         mud(g,bolotnik,mudSquare);move(g,"a2","a3");end(g);move(g,"h8","g8");end(g);return g;
     }
     @Test public void hookLandingTriggersMudAndRetainsTheMandatoryMoveBudget() throws Exception {
         Game g=hookSetup("d3","a1","f2");assertEquals(Success.SUCCESS,cast(g,"d2","d5",PudgeAbility.HOOK));
-        assertEquals(HeroType.BOLOTNIK_KNIGHT,g.getPieceState(pos("d3")).hero());assertEquals(2,g.getEconomy().whiteHalves());
+        assertEquals(HeroType.BOLOTNIK,g.getPieceState(pos("d3")).hero());assertEquals(2,g.getEconomy().whiteHalves());
         assertFalse(g.getTurnState().moveUsed());assertTrue(g.getTurnState().abilityUsed());GameSaveFile.encode(g.getSnapshot());
     }
     @Test public void hookCannotPullAnEnemyThroughIntermediateMud() {
@@ -165,14 +165,14 @@ public class BolotnikTest {
     }
     @Test public void teleportLandingTriggersMudAndTheCapturedCasterStillSpendsTheAbility() throws Exception {
         var b=board("a1","h8");put(b,Knight.class,WHITE,"b2");put(b,Bishop.class,BLACK,"f6");
-        Game g=charged(create(b,Map.of(pos("b2"),HeroType.BOLOTNIK_KNIGHT,pos("f6"),HeroType.LUMESHARD_BISHOP),HeroRules.prototype()),"f6");
+        Game g=charged(create(b,Map.of(pos("b2"),HeroType.BOLOTNIK,pos("f6"),HeroType.LUMESHARD),HeroRules.prototype()),"f6");
         mud(g,"b2","d4");move(g,"a1","b1");end(g);assertEquals(Success.SUCCESS,cast(g,"f6","d4",LumeshardAbility.TELEPORT));
-        assertEquals(HeroType.BOLOTNIK_KNIGHT,g.getPieceState(pos("d4")).hero());assertEquals(6,g.getEconomy().whiteHalves());
+        assertEquals(HeroType.BOLOTNIK,g.getPieceState(pos("d4")).hero());assertEquals(6,g.getEconomy().whiteHalves());
         assertTrue(g.getTurnState().abilityUsed());assertFalse(g.getTurnState().moveUsed());GameSaveFile.encode(g.getSnapshot());
     }
     @Test public void aTrapReactionThatExposesTheActingKingsCheckIsRejectedAtomically() {
         var b=board("d1","h8");put(b,Knight.class,WHITE,"d4");put(b,Rook.class,WHITE,"f3");put(b,Pawn.class,WHITE,"a2");put(b,Rook.class,BLACK,"d8");put(b,Pawn.class,BLACK,"f6");
-        Game g=create(b,Map.of(pos("d4"),HeroType.BOLOTNIK_KNIGHT,pos("f3"),HeroType.PUDGE_ROOK),HeroRules.prototype());
+        Game g=create(b,Map.of(pos("d4"),HeroType.BOLOTNIK,pos("f3"),HeroType.PUDGE),HeroRules.prototype());
         mud(g,"d4","f4");move(g,"a2","a3");end(g);move(g,"h8","g8");end(g);
         reject(g,MovementRejection.KING_IN_CHECK,()->cast(g,"f3","f6",PudgeAbility.HOOK));
     }
@@ -184,14 +184,14 @@ public class BolotnikTest {
     @Test public void aLoadedPudgeCountersTheBolotnikThatCapturedIt() throws Exception {
         var b=board("a1","h8");put(b,Knight.class,WHITE,"f2");put(b,Pawn.class,WHITE,"a2");put(b,Rook.class,BLACK,"d8");put(b,Pawn.class,BLACK,"e8");
         var rules=new HeroRules(PudgeRules.sandbox(),LumeshardRules.prototype());
-        Game g=create(b,Map.of(pos("f2"),HeroType.BOLOTNIK_KNIGHT,pos("d8"),HeroType.PUDGE_ROOK),rules);
+        Game g=create(b,Map.of(pos("f2"),HeroType.BOLOTNIK,pos("d8"),HeroType.PUDGE),rules);
         mud(g,"f2","d4");move(g,"a2","a3");end(g);assertEquals(Success.SUCCESS,cast(g,"d8","e8",PudgeAbility.SWALLOW));move(g,"d8","d4");
         assertEquals(Pawn.class,g.getPieceState(pos("d4")).type());assertEquals(BLACK,g.getPieceState(pos("d4")).color());
         assertEquals(10,g.getEconomy().whiteHalves());assertEquals(6,g.getEconomy().blackHalves());assertTrue(g.getTerrain().cells().isEmpty());GameSaveFile.encode(g.getSnapshot());
     }
     @Test public void aMarkedEnemyPaysItsBountyToTheTrapOwner() throws Exception {
         var b=board("a1","h8");put(b,Knight.class,WHITE,"d4");put(b,Pawn.class,WHITE,"b2");put(b,Rook.class,BLACK,"f8");
-        Game g=create(b,Map.of(pos("d4"),HeroType.BOLOTNIK_KNIGHT,pos("b2"),HeroType.BOUNTY_CROW_PAWN),HeroRules.prototype());
+        Game g=create(b,Map.of(pos("d4"),HeroType.BOLOTNIK,pos("b2"),HeroType.BOUNTY_CROW),HeroRules.prototype());
         mud(g,"d4","f4");move(g,"a1","b1");end(g);move(g,"h8","g8");end(g);
         assertEquals(Success.SUCCESS,cast(g,"b2","f8",BountyCrowAbility.BOUNTY));move(g,"b1","a1");end(g);move(g,"f8","f4");
         assertEquals(13,g.getEconomy().whiteHalves());assertTrue(g.getEconomy().marks().isEmpty());assertEquals(1,g.getPieceState(pos("f4")).ultimateCharge());GameSaveFile.encode(g.getSnapshot());
@@ -210,7 +210,7 @@ public class BolotnikTest {
     @Test public void hostileMudBlocksBothKingAndRookCastlingPaths() {
         for(String cell:List.of("f1","g1","b1")) {
             boolean queenSide=cell.equals("b1");var b=board("e1","g8");put(b,Rook.class,WHITE,queenSide?"a1":"h1");put(b,Pawn.class,WHITE,"a2");put(b,Knight.class,BLACK,"e5");
-            Game g=Game.fromMobaPosition(new GamePosition(b,WHITE,new CastlingRights(!queenSide,queenSide,false,false),null,0),Map.of(pos("e5"),HeroType.BOLOTNIK_KNIGHT),HeroRules.prototype(),()->0L);
+            Game g=Game.fromMobaPosition(new GamePosition(b,WHITE,new CastlingRights(!queenSide,queenSide,false,false),null,0),Map.of(pos("e5"),HeroType.BOLOTNIK),HeroRules.prototype(),()->0L);
             move(g,"a2","a3");end(g);mud(g,"e5",cell);move(g,"g8","f8");end(g);
             reject(g,cell.equals("g1")?StatusRejection.KING_IMMUNE:AbilityRejection.MUD_BLOCKED,()->g.moveFigure(g.getCurrentPlayer(),pos("e1"),pos(queenSide?"c1":"g1")));
         }
@@ -218,7 +218,7 @@ public class BolotnikTest {
     private Game fadingCover(boolean skillReady) {
         var b=board("d1","h8");put(b,Knight.class,WHITE,"e2");put(b,Rook.class,BLACK,"d8");
         HeroRules rules=new HeroRules(PudgeRules.prototype(),LumeshardRules.prototype(),game.heroes.bountycrow.BountyCrowRules.prototype(),GoldRules.prototype(),skillReady?BolotnikRules.sandbox():BolotnikRules.prototype());
-        Game g=create(b,Map.of(pos("e2"),HeroType.BOLOTNIK_KNIGHT),rules);
+        Game g=create(b,Map.of(pos("e2"),HeroType.BOLOTNIK),rules);
         mud(g,"e2","d4");move(g,"e2","g3");end(g);move(g,"h8","g8");end(g);move(g,"g3","h5");end(g);move(g,"g8","h8");end(g);return g;
     }
     @Test public void movesCannotStrandTheKingBehindCoverThatExpiresOnThisTurnEnd() throws Exception {
@@ -231,21 +231,21 @@ public class BolotnikTest {
     }
     @Test public void aLivingSwallowedBolotnikEmergesAndDetachesFromItsPudge() throws Exception {
         var b=board("a1","h8");put(b,Knight.class,WHITE,"d4");put(b,Rook.class,WHITE,"c4");put(b,Rook.class,BLACK,"f8");
-        Game g=create(b,Map.of(pos("d4"),HeroType.BOLOTNIK_KNIGHT,pos("c4"),HeroType.PUDGE_ROOK),new HeroRules(PudgeRules.sandbox(),LumeshardRules.prototype()));
+        Game g=create(b,Map.of(pos("d4"),HeroType.BOLOTNIK,pos("c4"),HeroType.PUDGE),new HeroRules(PudgeRules.sandbox(),LumeshardRules.prototype()));
         long id=g.getPieceState(pos("d4")).id();mud(g,"d4","f4");move(g,"a1","b1");end(g);move(g,"h8","g8");end(g);
         assertEquals(Success.SUCCESS,cast(g,"c4","d4",PudgeAbility.SWALLOW));move(g,"b1","a1");end(g);move(g,"f8","f4");
         assertEquals(id,g.getPieceState(pos("f4")).id());assertNull(g.getPieceState(pos("c4")).storedPieceId());GameSaveFile.encode(g.getSnapshot());
     }
     @Test public void immediateUltimateCaptureAlsoHonorsLoadedPudgesReaction() throws Exception {
         var b=board("a1","h8");put(b,Knight.class,WHITE,"f5");put(b,Rook.class,BLACK,"e5");put(b,Pawn.class,BLACK,"d5");
-        Game g=charged(create(b,Map.of(pos("f5"),HeroType.BOLOTNIK_KNIGHT,pos("e5"),HeroType.PUDGE_ROOK),new HeroRules(PudgeRules.sandbox(),LumeshardRules.prototype())),"f5");
+        Game g=charged(create(b,Map.of(pos("f5"),HeroType.BOLOTNIK,pos("e5"),HeroType.PUDGE),new HeroRules(PudgeRules.sandbox(),LumeshardRules.prototype())),"f5");
         move(g,"a1","b1");end(g);assertEquals(Success.SUCCESS,cast(g,"e5","d5",PudgeAbility.SWALLOW));move(g,"h8","g8");end(g);
         ambush(g,"f5");assertEquals(Pawn.class,g.getPieceState(pos("e5")).type());assertEquals(BLACK,g.getPieceState(pos("e5")).color());
         assertEquals(10,g.getEconomy().whiteHalves());assertEquals(6,g.getEconomy().blackHalves());assertTrue(g.getTerrain().cells().isEmpty());GameSaveFile.encode(g.getSnapshot());
     }
     @Test public void blackUltimateAlsoPrioritizesTheCoordinateClosestToA() throws Exception {
         var b=board("a1","h8");put(b,Knight.class,BLACK,"d4");put(b,Pawn.class,WHITE,"c4");put(b,Pawn.class,WHITE,"e4");
-        Game g=charged(create(b,Map.of(pos("d4"),HeroType.BOLOTNIK_KNIGHT),HeroRules.prototype()),"d4");
+        Game g=charged(create(b,Map.of(pos("d4"),HeroType.BOLOTNIK),HeroRules.prototype()),"d4");
         move(g,"a1","b1");end(g);ambush(g,"d4");assertEquals(BLACK,g.getPieceState(pos("c4")).color());
         assertEquals(Pawn.class,g.getPieceState(pos("e4")).type());assertTrue(g.getTerrain().cells().isEmpty());assertEquals(2,g.getEconomy().blackHalves());GameSaveFile.encode(g.getSnapshot());
     }

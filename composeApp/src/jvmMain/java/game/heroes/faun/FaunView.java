@@ -1,5 +1,7 @@
 package game.heroes.faun;
 
+import game.heroes.moleminer.MoleminerAbility;
+
 import game.state.*;
 import game.history.GameEvent;
 import game.moves.*;
@@ -42,7 +44,7 @@ public final class FaunView {
     }
 
     public static String message(GameSnapshot s, GameEvent event) {
-        if(event.kind()==GameEvent.Kind.PLANT_MINE && event.color()!=s.active())return "Противник заложил мину";
+        if(event.isAbility(MoleminerAbility.PLANT_MINE) && event.color()!=s.active())return "Противник заложил мину";
         if(game.heroes.clownganger.ClownView.concealed(s,event))return "Действие двойника";
         for (var entry : s.faun().invisible().entrySet()) {
             PieceState p = s.pieces().get(entry.getKey());

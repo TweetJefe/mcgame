@@ -96,7 +96,7 @@ public class GameSaveFileTest {
         var board = board("a1", "h8"); put(board, Rook.class, WHITE, "e2"); put(board, Rook.class, WHITE, "g2");
         put(board, Pawn.class, WHITE, "g3"); put(board, Rook.class, BLACK, "f8");
         Game game = Game.fromMobaPosition(new GamePosition(board, WHITE, CastlingRights.none(), null, 0),
-                Map.of(pos("e2"), HeroType.PUDGE_ROOK, pos("g2"), HeroType.PUDGE_ROOK), PudgeRules.sandbox(), () -> 0L);
+                Map.of(pos("e2"), HeroType.PUDGE, pos("g2"), HeroType.PUDGE), PudgeRules.sandbox(), () -> 0L);
         long inner = game.getPieceState(pos("g2")).id(), pawn = game.getPieceState(pos("g3")).id();
         ability(game, "g2", "g3", PudgeAbility.SWALLOW); move(game, "e2", "f2"); end(game);
         move(game, "h8", "h7"); end(game); ability(game, "f2", "g2", PudgeAbility.SWALLOW); move(game, "f2", "f3"); end(game);
@@ -116,7 +116,7 @@ public class GameSaveFileTest {
     }
     @Test public void mobaDoublePawnMoveKeepsEnPassantBeforeAndAfterHandingOverTheTurn() throws Exception {
         Game initial = new Game(8, () -> 0L);
-        Game game = Game.fromMobaPosition(initial.getPosition(), Map.of(pos("a1"), HeroType.PUDGE_ROOK), PudgeRules.prototype(), () -> 0L);
+        Game game = Game.fromMobaPosition(initial.getPosition(), Map.of(pos("a1"), HeroType.PUDGE), PudgeRules.prototype(), () -> 0L);
         move(game, "e2", "e4"); assertEquals(pos("e3"), roundtrip(game).getEnPassantTarget());
         end(game); assertEquals(pos("e3"), roundtrip(game).getEnPassantTarget());
     }
@@ -203,7 +203,7 @@ public class GameSaveFileTest {
     @Test public void orphanSharedAndCyclicPassengersAreRejected() throws Exception {
         var board = board("a1", "h8"); put(board, Rook.class, WHITE, "e2"); put(board, Rook.class, WHITE, "g2"); put(board, Pawn.class, WHITE, "g3");
         Game game = Game.fromMobaPosition(new GamePosition(board, WHITE, CastlingRights.none(), null, 0),
-                Map.of(pos("e2"), HeroType.PUDGE_ROOK, pos("g2"), HeroType.PUDGE_ROOK), PudgeRules.sandbox(), () -> 0L);
+                Map.of(pos("e2"), HeroType.PUDGE, pos("g2"), HeroType.PUDGE), PudgeRules.sandbox(), () -> 0L);
         ability(game, "g2", "g3", PudgeAbility.SWALLOW);
         long pawn = game.getPieceState(pos("g2")).storedPieceId();
         rejects(game, doc -> {

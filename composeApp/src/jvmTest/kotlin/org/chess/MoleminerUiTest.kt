@@ -41,10 +41,10 @@ class MoleminerUiTest{
     }
     @Test fun tenthHeroCanBeScrolledAndPickedIntoPawnSlot(){
         SwingUtilities.invokeAndWait{
-            val d=Draft(DraftRules(1,6,7));d.ban(model.FigureColor.WHITE,HeroType.PUDGE_ROOK);d.ban(model.FigureColor.BLACK,HeroType.IZBA_ROOK)
+            val d=Draft(DraftRules(1,6,7));d.ban(model.FigureColor.WHITE,HeroType.PUDGE);d.ban(model.FigureColor.BLACK,HeroType.IZBA)
             ImageComposeScene(1200,800){MaterialTheme{DraftScreen(d,{}, {})}}.use{
                 it.render().close();it.scrollDraftToLastHero();save(it,"moleminer-draft")
-                click(it,150f,580f);click(it,840f,399f);click(it,100f,677f);assertEquals(HeroType.MOLEMINER_PAWN,d.snapshot.assignments()[pos("a2")]);save(it,"moleminer-picked")
+                click(it,150f,580f);click(it,840f,399f);click(it,100f,677f);assertEquals(HeroType.MOLEMINER,d.snapshot.assignments()[pos("a2")]);save(it,"moleminer-picked")
             }
         }
     }

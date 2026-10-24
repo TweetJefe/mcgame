@@ -23,7 +23,7 @@ public final class BountyCrowAbilities {
     public static MoveResult availability(PieceState actor, Abilities ability, BountyCrowRules rules) {
         if (ability == null) return AbilityRejection.INVALID_ABILITY;
         if (actor == null || actor.status() != PieceState.Status.BOARD) return MovementRejection.EMPTY_SOURCE;
-        if (actor.hero() != HeroType.BOUNTY_CROW_PAWN || !abilities().contains(ability)) return AbilityRejection.NO_ABILITY;
+        if (actor.hero() != HeroType.BOUNTY_CROW || !abilities().contains(ability)) return AbilityRejection.NO_ABILITY;
         if (ability == BountyCrowAbility.BOUNTY && actor.cooldown() > 0) return AbilityRejection.ABILITY_COOLDOWN;
         if (ability == BountyCrowAbility.STEAL && actor.ultimateCharge() < rules.ultimateCaptures())
             return AbilityRejection.ULTIMATE_NOT_READY;

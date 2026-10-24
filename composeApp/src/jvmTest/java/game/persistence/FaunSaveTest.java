@@ -28,7 +28,7 @@ public class FaunSaveTest {
     }
     @Test public void newDraftUsesVersionEightEvenWhenFaunIsBannedAndOlderCatalogStaysSeven()throws Exception {
         for(int catalog:new int[]{3,4}) {
-            var d=new Draft(new DraftRules(1,6,catalog));d.ban(WHITE,catalog==4?HeroType.FAUN_KNIGHT:HeroType.GINSENG_BISHOP);d.ban(BLACK,HeroType.IZBA_ROOK);d.finishPicks(WHITE);d.finishPicks(BLACK);
+            var d=new Draft(new DraftRules(1,6,catalog));d.ban(WHITE,catalog==4?HeroType.FAUN:HeroType.GINSENG);d.ban(BLACK,HeroType.IZBA);d.finishPicks(WHITE);d.finishPicks(BLACK);
             Game g=Game.mobaFromDraft(d.getSnapshot(),HeroRules.prototype(),600,()->0L);String s=xml(g);
             assertTrue(s.contains("formatVersion=\""+(catalog==4?8:7)+"\""));assertEquals(s,xml(load(s)));assertEquals(d.getSnapshot(),load(s).getDraft());
             if(catalog==4)invalid(s.replace("catalogVersion=\"4\"","catalogVersion=\"3\""));

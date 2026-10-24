@@ -35,7 +35,7 @@ public class LumeshardTest {
         board.put(pos(cell), factory.createFigure(type, pos(cell), side));
     }
     private Game create(Map<Position, Figure> board, String hero) {
-        return create(board, Map.of(pos(hero), HeroType.LUMESHARD_BISHOP), HeroRules.prototype());
+        return create(board, Map.of(pos(hero), HeroType.LUMESHARD), HeroRules.prototype());
     }
     private Game create(Map<Position, Figure> board, Map<Position, HeroType> heroes, HeroRules rules) {
         return Game.fromMobaPosition(new GamePosition(board, WHITE, CastlingRights.none(), null, 0), heroes, rules, () -> 0L);
@@ -50,8 +50,8 @@ public class LumeshardTest {
     private Game ready(boolean pudge) {
         var board = board("a1", "h8"); put(board, Bishop.class, WHITE, "d2");
         put(board, Pawn.class, BLACK, "e3"); put(board, Pawn.class, BLACK, "f4");
-        var heroes = new HashMap<Position, HeroType>(); heroes.put(pos("d2"), HeroType.LUMESHARD_BISHOP);
-        if (pudge) { put(board, Rook.class, WHITE, "f2"); heroes.put(pos("f2"), HeroType.PUDGE_ROOK); }
+        var heroes = new HashMap<Position, HeroType>(); heroes.put(pos("d2"), HeroType.LUMESHARD);
+        if (pudge) { put(board, Rook.class, WHITE, "f2"); heroes.put(pos("f2"), HeroType.PUDGE); }
         Game game = create(board, heroes, new HeroRules(PudgeRules.sandbox(), LumeshardRules.prototype()));
         play(game, "d2", "e3"); end(game); play(game, "h8", "g8"); end(game); play(game, "e3", "f4");
         return game;
@@ -69,8 +69,8 @@ public class LumeshardTest {
 
     @Test public void standardPrototypeContainsBothHeroesAndEachBishopsStartingColor() {
         Game game = Game.mobaPrototype(HeroRules.prototype(), 600);
-        assertEquals(HeroType.PUDGE_ROOK, game.getPieceState(pos("a1")).hero());
-        assertEquals(HeroType.LUMESHARD_BISHOP, game.getPieceState(pos("c1")).hero());
+        assertEquals(HeroType.PUDGE, game.getPieceState(pos("a1")).hero());
+        assertEquals(HeroType.LUMESHARD, game.getPieceState(pos("c1")).hero());
         assertEquals(SquareColor.DARK, game.getPieceState(pos("c1")).startingColor());
         assertEquals(SquareColor.LIGHT, game.getPieceState(pos("c8")).startingColor());
         assertEquals(3, game.getLumeshardRules().laserCooldown()); assertEquals(2, game.getLumeshardRules().ultimateCaptures());
@@ -125,12 +125,12 @@ public class LumeshardTest {
     @Test public void castlingMayPassThroughASquareAttackedOnlyByABlindRook() {
         var board = board("e1", "a8"); put(board, Rook.class, WHITE, "h1"); put(board, Bishop.class, WHITE, "d2"); put(board, Rook.class, BLACK, "f4");
         Game game = Game.fromMobaPosition(new GamePosition(board, WHITE, new CastlingRights(true, false, false, false), null, 0),
-                Map.of(pos("d2"), HeroType.LUMESHARD_BISHOP), HeroRules.prototype(), () -> 0L);
+                Map.of(pos("d2"), HeroType.LUMESHARD), HeroRules.prototype(), () -> 0L);
         assertEquals(Success.SUCCESS, ability(game, "d2", "f4", LumeshardAbility.LASER)); play(game, "e1", "g1");
     }
     @Test public void blindedPudgeCanUseASkillButSharesTheSameGlobalAbilityBudget() {
         var board = board("a1", "h8"); put(board, Bishop.class, WHITE, "d2"); put(board, Rook.class, BLACK, "g5"); put(board, Pawn.class, BLACK, "g4");
-        Game game = create(board, Map.of(pos("d2"), HeroType.LUMESHARD_BISHOP, pos("g5"), HeroType.PUDGE_ROOK),
+        Game game = create(board, Map.of(pos("d2"), HeroType.LUMESHARD, pos("g5"), HeroType.PUDGE),
                 new HeroRules(PudgeRules.sandbox(), LumeshardRules.prototype()));
         assertEquals(Success.SUCCESS, ability(game, "d2", "g5", LumeshardAbility.LASER)); play(game, "d2", "c1"); end(game);
         assertEquals(Success.SUCCESS, ability(game, "g5", "g4", PudgeAbility.SWALLOW));
@@ -169,7 +169,7 @@ public class LumeshardTest {
     }
     @Test public void teleportCannotExposeItsOwnKing() {
         var board = board("e1", "h8"); put(board, Bishop.class, WHITE, "e2"); put(board, Rook.class, BLACK, "e8");
-        Game game = create(board, Map.of(pos("e2"), HeroType.LUMESHARD_BISHOP), HeroRules.sandbox());
+        Game game = create(board, Map.of(pos("e2"), HeroType.LUMESHARD), HeroRules.sandbox());
         reject(game, MovementRejection.KING_IN_CHECK, () -> ability(game, "e2", "b1", LumeshardAbility.TELEPORT));
     }
     @Test public void hookDoesNotChangeLumeshardsOriginalColorAndTheGlobalSkillLimitApplies() throws Exception {
@@ -185,7 +185,7 @@ public class LumeshardTest {
     }
     @Test public void returnedLumeshardRetainsColorAndChargesFromTheCounterCapture() throws Exception {
         var board = board("a1", "h8"); put(board, Rook.class, WHITE, "e2"); put(board, Bishop.class, WHITE, "d3"); put(board, Rook.class, BLACK, "f8");
-        Game game = create(board, Map.of(pos("e2"), HeroType.PUDGE_ROOK, pos("d3"), HeroType.LUMESHARD_BISHOP),
+        Game game = create(board, Map.of(pos("e2"), HeroType.PUDGE, pos("d3"), HeroType.LUMESHARD),
                 new HeroRules(PudgeRules.sandbox(), LumeshardRules.prototype()));
         long id = game.getPieceState(pos("d3")).id(); assertEquals(Success.SUCCESS, ability(game, "e2", "d3", PudgeAbility.SWALLOW));
         play(game, "e2", "f2"); end(game); game = copy(game); play(game, "f8", "f2");
@@ -205,7 +205,7 @@ public class LumeshardTest {
     }
     @Test public void aSwallowedBlindAllyKeepsItsEffectUntilItsOwnersTurnEnds() throws Exception {
         var board = board("a1", "h8"); put(board, Bishop.class, WHITE, "d2"); put(board, Rook.class, BLACK, "g5"); put(board, Knight.class, BLACK, "g4");
-        Game game = create(board, Map.of(pos("d2"), HeroType.LUMESHARD_BISHOP, pos("g5"), HeroType.PUDGE_ROOK),
+        Game game = create(board, Map.of(pos("d2"), HeroType.LUMESHARD, pos("g5"), HeroType.PUDGE),
                 new HeroRules(PudgeRules.sandbox(), LumeshardRules.prototype()));
         long ally = game.getPieceState(pos("g4")).id();
         assertEquals(Success.SUCCESS, ability(game, "d2", "g4", LumeshardAbility.LASER)); play(game, "d2", "c1"); end(game);

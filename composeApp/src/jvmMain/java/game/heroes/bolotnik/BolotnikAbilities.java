@@ -27,7 +27,7 @@ public final class BolotnikAbilities {
     public static MoveResult availability(PieceState actor, Abilities ability, BolotnikRules rules) {
         if (ability == null) return AbilityRejection.INVALID_ABILITY;
         if (actor == null || actor.status() != PieceState.Status.BOARD) return MovementRejection.EMPTY_SOURCE;
-        if (actor.hero() != HeroType.BOLOTNIK_KNIGHT || !abilities().contains(ability)) return AbilityRejection.NO_ABILITY;
+        if (actor.hero() != HeroType.BOLOTNIK || !abilities().contains(ability)) return AbilityRejection.NO_ABILITY;
         if (ability == BolotnikAbility.MUD && actor.cooldown() > 0) return AbilityRejection.ABILITY_COOLDOWN;
         if (ability == BolotnikAbility.AMBUSH && actor.ultimateCharge() < rules.ultimateCaptures())
             return AbilityRejection.ULTIMATE_NOT_READY;

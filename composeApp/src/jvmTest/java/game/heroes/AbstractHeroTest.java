@@ -24,7 +24,7 @@ public class AbstractHeroTest {
     private final Field field = new Field(8);
     private final PudgeRules rules = new PudgeRules(2, 3, true, true);
     private final Hero hero = new PudgeBehavior(rules);
-    private final PieceState actor = PieceState.initial(1, field.getFigureByPosition(new Position(0, 0)), HeroType.PUDGE_ROOK);
+    private final PieceState actor = PieceState.initial(1, field.getFigureByPosition(new Position(0, 0)), HeroType.PUDGE);
     private final PieceState target = PieceState.initial(2, field.getFigureByPosition(new Position(1, 0)), HeroType.NONE);
 
     @Test public void availabilityRejectsMissingActorsWrongHeroesAndUnsupportedAbilities() {
@@ -73,7 +73,7 @@ public class AbstractHeroTest {
         assertEquals(charged, context.pieceById(charged.id()));
         assertEquals(target, context.pieceAt(target.position()));
 
-        PieceState another = PieceState.initial(3, field.getFigureByPosition(new Position(0, 7)), HeroType.PUDGE_ROOK);
+        PieceState another = PieceState.initial(3, field.getFigureByPosition(new Position(0, 7)), HeroType.PUDGE);
         assertEquals(AbilityRejection.ULTIMATE_NOT_READY, hero.availability(another, PudgeAbility.SWALLOW));
         assertEquals(Success.SUCCESS, hero.availability(charged, PudgeAbility.SWALLOW));
         assertEquals(effect, hero.preview(context, charged, target, target.position(), PudgeAbility.SWALLOW));
@@ -97,7 +97,7 @@ public class AbstractHeroTest {
     }
 
     @Test public void heroesWithoutActiveUltimatesCanStillChargePassives() {
-        Hero passive = new AbstractHero(HeroType.PUDGE_ROOK, List.of(PudgeAbility.HOOK), null, 2) {
+        Hero passive = new AbstractHero(HeroType.PUDGE, List.of(PudgeAbility.HOOK), null, 2) {
             @Override protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor,
                                                              PieceState target, Position square, Abilities ability) {
                 throw new AssertionError("Unavailable abilities must not reach the effect hook");
@@ -114,7 +114,7 @@ public class AbstractHeroTest {
         var abilities = new ArrayList<>(List.of(PudgeAbility.HOOK, PudgeAbility.SWALLOW));
         Hero copied = new PudgeBehavior(rules, abilities);
         abilities.clear();
-        assertEquals(HeroType.PUDGE_ROOK, copied.type());
+        assertEquals(HeroType.PUDGE, copied.type());
         assertEquals(List.of(PudgeAbility.HOOK, PudgeAbility.SWALLOW), copied.abilities());
         assertThrows(UnsupportedOperationException.class, () -> copied.abilities().clear());
         assertThrows(IllegalArgumentException.class, () -> new PudgeBehavior(rules, List.of(PudgeAbility.HOOK)));
@@ -129,7 +129,7 @@ public class AbstractHeroTest {
         }
 
         private PudgeBehavior(PudgeRules rules, List<? extends Abilities> abilities) {
-            super(HeroType.PUDGE_ROOK, abilities, PudgeAbility.SWALLOW, rules.ultimateCaptures());
+            super(HeroType.PUDGE, abilities, PudgeAbility.SWALLOW, rules.ultimateCaptures());
             this.rules = rules;
         }
 

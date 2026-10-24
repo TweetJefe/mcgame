@@ -1,5 +1,7 @@
 package game.heroes.chronomlin;
 
+import game.heroes.clownganger.ClowngangerAbility;
+
 import game.heroes.HeroType;
 import game.history.GameEvent;
 import game.state.*;
@@ -15,8 +17,8 @@ public final class ChronomlinValidator {
     private static Replay replay(GameSnapshot s){
         var forms=new HashMap<Long,Class<? extends Figure>>();var bodies=new HashMap<Long,Class<? extends Figure>>();
         for(var piece:s.pieces().values()){
-            if(piece.hero()==HeroType.CHRONOMLIN_PAWN)forms.put(piece.id(),Pawn.class);
-            if(piece.hero()==HeroType.GINSENG_BISHOP)forms.put(piece.id(),Bishop.class);
+            if(piece.hero()==HeroType.CHRONOMLIN)forms.put(piece.id(),Pawn.class);
+            if(piece.hero()==HeroType.GINSENG)forms.put(piece.id(),Bishop.class);
         }
         int moveIndex=0;
         for(var e:s.events()){
@@ -27,13 +29,13 @@ public final class ChronomlinValidator {
                     forms.put(e.actorId(),move.getPromotion().getFigureType());
                 }
             }
-            if(e.kind()==GameEvent.Kind.EVOLVE){
+            if(e.isAbility(ChronomlinAbility.EVOLVE)){
                 var next=ChronomlinAbilities.nextType(forms.get(e.actorId()));
                 require(next!=null && e.targetId()==null && e.from().equals(e.to()),"Invalid evolution step");
                 forms.put(e.actorId(),next);
             }
-            if(e.kind()==GameEvent.Kind.ILLUSION)bodies.put(e.targetId(),forms.getOrDefault(e.actorId(),Knight.class));
-            if(e.kind()==GameEvent.Kind.GRAPPLE){
+            if(e.isAbility(ClowngangerAbility.ILLUSION))bodies.put(e.targetId(),forms.getOrDefault(e.actorId(),Knight.class));
+            if(e.isAbility(ChronomlinAbility.GRAPPLE)){
                 require(e.targetId()!=null && forms.containsKey(e.actorId()),"Invalid grapple source or anchor");
                 int dr=Math.abs(e.from().getRow()-e.to().getRow()),dc=Math.abs(e.from().getColumn()-e.to().getColumn());
                 require((dr==0 || dc==0 || dr==dc) && Math.max(dr,dc)>1,"Invalid grapple ray");

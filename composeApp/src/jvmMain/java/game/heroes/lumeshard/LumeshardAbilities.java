@@ -28,7 +28,7 @@ public final class LumeshardAbilities {
     public static MoveResult availability(PieceState actor, Abilities ability, LumeshardRules rules) {
         if (ability == null) return AbilityRejection.INVALID_ABILITY;
         if (actor == null || actor.status() != PieceState.Status.BOARD) return MovementRejection.EMPTY_SOURCE;
-        if (actor.hero() != HeroType.LUMESHARD_BISHOP || !abilities().contains(ability)) return AbilityRejection.NO_ABILITY;
+        if (actor.hero() != HeroType.LUMESHARD || !abilities().contains(ability)) return AbilityRejection.NO_ABILITY;
         if (ability == LumeshardAbility.LASER && actor.cooldown() > 0) return AbilityRejection.ABILITY_COOLDOWN;
         if (ability == LumeshardAbility.TELEPORT && actor.ultimateCharge() < rules.ultimateCaptures())
             return AbilityRejection.ULTIMATE_NOT_READY;

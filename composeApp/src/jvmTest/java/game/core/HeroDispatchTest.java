@@ -20,7 +20,7 @@ import static org.junit.Assert.*;
 public class HeroDispatchTest {
     @Test public void engineUsesRegisteredTargetingRequestsAndEffectsAndRetainsTheRegistry() {
         var snapshot = PudgeScenario.DIAGONAL_HOOK.createGame(() -> 0L).getSnapshot();
-        Hero custom = new AbstractHero(HeroType.PUDGE_ROOK, List.of(PudgeAbility.HOOK), null, 0) {
+        Hero custom = new AbstractHero(HeroType.PUDGE, List.of(PudgeAbility.HOOK), null, 0) {
             @Override public HeroTargeting targeting(Abilities ability) { return HeroTargeting.untargeted(); }
             @Override protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor,
                                                             PieceState target, Position square, Abilities ability) {

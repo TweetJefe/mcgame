@@ -23,7 +23,7 @@ public final class GinsengAbilities {
     public static MoveResult availability(PieceState actor, Abilities ability, GinsengRules rules, boolean borrowed) {
         if (ability == null) return AbilityRejection.INVALID_ABILITY;
         if (actor == null || actor.status() != PieceState.Status.BOARD) return MovementRejection.EMPTY_SOURCE;
-        if (actor.hero() != HeroType.GINSENG_BISHOP || !abilities().contains(ability)) return AbilityRejection.NO_ABILITY;
+        if (actor.hero() != HeroType.GINSENG || !abilities().contains(ability)) return AbilityRejection.NO_ABILITY;
         if (!borrowed && ability == GinsengAbility.DISPLACE && actor.cooldown() > 0) return AbilityRejection.ABILITY_COOLDOWN;
         if (!borrowed && ability == GinsengAbility.COPY_SPELL && actor.ultimateCharge() < rules.ultimateCaptures())
             return AbilityRejection.ULTIMATE_NOT_READY;

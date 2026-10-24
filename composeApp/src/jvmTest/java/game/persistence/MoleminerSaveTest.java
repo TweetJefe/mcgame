@@ -29,6 +29,6 @@ public class MoleminerSaveTest{
         Game g=basic();plant(g);String s=xml(g);invalid(s.replace("formatVersion=\"11\"","formatVersion=\"10\""));invalid(s.replaceAll("(?s)<moleminerRules [^>]*/>",""));invalid(s.replace("mineCooldown=\"3\"","mineCooldown=\"1\""));invalid(s.replace("kind=\"PLANT_MINE\"","kind=\"INVISIBILITY\""));
     }
     @Test public void currentCatalogueUsesElevenAndPreviousCatalogueStillUsesTen()throws Exception{
-        for(int catalog:new int[]{6,7}){Draft d=new Draft(new DraftRules(1,6,catalog));d.ban(WHITE,catalog==7?HeroType.MOLEMINER_PAWN:HeroType.CLOWNGANGER_KNIGHT);d.ban(BLACK,HeroType.IZBA_ROOK);d.finishPicks(WHITE);d.finishPicks(BLACK);Game g=Game.mobaFromDraft(d.getSnapshot(),HeroRules.prototype(),600,()->0L);String s=xml(g);assertTrue(s.contains("formatVersion=\""+(catalog==7?11:10)+"\""));assertEquals(s,xml(load(s)));}
+        for(int catalog:new int[]{6,7}){Draft d=new Draft(new DraftRules(1,6,catalog));d.ban(WHITE,catalog==7?HeroType.MOLEMINER:HeroType.CLOWNGANGER);d.ban(BLACK,HeroType.IZBA);d.finishPicks(WHITE);d.finishPicks(BLACK);Game g=Game.mobaFromDraft(d.getSnapshot(),HeroRules.prototype(),600,()->0L);String s=xml(g);assertTrue(s.contains("formatVersion=\""+(catalog==7?11:10)+"\""));assertEquals(s,xml(load(s)));}
     }
 }

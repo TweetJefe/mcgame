@@ -38,7 +38,7 @@ public record SpellState(Map<Long, Abilities> lastUsed, Map<Long, BorrowedAbilit
     public static SpellState fromHistory(List<GameEvent> events) {
         SpellState state = empty();
         for (GameEvent event : events) {
-            Abilities ability = activeAbility(event.kind());
+            Abilities ability = activeAbility(event);
             if (ability != null) {
                 if (event.actorId() == null) throw new IllegalArgumentException("Active cast without actor");
                 state = state.cast(event.actorId(), ability, event.borrowed(), event.turn(), event.targetId(), event.copiedAbility());
@@ -48,8 +48,7 @@ public record SpellState(Map<Long, Abilities> lastUsed, Map<Long, BorrowedAbilit
         return state;
     }
 
-    public static Abilities activeAbility(GameEvent.Kind kind) {
-        if (kind == null) return null;
-        return game.heroes.HeroRegistry.standard().findAbility(kind.name());
+    public static Abilities activeAbility(GameEvent event) {
+        return event == null ? null : event.ability();
     }
 }

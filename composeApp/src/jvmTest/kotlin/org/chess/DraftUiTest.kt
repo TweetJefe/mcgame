@@ -30,11 +30,11 @@ class DraftUiTest {
         SwingUtilities.invokeAndWait {
             val draft = Draft(DraftRules(1, 6, 1))
             ImageComposeScene(1200, 800) { MaterialTheme { DraftScreen(draft, {}, {}) } }.use { save(it, "draft-bans") }
-            draft.ban(FigureColor.WHITE, HeroType.BOUNTY_CROW_PAWN)
-            draft.ban(FigureColor.BLACK, HeroType.BOLOTNIK_KNIGHT)
+            draft.ban(FigureColor.WHITE, HeroType.BOUNTY_CROW)
+            draft.ban(FigureColor.BLACK, HeroType.BOLOTNIK)
             ImageComposeScene(1200, 800) { MaterialTheme { DraftScreen(draft, {}, {}) } }.use { save(it, "draft-picks") }
-            draft.pick(FigureColor.WHITE, HeroType.PUDGE_ROOK, Position(0, 7))
-            draft.pick(FigureColor.BLACK, HeroType.LUMESHARD_BISHOP, Position(7, 5))
+            draft.pick(FigureColor.WHITE, HeroType.PUDGE, Position(0, 7))
+            draft.pick(FigureColor.BLACK, HeroType.LUMESHARD, Position(7, 5))
             ImageComposeScene(1200, 800) { MaterialTheme { DraftScreen(draft, {}, {}) } }.use { save(it, "draft-ready") }
             val game = Game.mobaFromDraft(draft.snapshot, HeroRules.prototype(), 600) { 0L }
             ImageComposeScene(1200, 800) { MaterialTheme { Surface(Modifier.fillMaxSize()) { ChessBoard(game) } } }.use {
@@ -65,15 +65,15 @@ class DraftUiTest {
                 assertTrue(draft.snapshot.isComplete); assertNull(started)
                 click(scene, 95f, 553f)
                 assertEquals(1, starts); val game = started!!
-                assertEquals(HeroType.PUDGE_ROOK, game.getPieceState(Position(0, 7)).hero())
-                assertEquals(HeroType.LUMESHARD_BISHOP, game.getPieceState(Position(7, 5)).hero())
+                assertEquals(HeroType.PUDGE, game.getPieceState(Position(0, 7)).hero())
+                assertEquals(HeroType.LUMESHARD, game.getPieceState(Position(7, 5)).hero())
                 assertEquals(600_000L, game.clockSnapshot.whiteMillis)
             }
         }
     }
     @Test fun finishEarlyAndReturnToMenuDoNotStartAClock() {
         SwingUtilities.invokeAndWait {
-            val draft = Draft(DraftRules(1, 6, 1)); draft.ban(FigureColor.WHITE, HeroType.PUDGE_ROOK); draft.ban(FigureColor.BLACK, HeroType.LUMESHARD_BISHOP)
+            val draft = Draft(DraftRules(1, 6, 1)); draft.ban(FigureColor.WHITE, HeroType.PUDGE); draft.ban(FigureColor.BLACK, HeroType.LUMESHARD)
             var starts = 0; var backs = 0
             ImageComposeScene(1200, 800) { MaterialTheme { DraftScreen(draft, { starts++ }, { backs++ }) } }.use { scene ->
                 scene.render().close(); click(scene, 250f, 577f)
@@ -106,8 +106,8 @@ class DraftUiTest {
                 click(scene, 688f, 744f); assertEquals(1, saves); assertTrue(Files.exists(output))
                 val restored = GameSaveFile.load(output) { 0L }
                 assertTrue(restored.draft.isComplete)
-                assertEquals(HeroType.PUDGE_ROOK, restored.getPieceState(Position(0, 7)).hero())
-                assertEquals(HeroType.LUMESHARD_BISHOP, restored.getPieceState(Position(7, 5)).hero())
+                assertEquals(HeroType.PUDGE, restored.getPieceState(Position(0, 7)).hero())
+                assertEquals(HeroType.LUMESHARD, restored.getPieceState(Position(7, 5)).hero())
                 assertEquals(6, restored.draft.events().size)
                 assertTrue(restored.clockSnapshot.isRunning)
             }

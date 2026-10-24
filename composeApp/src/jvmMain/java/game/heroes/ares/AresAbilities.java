@@ -26,7 +26,7 @@ public final class AresAbilities {
     public static MoveResult availability(PieceState actor, Abilities ability, AresRules rules) {
         if (ability == null) return AbilityRejection.INVALID_ABILITY;
         if (actor == null || actor.status() != PieceState.Status.BOARD) return MovementRejection.EMPTY_SOURCE;
-        if (actor.hero() != HeroType.ARES_BISHOP || ability != AresAbility.SPEAR) return AbilityRejection.NO_ABILITY;
+        if (actor.hero() != HeroType.ARES || ability != AresAbility.SPEAR) return AbilityRejection.NO_ABILITY;
         return actor.cooldown() > 0 ? AbilityRejection.ABILITY_COOLDOWN : Success.SUCCESS;
     }
 
@@ -91,7 +91,7 @@ public final class AresAbilities {
     }
 
     public static boolean armed(PieceState actor, AresRules rules) {
-        return !actor.isPotted() && actor.hero() == HeroType.ARES_BISHOP && actor.ultimateCharge() >= rules.revengeCaptures();
+        return !actor.isPotted() && actor.hero() == HeroType.ARES && actor.ultimateCharge() >= rules.revengeCaptures();
     }
 
     private static PieceState at(Map<Long, PieceState> pieces, Position p) {

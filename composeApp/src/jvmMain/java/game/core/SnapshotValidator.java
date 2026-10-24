@@ -63,28 +63,28 @@ public final class SnapshotValidator {
                 Figure figure = s.field().getFigureByPosition(piece.position());
                 require(figure != null && figure.getClass() == piece.type() && figure.getColor() == piece.color(), "Piece state differs from board");
             } else require(piece.type() != King.class, "King cannot be captured or swallowed");
-            if (piece.hero() == HeroType.KIKIMORA_BISHOP)require(piece.cooldown()<=s.heroRules().kikimora().yarnCooldown() && piece.ultimateCharge()<=s.heroRules().kikimora().ultimateCaptures(),"Invalid Kikimora resources");
-            else if(piece.hero()==HeroType.CHRONOMLIN_PAWN)require(piece.cooldown()<=s.heroRules().chronomlin().grappleCooldown() && piece.ultimateCharge()<=s.heroRules().chronomlin().ultimateCaptures(),"Invalid Chronomlin resources");
-            else if(piece.hero()==HeroType.ZEUS_ROOK)require(piece.cooldown()<=s.heroRules().zeus().lightningCooldown() && piece.ultimateCharge()<=s.heroRules().zeus().ultimateCaptures(),"Invalid Zeus resources");
-            else if(piece.hero()==HeroType.MOLEMINER_PAWN)require(piece.cooldown()<=s.heroRules().moleminer().mineCooldown() && piece.ultimateCharge()<=s.heroRules().moleminer().ultimateCaptures(),"Invalid Moleminer resources");
-            else if(piece.hero()==HeroType.CLOWNGANGER_KNIGHT)require(piece.cooldown()<=s.heroRules().clownganger().boxCooldown() && piece.ultimateCharge()<=s.heroRules().clownganger().ultimateCaptures(),"Invalid Clownganger resources");
+            if (piece.hero() == HeroType.KIKIMORA)require(piece.cooldown()<=s.heroRules().kikimora().yarnCooldown() && piece.ultimateCharge()<=s.heroRules().kikimora().ultimateCaptures(),"Invalid Kikimora resources");
+            else if(piece.hero()==HeroType.CHRONOMLIN)require(piece.cooldown()<=s.heroRules().chronomlin().grappleCooldown() && piece.ultimateCharge()<=s.heroRules().chronomlin().ultimateCaptures(),"Invalid Chronomlin resources");
+            else if(piece.hero()==HeroType.ZEUS)require(piece.cooldown()<=s.heroRules().zeus().lightningCooldown() && piece.ultimateCharge()<=s.heroRules().zeus().ultimateCaptures(),"Invalid Zeus resources");
+            else if(piece.hero()==HeroType.MOLEMINER)require(piece.cooldown()<=s.heroRules().moleminer().mineCooldown() && piece.ultimateCharge()<=s.heroRules().moleminer().ultimateCaptures(),"Invalid Moleminer resources");
+            else if(piece.hero()==HeroType.CLOWNGANGER)require(piece.cooldown()<=s.heroRules().clownganger().boxCooldown() && piece.ultimateCharge()<=s.heroRules().clownganger().ultimateCaptures(),"Invalid Clownganger resources");
             else if (piece.hero() == HeroType.NONE || piece.hero()==HeroType.ILLUSION)
                 require(piece.cooldown() == 0 && piece.ultimateCharge() == 0 && piece.storedPieceId() == null, "Nonhero has hero state");
-            else if (piece.hero() == HeroType.PUDGE_ROOK)
+            else if (piece.hero() == HeroType.PUDGE)
                 require(piece.cooldown() <= s.pudgeRules().hookCooldown() && piece.ultimateCharge() <= s.pudgeRules().ultimateCaptures(), "Abilities state exceeds configured limits");
-            else if (piece.hero() == HeroType.LUMESHARD_BISHOP)
+            else if (piece.hero() == HeroType.LUMESHARD)
                 require(piece.cooldown() <= s.lumeshardRules().laserCooldown() && piece.ultimateCharge() <= s.lumeshardRules().ultimateCaptures(), "Lumeshard state exceeds configured limits");
-            else if (piece.hero() == HeroType.BOUNTY_CROW_PAWN)
+            else if (piece.hero() == HeroType.BOUNTY_CROW)
                 require(piece.cooldown() <= s.crowRules().bountyCooldown() && piece.ultimateCharge() <= s.crowRules().ultimateCaptures(), "Crow state exceeds configured limits");
-            else if (piece.hero() == HeroType.ARES_BISHOP)
+            else if (piece.hero() == HeroType.ARES)
                 require(piece.cooldown() <= s.heroRules().ares().spearCooldown() && piece.ultimateCharge() <= s.heroRules().ares().revengeCaptures(), "Invalid Ares resources");
-            else if (piece.hero() == HeroType.FAUN_KNIGHT)
+            else if (piece.hero() == HeroType.FAUN)
                 require(piece.cooldown() <= s.heroRules().faun().cloudCooldown() && piece.ultimateCharge() <= s.heroRules().faun().ultimateCaptures(), "Invalid Faun resources");
-            else if (piece.hero() == HeroType.GINSENG_BISHOP)
+            else if (piece.hero() == HeroType.GINSENG)
                 require(piece.cooldown() <= s.heroRules().ginseng().displacementCooldown() && piece.ultimateCharge() <= s.heroRules().ginseng().ultimateCaptures(), "Invalid Ginseng resources");
-            else if (piece.hero() == HeroType.IZBA_ROOK)
+            else if (piece.hero() == HeroType.IZBA)
                 require(piece.cooldown() == 0 && piece.ultimateCharge() <= s.heroRules().izba().ultimateCaptures(), "Invalid Izba charge");
-            else if (piece.hero() == HeroType.BABA_YAGA_PAWN)
+            else if (piece.hero() == HeroType.BABA_YAGA)
                 require(piece.cooldown() == 0 && piece.ultimateCharge() == 0, "Invalid Baba Yaga resources");
             else
                 require(piece.cooldown() <= s.bolotnikRules().mudCooldown() && piece.ultimateCharge() <= s.bolotnikRules().ultimateCaptures(), "Bolotnik state exceeds configured limits");
@@ -199,8 +199,9 @@ public final class SnapshotValidator {
                 validateClock(move.getClock(), move.getClock().activeColor(), !move.getClock().running());
                 if (move.getCaptureSquare() != null) require(inside(move.getCaptureSquare()), "Invalid capture square");
                 if (event.turn() == s.turn().number()) currentMoves++;
-            } else if (event.kind() == GameEvent.Kind.HOOK || event.kind() == GameEvent.Kind.SWALLOW || event.kind() == GameEvent.Kind.LASER || event.kind() == GameEvent.Kind.TELEPORT || event.kind() == GameEvent.Kind.BOUNTY || event.kind() == GameEvent.Kind.STEAL || event.kind() == GameEvent.Kind.MUD || event.kind() == GameEvent.Kind.AMBUSH || event.kind() == GameEvent.Kind.SUMMON_YAGA || event.kind() == GameEvent.Kind.DISPLACE || event.kind() == GameEvent.Kind.COPY_SPELL || event.kind() == GameEvent.Kind.CLOUD || event.kind() == GameEvent.Kind.INVISIBILITY || event.kind() == GameEvent.Kind.SPEAR || event.kind()==GameEvent.Kind.BOX || event.kind()==GameEvent.Kind.ILLUSION || event.kind()==GameEvent.Kind.PLANT_MINE || event.kind()==GameEvent.Kind.DETONATE || event.kind()==GameEvent.Kind.CHAIN_LIGHTNING || event.kind()==GameEvent.Kind.THUNDERSTORM || event.kind()==GameEvent.Kind.GRAPPLE || event.kind()==GameEvent.Kind.EVOLVE || event.kind()==GameEvent.Kind.YARN || event.kind()==GameEvent.Kind.CLAY_POT) {
-                require(s.mode() == GameMode.MOBA && cast.add(event.turn()) && (event.kind() == GameEvent.Kind.MUD || ((event.kind() == GameEvent.Kind.TELEPORT || event.kind() == GameEvent.Kind.STEAL || event.kind() == GameEvent.Kind.AMBUSH || event.kind() == GameEvent.Kind.SUMMON_YAGA || event.kind() == GameEvent.Kind.CLOUD || event.kind() == GameEvent.Kind.INVISIBILITY || event.kind() == GameEvent.Kind.SPEAR || event.kind()==GameEvent.Kind.PLANT_MINE || event.kind()==GameEvent.Kind.DETONATE || event.kind()==GameEvent.Kind.THUNDERSTORM || event.kind()==GameEvent.Kind.EVOLVE) ? event.targetId() == null : event.targetId() != null)), "Invalid ability event");
+            } else if (event.kind() == GameEvent.Kind.ABILITY_USED) {
+                require(s.mode() == GameMode.MOBA && cast.add(event.turn())
+                        && event.ability().eventTarget().accepts(event.targetId()), "Invalid ability event");
                 if (event.turn() == s.turn().number()) currentAbilities++;
             } else if (event.kind() == GameEvent.Kind.END_TURN) {
                 require(s.mode() == GameMode.MOBA && moved.contains(event.turn()) && event.turn() < s.turn().number()

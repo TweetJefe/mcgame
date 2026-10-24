@@ -1,5 +1,7 @@
 package game.heroes.faun;
 
+import game.heroes.kikimora.KikimoraAbility;
+
 import game.heroes.Abilities;
 import game.heroes.ginseng.SpellState;
 import game.history.GameEvent;
@@ -57,7 +59,7 @@ public record FaunState(List<Cloud> clouds, Map<Long, Invisibility> invisible) {
     public static FaunState fromHistory(List<GameEvent> events, FaunRules rules) {
         FaunState state = empty();
         for (GameEvent e : events) {
-            Abilities a = SpellState.activeAbility(e.kind());
+            Abilities a = SpellState.activeAbility(e);
             if (a != null) {
                 if (state.silenced(e.from())) throw new IllegalArgumentException("Active cast from a cloud");
                 if (a == FaunAbility.CLOUD && (e.from() == null || e.to() == null || Math.max(Math.abs(e.from().getRow() - e.to().getRow()), Math.abs(e.from().getColumn() - e.to().getColumn())) > 4))
@@ -71,7 +73,7 @@ public record FaunState(List<Cloud> clouds, Map<Long, Invisibility> invisible) {
                 next.remove(e.actorId());
                 next.remove(e.targetId());
                 state = new FaunState(state.clouds(), next);
-            } else if (e.kind() == GameEvent.Kind.REPLACE || e.kind()==GameEvent.Kind.CLAY_POT) {
+            } else if (e.kind() == GameEvent.Kind.REPLACE || e.isAbility(KikimoraAbility.CLAY_POT)) {
                 var next = new HashMap<>(state.invisible());
                 next.remove(e.targetId());
                 state = new FaunState(state.clouds(), next);

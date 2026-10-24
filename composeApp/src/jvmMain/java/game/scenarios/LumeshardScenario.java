@@ -62,7 +62,7 @@ public enum LumeshardScenario implements TrainingScenario {
         put(factory, board, King.class, BLACK, "h8");
         put(factory, board, Bishop.class, WHITE, "d2");
         var heroes = new HashMap<Position, HeroType>();
-        heroes.put(p("d2"), HeroType.LUMESHARD_BISHOP);
+        heroes.put(p("d2"), HeroType.LUMESHARD);
         if (this == LASER) {
             put(factory, board, Pawn.class, WHITE, "e3");
             put(factory, board, Rook.class, BLACK, "g5");
@@ -72,7 +72,7 @@ public enum LumeshardScenario implements TrainingScenario {
             put(factory, board, Pawn.class, BLACK, "f4");
             if (this == HOOK_COLOR) {
                 put(factory, board, Rook.class, WHITE, "f2");
-                heroes.put(p("f2"), HeroType.PUDGE_ROOK);
+                heroes.put(p("f2"), HeroType.PUDGE);
             }
         }
         Game game = Game.fromMobaPosition(new GamePosition(board, WHITE, CastlingRights.none(), null, 0), heroes, HeroRules.prototype(), time);

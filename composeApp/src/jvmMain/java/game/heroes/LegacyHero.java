@@ -129,7 +129,7 @@ final class LegacyHero implements Hero {
                 case INVISIBILITY -> "Faun: стал невидимым";
             };
             case GinsengAbility typed -> switch (typed) {
-                case COPY_SPELL -> target.hero()==HeroType.ILLUSION?"Ginseng: потратил ульту на пустышку":"Ginseng: скопировал " + before.spells().lastUsed().get(target.id()).getDisplayName() + " у " + target.hero().getName();
+                case COPY_SPELL -> target.hero()==HeroType.ILLUSION?"Ginseng: потратил ульту на пустышку":"Ginseng: скопировал " + before.spells().lastUsed().get(target.id()).getDisplayName() + " у " + HeroDefinitions.get(target.hero()).displayName();
                 case DISPLACE -> "Ginseng: сдвиг " + cell(request.target()) + " → " + cell(request.destination());
             };
             case IzbaAbility typed -> switch (typed) {

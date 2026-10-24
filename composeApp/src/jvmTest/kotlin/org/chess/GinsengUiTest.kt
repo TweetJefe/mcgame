@@ -33,7 +33,7 @@ class GinsengUiTest {
                 click(it,150f,480f);click(it,100f,649f) // Izba banned by black.
                 assertEquals(DraftPhase.PICKS,draft.snapshot.phase())
                 click(it,150f,565f);click(it,1020f,435f);click(it,100f,673f)
-                assertEquals(HeroType.GINSENG_BISHOP,draft.snapshot.assignments()[pos("f1")])
+                assertEquals(HeroType.GINSENG,draft.snapshot.assignments()[pos("f1")])
                 save(it,"ginseng-picked")
             }
             val game=GinsengFixtures.hook()

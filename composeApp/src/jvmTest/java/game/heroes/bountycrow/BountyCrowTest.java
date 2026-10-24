@@ -34,7 +34,7 @@ public class BountyCrowTest {
         return Game.fromMobaPosition(new GamePosition(board, active, CastlingRights.none(), null, 0), heroes, rules, () -> 0L);
     }
     private Game create(Map<Position, Figure> board, String crow) {
-        return create(board, Map.of(pos(crow), HeroType.BOUNTY_CROW_PAWN), HeroRules.prototype(), WHITE);
+        return create(board, Map.of(pos(crow), HeroType.BOUNTY_CROW), HeroRules.prototype(), WHITE);
     }
     private Game scenario(BountyCrowScenario scenario) { return scenario.createGame(() -> 0L); }
     private void play(Game g, String from, String to) { assertEquals(Success.SUCCESS, g.moveFigure(g.getCurrentPlayer(), pos(from), pos(to))); }
@@ -47,8 +47,8 @@ public class BountyCrowTest {
     }
     @Test public void initialAssignmentAndWallets() {
         Game g = Game.mobaPrototype(HeroRules.prototype(), 600);
-        assertEquals(HeroType.BOUNTY_CROW_PAWN, g.getPieceState(pos("b2")).hero());
-        assertEquals(HeroType.BOUNTY_CROW_PAWN, g.getPieceState(pos("b7")).hero());
+        assertEquals(HeroType.BOUNTY_CROW, g.getPieceState(pos("b2")).hero());
+        assertEquals(HeroType.BOUNTY_CROW, g.getPieceState(pos("b7")).hero());
         assertEquals(Pawn.class, g.getPieceState(pos("b2")).type()); assertEquals(0, gold(g, WHITE)); assertEquals(0, gold(g, BLACK));
     }
     @Test public void bountyIsGlobalIgnoresBlockersAndPreviewsDoNotChangeState() {
@@ -117,7 +117,7 @@ public class BountyCrowTest {
     }
     @Test public void aHeroPawnCostsTwoGold() {
         var b = board("a1", "h8"); put(b, Rook.class, WHITE, "e1"); put(b, Pawn.class, BLACK, "e4");
-        Game g = create(b, Map.of(pos("e4"), HeroType.BOUNTY_CROW_PAWN), HeroRules.prototype(), WHITE);
+        Game g = create(b, Map.of(pos("e4"), HeroType.BOUNTY_CROW), HeroRules.prototype(), WHITE);
         play(g, "e1", "e4"); assertEquals(4, gold(g, WHITE));
     }
     @Test public void ultimateTransfersTwoGoldAndNeedsOrdinaryMovementToFinish() {
@@ -136,7 +136,7 @@ public class BountyCrowTest {
     @Test public void theftTakesOnlyTheAvailableFractionalBalance() {
         var b = board("a1", "h8"); put(b, Pawn.class, WHITE, "d4"); put(b, Pawn.class, BLACK, "e5"); put(b, Pawn.class, BLACK, "f6");
         put(b, Pawn.class, BLACK, "g4"); put(b, Pawn.class, WHITE, "h3");
-        Game g = create(b, Map.of(pos("d4"), HeroType.BOUNTY_CROW_PAWN, pos("g4"), HeroType.BOUNTY_CROW_PAWN), HeroRules.prototype(), WHITE);
+        Game g = create(b, Map.of(pos("d4"), HeroType.BOUNTY_CROW, pos("g4"), HeroType.BOUNTY_CROW), HeroRules.prototype(), WHITE);
         play(g, "d4", "e5"); end(g); play(g, "g4", "h3"); end(g); play(g, "e5", "f6"); end(g); play(g, "h8", "g8"); end(g);
         assertEquals(3, gold(g, BLACK)); assertEquals(Success.SUCCESS, cast(g, "f6", null, BountyCrowAbility.STEAL));
         assertEquals(0, gold(g, BLACK)); assertEquals(9, gold(g, WHITE));
@@ -161,7 +161,7 @@ public class BountyCrowTest {
         var b = board("a1", "h6"); put(b, Pawn.class, WHITE, "b7"); put(b, Pawn.class, BLACK, "c7");
         Game g = create(b, "b7"); long id = g.getPieceState(pos("b7")).id();
         assertEquals(Success.SUCCESS, g.moveFigure(g.getCurrentPlayer(), pos("b7"), pos("b8"), Promotion.QUEEN));
-        assertEquals(id, g.getPieceState(pos("b8")).id()); assertEquals(HeroType.BOUNTY_CROW_PAWN, g.getPieceState(id).hero());
+        assertEquals(id, g.getPieceState(pos("b8")).id()); assertEquals(HeroType.BOUNTY_CROW, g.getPieceState(id).hero());
         g = Game.fromSnapshot(GameSaveFile.decode(GameSaveFile.encode(g.getSnapshot())), () -> 0L);
         mark(g, "b8", "c7"); end(g); play(g, "h6", "h5"); end(g); play(g, "b8", "c7");
         assertEquals(6, gold(g, WHITE)); assertEquals(1, g.getPieceState(id).ultimateCharge());
@@ -174,22 +174,22 @@ public class BountyCrowTest {
     }
     @Test public void enPassantIsAPaidPawnCaptureWithPassive() {
         var b = board("a1", "h8"); put(b, Pawn.class, WHITE, "e5"); put(b, Pawn.class, BLACK, "d7");
-        Game g = create(b, Map.of(pos("e5"), HeroType.BOUNTY_CROW_PAWN), HeroRules.prototype(), BLACK);
+        Game g = create(b, Map.of(pos("e5"), HeroType.BOUNTY_CROW), HeroRules.prototype(), BLACK);
         play(g, "d7", "d5"); end(g); mark(g, "e5", "d5"); play(g, "e5", "d6");
         assertEquals(6, gold(g, WHITE)); assertTrue(g.getEconomy().marks().isEmpty());
     }
     @Test public void crowReleasedFromPudgeEarnsPassiveAndChargeForCounterCapture() throws Exception {
         var b = board("a1", "h8"); put(b, Rook.class, WHITE, "d4"); put(b, Pawn.class, WHITE, "e4"); put(b, Rook.class, BLACK, "d8");
         HeroRules rules = new HeroRules(PudgeRules.sandbox(), game.heroes.lumeshard.LumeshardRules.prototype());
-        Game g = create(b, Map.of(pos("d4"), HeroType.PUDGE_ROOK, pos("e4"), HeroType.BOUNTY_CROW_PAWN), rules, WHITE);
+        Game g = create(b, Map.of(pos("d4"), HeroType.PUDGE, pos("e4"), HeroType.BOUNTY_CROW), rules, WHITE);
         assertEquals(Success.SUCCESS, cast(g, "d4", "e4", PudgeAbility.SWALLOW)); play(g, "a1", "b1"); end(g); play(g, "d8", "d4");
-        assertEquals(HeroType.BOUNTY_CROW_PAWN, g.getPieceState(pos("d4")).hero());
+        assertEquals(HeroType.BOUNTY_CROW, g.getPieceState(pos("d4")).hero());
         assertEquals(11, gold(g, WHITE)); assertEquals(10, gold(g, BLACK)); assertEquals(1, g.getPieceState(pos("d4")).ultimateCharge());
         GameSaveFile.encode(g.getSnapshot());
     }
     @Test public void bountyFollowsSwallowedTargetAndStillExpires() throws Exception {
         var b = board("a1", "h8"); put(b, Pawn.class, WHITE, "b2"); put(b, Pawn.class, BLACK, "e4"); put(b, Rook.class, BLACK, "e5");
-        Game g = create(b, Map.of(pos("b2"), HeroType.BOUNTY_CROW_PAWN, pos("e5"), HeroType.PUDGE_ROOK),
+        Game g = create(b, Map.of(pos("b2"), HeroType.BOUNTY_CROW, pos("e5"), HeroType.PUDGE),
                 new HeroRules(PudgeRules.sandbox(), game.heroes.lumeshard.LumeshardRules.prototype()), WHITE);
         long target = g.getPieceState(pos("e4")).id(); mark(g, "b2", "e4"); play(g, "a1", "b1"); end(g);
         assertEquals(Success.SUCCESS, cast(g, "e5", "e4", PudgeAbility.SWALLOW)); play(g, "h8", "g8"); end(g);
@@ -201,7 +201,7 @@ public class BountyCrowTest {
     @Test public void reapplyingRefreshesOneMarkWithoutStackingRewards() {
         var b = board("a1", "h8"); put(b, Pawn.class, WHITE, "b2"); put(b, Knight.class, BLACK, "e4");
         var rules = new HeroRules(PudgeRules.prototype(), game.heroes.lumeshard.LumeshardRules.prototype(), new BountyCrowRules(0, 2, 2), GoldRules.prototype());
-        Game g = create(b, Map.of(pos("b2"), HeroType.BOUNTY_CROW_PAWN), rules, WHITE);
+        Game g = create(b, Map.of(pos("b2"), HeroType.BOUNTY_CROW), rules, WHITE);
         mark(g, "b2", "e4"); play(g, "a1", "b1"); end(g); play(g, "h8", "g8"); end(g); mark(g, "b2", "e4");
         assertEquals(1, g.getEconomy().marks().size()); assertEquals(7, g.getEconomy().marks().getFirst().expiresAfterTurn());
     }

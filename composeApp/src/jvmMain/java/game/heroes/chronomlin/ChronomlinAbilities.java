@@ -26,7 +26,7 @@ public final class ChronomlinAbilities {
     public static MoveResult availability(PieceState actor,Abilities ability,ChronomlinRules rules,boolean borrowed){
         if(ability==null)return AbilityRejection.INVALID_ABILITY;
         if(actor==null || actor.position()==null)return MovementRejection.EMPTY_SOURCE;
-        if(actor.hero()!=(borrowed?HeroType.GINSENG_BISHOP:HeroType.CHRONOMLIN_PAWN) || !abilities().contains(ability))return AbilityRejection.NO_ABILITY;
+        if(actor.hero()!=(borrowed?HeroType.GINSENG:HeroType.CHRONOMLIN) || !abilities().contains(ability))return AbilityRejection.NO_ABILITY;
         if(ability==ChronomlinAbility.EVOLVE && nextType(actor.type())==null)return AbilityRejection.MAX_EVOLUTION;
         if(!borrowed && ability==ChronomlinAbility.GRAPPLE && actor.cooldown()>0)return AbilityRejection.ABILITY_COOLDOWN;
         if(!borrowed && ability==ChronomlinAbility.EVOLVE && actor.ultimateCharge()<rules.ultimateCaptures())return AbilityRejection.ULTIMATE_NOT_READY;

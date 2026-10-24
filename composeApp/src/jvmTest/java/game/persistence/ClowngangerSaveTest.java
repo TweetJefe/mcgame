@@ -25,6 +25,6 @@ public class ClowngangerSaveTest {
         String s=xml(withIllusion());invalid(s.replaceAll("kind=\"ILLUSION\"","kind=\"TELEPORT\""));invalid(s.replace("hero=\"ILLUSION\"","hero=\"NONE\""));invalid(s.replace("hero=\"ILLUSION\"","hero=\"CLOWNGANGER_KNIGHT\""));
     }
     @Test public void catalogueSixUsesTenEvenWhenClownIsBannedAndFiveStillUsesNine()throws Exception{
-        for(int version:new int[]{5,6}){Draft d=new Draft(new DraftRules(1,6,version));d.ban(WHITE,version==6?HeroType.CLOWNGANGER_KNIGHT:HeroType.ARES_BISHOP);d.ban(BLACK,HeroType.IZBA_ROOK);d.finishPicks(WHITE);d.finishPicks(BLACK);Game g=Game.mobaFromDraft(d.getSnapshot(),HeroRules.prototype(),600,()->0L);String s=xml(g);assertTrue(s.contains("formatVersion=\""+(version==6?10:9)+"\""));assertEquals(s,xml(load(s)));}
+        for(int version:new int[]{5,6}){Draft d=new Draft(new DraftRules(1,6,version));d.ban(WHITE,version==6?HeroType.CLOWNGANGER:HeroType.ARES);d.ban(BLACK,HeroType.IZBA);d.finishPicks(WHITE);d.finishPicks(BLACK);Game g=Game.mobaFromDraft(d.getSnapshot(),HeroRules.prototype(),600,()->0L);String s=xml(g);assertTrue(s.contains("formatVersion=\""+(version==6?10:9)+"\""));assertEquals(s,xml(load(s)));}
     }
 }

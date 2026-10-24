@@ -76,7 +76,7 @@ public enum BolotnikScenario implements TrainingScenario {
             put(factory, board, Pawn.class, WHITE, "f4");
             put(factory, board, Rook.class, BLACK, "f8");
         } else put(factory, board, Knight.class, BLACK, "b1");
-        Game game = Game.fromMobaPosition(new GamePosition(board, WHITE, CastlingRights.none(), null, 0), Map.of(p(hero), HeroType.BOLOTNIK_KNIGHT), HeroRules.prototype(), time);
+        Game game = Game.fromMobaPosition(new GamePosition(board, WHITE, CastlingRights.none(), null, 0), Map.of(p(hero), HeroType.BOLOTNIK), HeroRules.prototype(), time);
         if (charged) {
             move(game, "b3", "d4");
             end(game);

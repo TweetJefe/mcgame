@@ -24,7 +24,7 @@ public final class DraftValidator {
             for (PieceState piece : game.pieces().values())
                 if (piece.color() == side && piece.hero() != HeroType.NONE && piece.hero()!=HeroType.ILLUSION && !game.summons().records().containsKey(piece.id())) {
                     actual.merge(piece.hero(), 1, Integer::sum);
-                    if (piece.hero()==HeroType.KIKIMORA_BISHOP || piece.hero() == HeroType.LUMESHARD_BISHOP || piece.hero() == HeroType.GINSENG_BISHOP || piece.hero() == HeroType.ARES_BISHOP) {
+                    if (piece.hero()==HeroType.KIKIMORA || piece.hero() == HeroType.LUMESHARD || piece.hero() == HeroType.GINSENG || piece.hero() == HeroType.ARES) {
                         HeroPick origin = draft.picksFor(side).stream().filter(p -> p.hero() == piece.hero()).findFirst().orElseThrow(() -> new IllegalArgumentException("Unpicked Lumeshard"));
                         if (piece.startingColor() != SquareColor.at(origin.square()))
                             throw new IllegalArgumentException("Lumeshard starting color differs from its draft placement");

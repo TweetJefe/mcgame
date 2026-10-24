@@ -57,7 +57,7 @@ public final class SummonResolver {
         if (occupant != null) remove(states, occupant); // Replacement is neither a capture nor a death reaction.
         long id = Math.addExact(states.keySet().stream().mapToLong(Long::longValue).max().orElse(0), 1);
         Field factory = new Field(8);
-        PieceState baby = PieceState.initial(id, factory.createFigure(Pawn.class, square, source.color()), HeroType.BABA_YAGA_PAWN);
+        PieceState baby = PieceState.initial(id, factory.createFigure(Pawn.class, square, source.color()), HeroType.BABA_YAGA);
         states.put(id, baby);
         var records = new HashMap<>(summons.records());
         long deadline = Math.addExact(turn, 2L * rules.izba().lifetimeTurns() - (source.color() == actingSide ? 0 : 1));
@@ -80,7 +80,7 @@ public final class SummonResolver {
         var states = prepared;
         var all = new ArrayList<>(captures);
         while (true) {
-            Capture death = all.stream().filter(c -> !handled.contains(c.victimId()) && statesHero(prepared, c.victimId()) == HeroType.IZBA_ROOK).findFirst().orElse(null);
+            Capture death = all.stream().filter(c -> !handled.contains(c.victimId()) && statesHero(prepared, c.victimId()) == HeroType.IZBA).findFirst().orElse(null);
             if (death == null) break;
             handled.add(death.victimId());
             PieceState source = states.get(death.victimId());
@@ -115,7 +115,7 @@ public final class SummonResolver {
         for (var record : summons.records().values()) {
             PieceState p = states.get(record.id());
             if (!record.transformed() && record.transformsAfterTurn() <= endedTurn && p.color() == owner && !p.isRemoved() && !p.isPotted()) {
-                states.put(p.id(), new PieceState(p.id(), Rook.class, p.color(), p.position(), p.status(), HeroType.IZBA_ROOK, 0, 0, p.inventory(), null, p.blindTurns(), null, p.stunnedThroughTurn(),p.boxedThroughTurn()));
+                states.put(p.id(), new PieceState(p.id(), Rook.class, p.color(), p.position(), p.status(), HeroType.IZBA, 0, 0, p.inventory(), null, p.blindTurns(), null, p.stunnedThroughTurn(),p.boxedThroughTurn()));
                 records.put(record.id(), record.mature());
             }
         }

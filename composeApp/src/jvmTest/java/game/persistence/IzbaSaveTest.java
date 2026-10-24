@@ -37,7 +37,7 @@ public class IzbaSaveTest {
         invalid(s.replace("kind=\"YAGA_BIRTH\"","kind=\"YAGA_MATURE\""));
     }
     @Test public void currentCatalogIsVersionedEvenWhenIzbaWasBanned()throws Exception {
-        var d=new game.draft.Draft(new game.draft.DraftRules(1,6,2));d.ban(model.FigureColor.WHITE,HeroType.IZBA_ROOK);d.ban(model.FigureColor.BLACK,HeroType.PUDGE_ROOK);
+        var d=new game.draft.Draft(new game.draft.DraftRules(1,6,2));d.ban(model.FigureColor.WHITE,HeroType.IZBA);d.ban(model.FigureColor.BLACK,HeroType.PUDGE);
         d.finishPicks(model.FigureColor.WHITE);d.finishPicks(model.FigureColor.BLACK);
         Game g=Game.mobaFromDraft(d.getSnapshot(),HeroRules.prototype(),600,()->0L);String s=xml(g);
         assertTrue(s.contains("catalogVersion=\"2\""));assertTrue(s.contains("formatVersion=\"6\""));assertEquals(d.getSnapshot(),load(s).getDraft());

@@ -14,12 +14,12 @@ public final class FaunValidator {
             throw new IllegalArgumentException("Faun effects in Classic");
         for (Cloud c : s.faun().clouds()) {
             var p = s.pieces().get(c.sourceId());
-            if (p == null || (p.hero() != HeroType.FAUN_KNIGHT && p.hero() != HeroType.GINSENG_BISHOP) || c.castTurn() > s.turn().number() || c.expiresAfterTurn() < s.turn().number())
+            if (p == null || (p.hero() != HeroType.FAUN && p.hero() != HeroType.GINSENG) || c.castTurn() > s.turn().number() || c.expiresAfterTurn() < s.turn().number())
                 throw new IllegalArgumentException("Invalid cloud source or lifetime");
         }
         for (var e : s.faun().invisible().entrySet()) {
             var p = s.pieces().get(e.getKey());
-            if (p == null || p.isRemoved() || (p.hero() != HeroType.FAUN_KNIGHT && p.hero() != HeroType.GINSENG_BISHOP) || e.getValue().castTurn() > s.turn().number() || e.getValue().expiresAfterTurn() < s.turn().number())
+            if (p == null || p.isRemoved() || (p.hero() != HeroType.FAUN && p.hero() != HeroType.GINSENG) || e.getValue().castTurn() > s.turn().number() || e.getValue().expiresAfterTurn() < s.turn().number())
                 throw new IllegalArgumentException("Invalid invisible piece");
         }
     }

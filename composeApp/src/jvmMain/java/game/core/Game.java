@@ -1,7 +1,8 @@
 package game.core;
 
 import game.heroes.ares.AresAbility;
-import game.heroes.chronomlin.ChronomlinAbility;
+import game.heroes.kikimora.KikimoraAbility;
+import game.history.AbilityEventTarget;
 
 import game.moves.AbilityRejection;
 import game.moves.DrawRejection;
@@ -124,10 +125,10 @@ public final class Game {
 
     public static Game mobaPrototype(HeroRules rules, int seconds) {
         Game game = new Game(8, GameMode.MOBA, System::nanoTime, rules);
-        game.rebuildPieces(Map.of(new Position(0, 0), HeroType.PUDGE_ROOK, new Position(7, 0), HeroType.PUDGE_ROOK,
-                new Position(0, 2), HeroType.LUMESHARD_BISHOP, new Position(7, 2), HeroType.LUMESHARD_BISHOP,
-                new Position(1, 1), HeroType.BOUNTY_CROW_PAWN, new Position(6, 1), HeroType.BOUNTY_CROW_PAWN,
-                new Position(0, 6), HeroType.BOLOTNIK_KNIGHT, new Position(7, 6), HeroType.BOLOTNIK_KNIGHT));
+        game.rebuildPieces(Map.of(new Position(0, 0), HeroType.PUDGE, new Position(7, 0), HeroType.PUDGE,
+                new Position(0, 2), HeroType.LUMESHARD, new Position(7, 2), HeroType.LUMESHARD,
+                new Position(1, 1), HeroType.BOUNTY_CROW, new Position(6, 1), HeroType.BOUNTY_CROW,
+                new Position(0, 6), HeroType.BOLOTNIK, new Position(7, 6), HeroType.BOLOTNIK));
         game.startClock(seconds);
         return game;
     }
@@ -312,7 +313,7 @@ public final class Game {
         } else moveUsed = true;
         MoveKind kind = castle ? MoveKind.CASTLING : ep ? MoveKind.EN_PASSANT
                                                      : promotion != null ? MoveKind.PROMOTION : firstCapture != null ? MoveKind.CAPTURE : MoveKind.NORMAL;
-        String name = actor.hero() == HeroType.NONE ? figure.getName() : actor.hero().getName();
+        String name = actor.hero() == HeroType.NONE ? figure.getName() : heroRegistry.get(actor.hero()).definition().displayName();
         MadeMove made = new MadeMove(name, player.color(), from, to, kind, promotion,
                 firstCapture == null ? null : firstCapture.victim().getName(), firstCapture == null ? null : firstCapture.square(),
                 moves.size() + 1, clock.snapshot());
@@ -355,7 +356,7 @@ public final class Game {
         String message = behavior.abilityMessage(before.heroContext(), preview.next().heroContext(), actor, victim, request);
         if (request.borrowed()) message = "Ginseng, копия: " + message;
         Position eventTo = ability == ClowngangerAbility.ILLUSION?clown.illusions().values().stream().filter(i->i.sourceId()==actor.id() && i.bornTurn()==turnNumber).findFirst().orElseThrow().bornAt():request.destination() != null ? request.destination() : target == null ? actorSquare : target;
-        events.add(new GameEvent(events.size() + 1L, turnNumber, GameEvent.Kind.valueOf(ability.id()), player.color(), actor.id(),ability==ClowngangerAbility.ILLUSION?clown.illusions().values().stream().filter(i->i.sourceId()==actor.id() && i.bornTurn()==turnNumber).findFirst().map(i->Long.valueOf(i.id())).orElseThrow():victim == null || ability == FaunAbility.CLOUD || ability == AresAbility.SPEAR || ability==MoleminerAbility.PLANT_MINE || ability==MoleminerAbility.DETONATE || ability==ZeusAbility.THUNDERSTORM || ability==ChronomlinAbility.EVOLVE? null : victim.id(), actorSquare, eventTo, message,
+        events.add(GameEvent.abilityUsed(events.size() + 1L, turnNumber, ability, player.color(), actor.id(),ability==ClowngangerAbility.ILLUSION?clown.illusions().values().stream().filter(i->i.sourceId()==actor.id() && i.bornTurn()==turnNumber).findFirst().map(i->Long.valueOf(i.id())).orElseThrow():victim == null || ability.eventTarget() == AbilityEventTarget.NONE ? null : victim.id(), actorSquare, eventTo, message,
                 ability == GinsengAbility.COPY_SPELL ? before.spells().lastUsed().get(victim.id()) : null, request.borrowed()));
         addActionEffects(before, preview);
         version++;
@@ -745,28 +746,28 @@ public final class Game {
         g.gameField = Field.fromMobaPosition(sandboxBoard);
         var heroes = new HashMap<Position, HeroType>();
         for (PieceState p : g.pieces.values()) if (p.hero() != HeroType.NONE) heroes.put(p.position(), p.hero());
-        heroes.put(new Position(1,6),HeroType.KIKIMORA_BISHOP);
-        heroes.put(new Position(1,5),HeroType.CHRONOMLIN_PAWN);
-        heroes.put(new Position(1,4),HeroType.ZEUS_ROOK);
-        heroes.put(new Position(1,0),HeroType.MOLEMINER_PAWN);heroes.put(new Position(6,0),HeroType.MOLEMINER_PAWN);
-        heroes.put(new Position(1,2),HeroType.CLOWNGANGER_KNIGHT);heroes.put(new Position(6,2),HeroType.CLOWNGANGER_KNIGHT);
-        heroes.put(new Position(1, 3), HeroType.ARES_BISHOP);
-        heroes.put(new Position(6, 3), HeroType.ARES_BISHOP);
-        heroes.put(new Position(0, 1), HeroType.FAUN_KNIGHT);
-        heroes.put(new Position(7, 1), HeroType.FAUN_KNIGHT);
-        heroes.put(new Position(0, 5), HeroType.GINSENG_BISHOP);
-        heroes.put(new Position(7, 5), HeroType.GINSENG_BISHOP);
-        heroes.put(new Position(0, 7), HeroType.IZBA_ROOK);
-        heroes.put(new Position(7, 7), HeroType.IZBA_ROOK);
+        heroes.put(new Position(1,6),HeroType.KIKIMORA);
+        heroes.put(new Position(1,5),HeroType.CHRONOMLIN);
+        heroes.put(new Position(1,4),HeroType.ZEUS);
+        heroes.put(new Position(1,0),HeroType.MOLEMINER);heroes.put(new Position(6,0),HeroType.MOLEMINER);
+        heroes.put(new Position(1,2),HeroType.CLOWNGANGER);heroes.put(new Position(6,2),HeroType.CLOWNGANGER);
+        heroes.put(new Position(1, 3), HeroType.ARES);
+        heroes.put(new Position(6, 3), HeroType.ARES);
+        heroes.put(new Position(0, 1), HeroType.FAUN);
+        heroes.put(new Position(7, 1), HeroType.FAUN);
+        heroes.put(new Position(0, 5), HeroType.GINSENG);
+        heroes.put(new Position(7, 5), HeroType.GINSENG);
+        heroes.put(new Position(0, 7), HeroType.IZBA);
+        heroes.put(new Position(7, 7), HeroType.IZBA);
         g.rebuildPieces(heroes);
         return g;
     }
 
     private void rebuildPieces(Map<Position, HeroType> heroes) {
-        if (heroes.values().stream().filter(h->h==HeroType.ZEUS_ROOK).count()>1)throw new IllegalArgumentException("Only one Zeus per match");
-        if(heroes.containsValue(HeroType.BABA_YAGA_PAWN) || heroes.containsValue(HeroType.ILLUSION))
+        if (heroes.values().stream().filter(h->h==HeroType.ZEUS).count()>1)throw new IllegalArgumentException("Only one Zeus per match");
+        if(heroes.containsValue(HeroType.BABA_YAGA) || heroes.containsValue(HeroType.ILLUSION))
             throw new IllegalArgumentException("Baba Yaga can only be summoned");
-        if ((heroes.containsValue(HeroType.IZBA_ROOK) || heroes.containsValue(HeroType.GINSENG_BISHOP) || heroes.containsValue(HeroType.CLOWNGANGER_KNIGHT) || heroes.containsValue(HeroType.MOLEMINER_PAWN) || heroes.containsValue(HeroType.ZEUS_ROOK)) && !summons.enabled())
+        if ((heroes.containsValue(HeroType.IZBA) || heroes.containsValue(HeroType.GINSENG) || heroes.containsValue(HeroType.CLOWNGANGER) || heroes.containsValue(HeroType.MOLEMINER) || heroes.containsValue(HeroType.ZEUS)) && !summons.enabled())
             summons = SummonState.initial(java.util.concurrent.ThreadLocalRandom.current().nextLong());
         for (var entry : heroes.entrySet()) {
             Figure piece = gameField.getFigureByPosition(entry.getKey());
@@ -847,12 +848,12 @@ public final class Game {
                 if(trap!=null){var attacker=after.pieces().get(trap.ownerId());addEvent(GameEvent.Kind.ILLUSION_HIT,attacker.color(),attacker.id(),i.id(),attacker.position()==null?square:attacker.position(),square,"Болото не взяло иллюзию; её срок продлён");}
             }
         }
-        var yarnEvent=events.isEmpty()?null:events.getLast().kind()==GameEvent.Kind.YARN?events.getLast():null;
+        var yarnEvent=events.isEmpty()?null:events.getLast().isAbility(KikimoraAbility.YARN)?events.getLast():null;
         if(yarnEvent!=null){
             var actor=before.pieces().get(yarnEvent.actorId());var target=before.pieces().get(yarnEvent.targetId());
             for(var p:game.heroes.kikimora.KikimoraAbilities.yarnTargets(before.pieces(),actor,target))addEvent(GameEvent.Kind.YARN_STUN,actor.color(),actor.id(),p.id(),actor.position(),p.position(),"Пряжа оглушила фигуру на "+cell(p.position()));
         }
-        Long spearActor = events.isEmpty() ? null : events.getLast().kind() == GameEvent.Kind.SPEAR ? events.getLast().actorId() : null;
+        Long spearActor = events.isEmpty() ? null : events.getLast().isAbility(AresAbility.SPEAR) ? events.getLast().actorId() : null;
         if (spearActor != null)
             for (PieceState p : after.pieces().values().stream().sorted(java.util.Comparator.comparingLong(PieceState::id)).toList()) {
                 var old = before.pieces().get(p.id());

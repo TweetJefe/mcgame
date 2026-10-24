@@ -1,5 +1,7 @@
 package game.heroes.ares;
 
+import game.heroes.kikimora.KikimoraAbility;
+
 import game.heroes.*;
 import game.history.GameEvent;
 import game.state.*;
@@ -17,9 +19,9 @@ public final class AresValidator {
         for (GameEvent e : s.events()) {
             if (e.kind() == GameEvent.Kind.STUN || e.kind()==GameEvent.Kind.YARN_STUN) {
                 PieceState actor = s.pieces().get(e.actorId()), target = s.pieces().get(e.targetId());boolean yarn=e.kind()==GameEvent.Kind.YARN_STUN;
-                if (actor == null || (actor.hero() !=(yarn?HeroType.KIKIMORA_BISHOP:HeroType.ARES_BISHOP) && actor.hero() != HeroType.GINSENG_BISHOP) || target == null || target.type() == King.class || e.color() != actor.color())
+                if (actor == null || (actor.hero() !=(yarn?HeroType.KIKIMORA:HeroType.ARES) && actor.hero() != HeroType.GINSENG) || target == null || target.type() == King.class || e.color() != actor.color())
                     throw new IllegalArgumentException("Invalid stun source or target");
-                if (counts.merge(e.turn(), 1, Integer::sum) > 2 || s.events().stream().noneMatch(c->c.sequence() < e.sequence() && c.turn() == e.turn() && java.util.Objects.equals(c.actorId(),e.actorId()) && c.kind()==(yarn?GameEvent.Kind.YARN:GameEvent.Kind.SPEAR)))throw new IllegalArgumentException("Stun without matching ability");
+                if (counts.merge(e.turn(), 1, Integer::sum) > 2 || s.events().stream().noneMatch(c->c.sequence() < e.sequence() && c.turn() == e.turn() && java.util.Objects.equals(c.actorId(),e.actorId()) && c.isAbility(yarn?KikimoraAbility.YARN:AresAbility.SPEAR)))throw new IllegalArgumentException("Stun without matching ability");
                 int duration=yarn && s.events().stream().filter(c->c.kind() == GameEvent.Kind.YARN_STUN && c.turn()==e.turn() && java.util.Objects.equals(c.actorId(),e.actorId())).count()==2?2:1;
                 long until=yarn?game.heroes.kikimora.KikimoraAbilities.stunDeadline(e.turn(),actor.color(),target.color(),duration):Math.addExact(e.turn(), 1L);
                 stuns.merge(e.targetId(),until, Math::max);
@@ -28,7 +30,7 @@ public final class AresValidator {
                 stuns.remove(e.targetId());
             if (e.kind() == GameEvent.Kind.ARES_REVENGE) {
                 PieceState source = s.pieces().get(e.actorId()), target = s.pieces().get(e.targetId());
-                if (source.hero() != HeroType.ARES_BISHOP || (source.status() != PieceState.Status.CAPTURED && source.status()!=PieceState.Status.DESTROYED) || source.ultimateCharge() != 0 || source.color() != e.color() || target == null || (target.status() != PieceState.Status.CAPTURED && target.status()!=PieceState.Status.DESTROYED))
+                if (source.hero() != HeroType.ARES || (source.status() != PieceState.Status.CAPTURED && source.status()!=PieceState.Status.DESTROYED) || source.ultimateCharge() != 0 || source.color() != e.color() || target == null || (target.status() != PieceState.Status.CAPTURED && target.status()!=PieceState.Status.DESTROYED))
                     throw new IllegalArgumentException("Invalid Ares revenge");
                 if (s.events().stream().noneMatch(c -> c.sequence() < e.sequence() && c.turn() == e.turn() && c.targetId() != null && c.targetId().equals(source.id()) && Set.of(GameEvent.Kind.MOVE, GameEvent.Kind.COUNTER_CAPTURE, GameEvent.Kind.BOG_CAPTURE,GameEvent.Kind.MINE_CAPTURE,GameEvent.Kind.LIGHTNING_CAPTURE,GameEvent.Kind.BLAST_CAPTURE,GameEvent.Kind.BLAST_DEATH).contains(c.kind())))
                     throw new IllegalArgumentException("Revenge without Ares capture");

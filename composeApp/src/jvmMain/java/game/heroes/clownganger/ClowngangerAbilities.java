@@ -15,7 +15,7 @@ public final class ClowngangerAbilities {
     }
     public static MoveResult availability(PieceState actor,Abilities a,ClowngangerRules rules){
         if(actor==null || actor.position()==null)return MovementRejection.EMPTY_SOURCE;
-        if(actor.hero()!=HeroType.CLOWNGANGER_KNIGHT || !abilities().contains(a))return AbilityRejection.NO_ABILITY;
+        if(actor.hero()!=HeroType.CLOWNGANGER || !abilities().contains(a))return AbilityRejection.NO_ABILITY;
         if(a==ClowngangerAbility.BOX && actor.cooldown()>0)return AbilityRejection.ABILITY_COOLDOWN;
         if(a==ClowngangerAbility.ILLUSION && actor.ultimateCharge()<rules.ultimateCaptures())return AbilityRejection.ULTIMATE_NOT_READY;
         return Success.SUCCESS;

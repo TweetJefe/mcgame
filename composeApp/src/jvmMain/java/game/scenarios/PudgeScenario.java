@@ -97,7 +97,7 @@ public enum PudgeScenario implements TrainingScenario {
         put(factory, board, Rook.class, WHITE, pudge);
         PudgeRules rules = requiresCharge() ? new PudgeRules(0, 2, true, true) : PudgeRules.sandbox();
         return Game.fromMobaPosition(new GamePosition(board, WHITE, CastlingRights.none(), null, 0),
-                Map.of(square(pudge), HeroType.PUDGE_ROOK), rules, time);
+                Map.of(square(pudge), HeroType.PUDGE), rules, time);
     }
 
     private static void put(Field factory, Map<Position, Figure> board, Class<? extends Figure> type,
