@@ -3,36 +3,26 @@ package game.heroes.lumeshard;
 import game.heroes.Abilities;
 import game.heroes.AbilityCost;
 import game.heroes.AbilityRequest;
-import game.heroes.AbilityUse;
 import game.heroes.AbstractHero;
 import game.heroes.HeroActionContext;
 import game.heroes.HeroEffect;
-import game.heroes.compat.LegacyPreview;
 import game.moves.AbilityRejection;
 import game.moves.StatusRejection;
 import game.state.PieceState;
 import game.state.SquareColor;
 import java.util.Map;
 import java.util.Objects;
-import model.Field;
 import model.Position;
 import model.figures.King;
 
 /** Неизменяемая стратегия: геометрия и эффекты героя, общие проверки предоставляет база. */
-public final class LumeshardHero extends AbstractHero implements LegacyPreview {
+public final class LumeshardHero extends AbstractHero {
     private final LumeshardRules rules;
 
     public LumeshardHero(LumeshardRules rules) {
         super(LumeshardDefinition.INSTANCE, LumeshardAbility.getAbilities(), LumeshardAbility.TELEPORT,
                 Objects.requireNonNull(rules, "rules").ultimateCaptures());
         this.rules = rules;
-    }
-
-    /** Совместимость ограниченного статического API; игровой путь использует полный AbilityRequest. */
-    @Override
-    public HeroEffect legacyPreview(Field field, PieceState actor, PieceState target, Position square,
-                                    Abilities ability) {
-        return LumeshardAbilities.preview(field, actor, target, square, ability, rules);
     }
 
     @Override protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor,
@@ -57,18 +47,6 @@ public final class LumeshardHero extends AbstractHero implements LegacyPreview {
         return HeroEffect.success(Map.of(actor.id(), actor,
                 target.id(), target.withBlindness(Math.max(target.blindTurns(), rules.blindnessTurns()))))
                 .withCost(AbilityCost.cooldown(rules.laserCooldown()));
-    }
-
-    /** Старый detached-вход возвращает только геометрию и оплаченное состояние, без операций механик. */
-    HeroEffect legacyPreview(PieceState actor, PieceState target, Position square, Abilities ability, boolean borrowed) {
-        return effect(actor, target, square, ability).applyCost(actor, AbilityUse.of(type(), borrowed));
-    }
-
-    /** Сохранение семантики старого публичного помощника; игровой путь использует afterCapture базы. */
-    PieceState legacyAfterCapture(PieceState actor) {
-        if (rules.ultimateCaptures() == 0) return actor;
-        return actor.withAbilityState(actor.cooldown(),
-                Math.min(rules.ultimateCaptures(), actor.ultimateCharge() + 1), null);
     }
 
     @Override public String abilityMessage(HeroActionContext before, HeroActionContext after, PieceState actor,

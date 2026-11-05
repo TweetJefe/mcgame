@@ -3,36 +3,25 @@ package game.heroes.moleminer;
 import game.heroes.Abilities;
 import game.heroes.AbilityCost;
 import game.heroes.AbilityRequest;
-import game.heroes.AbilityUse;
 import game.heroes.AbstractHero;
 import game.heroes.HeroActionContext;
 import game.heroes.HeroEffect;
-import game.heroes.HeroType;
-import game.heroes.compat.LegacyPreview;
 import game.moves.AbilityRejection;
 import game.state.PieceState;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import model.Field;
 import model.Position;
 
 /** Геометрия прыжка и стоимость активации; взрыв и мины применяются MineMechanic. */
-public final class MoleminerHero extends AbstractHero implements LegacyPreview {
+public final class MoleminerHero extends AbstractHero {
     private final MoleminerRules rules;
 
     public MoleminerHero(MoleminerRules rules) {
         super(MoleminerDefinition.INSTANCE, MoleminerAbility.getAbilities(), MoleminerAbility.DETONATE,
                 Objects.requireNonNull(rules, "rules").ultimateCaptures());
         this.rules = rules;
-    }
-
-    /** Совместимость ограниченного статического API; игровой путь использует полный AbilityRequest. */
-    @Override
-    public HeroEffect legacyPreview(Field field, PieceState actor, PieceState target, Position square,
-                                    Abilities ability) {
-        return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
     }
 
     @Override protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor, PieceState target,
@@ -44,10 +33,6 @@ public final class MoleminerHero extends AbstractHero implements LegacyPreview {
         return request.ability() == MoleminerAbility.PLANT_MINE
                 ? effect.withOperations(new MineMechanic.Plant(actor.id(), actor.position()))
                 : effect.withOperations(new MineMechanic.Blast(actor.id(), request.target()));
-    }
-
-    HeroEffect detachedPreview(PieceState actor, Position square, Abilities ability, boolean borrowed) {
-        return calculate(actor, square, ability).applyCost(actor, AbilityUse.of(HeroType.MOLEMINER, borrowed));
     }
 
     private HeroEffect calculate(PieceState actor, Position square, Abilities ability) {

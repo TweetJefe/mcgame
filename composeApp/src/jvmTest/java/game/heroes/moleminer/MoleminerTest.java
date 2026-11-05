@@ -65,7 +65,7 @@ public class MoleminerTest{
         var b=board();put(b,Pawn.class,WHITE,"c2");put(b,Rook.class,WHITE,"e4");Game g=AresTest.charge(createMiner(b,Map.of()),"c2",2);long ally=g.getPieceState(pos("e4")).id();cast(g,"c2","e4",MoleminerAbility.DETONATE);assertEquals(PieceState.Status.DESTROYED,g.getPieceState(ally).status());assertEquals(0,g.getEconomy().whiteHalves());assertEquals(0,g.getEconomy().blackHalves());assertTrue(g.getSnapshot().whiteCaptures().isEmpty());assertTrue(g.getSnapshot().blackCaptures().isEmpty());AresTest.roundtrip(g);
     }
     @Test public void randomBlastIsAlwaysTwoByTwoIncludesLandingAndStaysInsideTheBoard()throws Exception{
-        for(String cell:List.of("a1","a4","h4","h8","e4")){var options=MoleminerAbilities.corners(pos(cell));assertFalse(options.isEmpty());for(var corner:options){var blast=new MineState.Blast(1,1,pos(cell),corner);assertTrue(blast.contains(pos(cell)));assertTrue(blast.end().getRow()<8 && blast.end().getColumn()<8);}}
+        for(String cell:List.of("a1","a4","h4","h8","e4")){var options=MoleminerHero.corners(pos(cell));assertFalse(options.isEmpty());for(var corner:options){var blast=new MineState.Blast(1,1,pos(cell),corner);assertTrue(blast.contains(pos(cell)));assertTrue(blast.end().getRow()<8 && blast.end().getColumn()<8);}}
         var seen=new HashSet<Position>();for(long seed=0;seed<20;seed++){Game g=seed(ready(),seed);var before=g.getSnapshot();g.getAbilityTargets(pos("c2"),MoleminerAbility.DETONATE);assertEquals(before,g.getSnapshot());cast(g,"c2","e4",MoleminerAbility.DETONATE);seen.add(g.getSnapshot().mines().blasts().getFirst().corner());AresTest.roundtrip(g);}assertEquals(4,seen.size());
     }
     @Test public void blastKillsExactlyTheFiguresInItsChosenSquare()throws Exception{

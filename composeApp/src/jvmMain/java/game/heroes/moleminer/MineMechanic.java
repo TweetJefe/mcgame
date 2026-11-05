@@ -1,8 +1,6 @@
 package game.heroes.moleminer;
 
 import game.heroes.clownganger.ClownMechanic;
-import game.heroes.HeroAbilities;
-import game.heroes.HeroRules;
 import game.heroes.HeroType;
 import game.mechanics.MechanicSession;
 import game.moves.Capture;
@@ -47,7 +45,7 @@ public final class MineMechanic implements MechanicDefinition<MineState> {
         return List.of(handler(Plant.class, "mines.plant", ABILITY_PREPARE, "spells.cast", (s, op) -> {
             s.state(MINES, s.state(MINES).plant(op.owner(), op.square(), s.turn())); return Success.SUCCESS;
         }), handler(Blast.class, "mines.blast", ENTRY, "terrain.entry", (s, op) -> {
-            var result = explode(s.before().field(), s.pieces(), op.owner(), op.landing(), s.state(MINES), s.state(SUMMONS), s.captures(), s.turn(), s.rules(), s);
+            var result = explode(s.before().field(), s.pieces(), op.owner(), op.landing(), s.state(MINES), s.state(SUMMONS), s.captures(), s.turn(), s);
             s.pieces(result.pieces());
             s.state(MINES, result.mines());
             s.state(SUMMONS, result.summons());
@@ -79,12 +77,12 @@ public final class MineMechanic implements MechanicDefinition<MineState> {
     }
     @Override public void validate(GameSnapshot snapshot) { MineValidator.validate(snapshot); }
 
-    public record Explosion(Map<Long, PieceState> pieces, MineState mines, SummonState summons,
+    private record Explosion(Map<Long, PieceState> pieces, MineState mines, SummonState summons,
                             List<Capture> captures, List<Long> illusionHits) {}
 
     /** Одновременное удаление жертв предшествует наградам и ответным реакциям. */
-    public static Explosion explode(Field factory, Map<Long, PieceState> prepared, long actorId, Position landing,
-            MineState mines, SummonState summons, List<Capture> previous, long turn, HeroRules rules,
+    private static Explosion explode(Field factory, Map<Long, PieceState> prepared, long actorId, Position landing,
+            MineState mines, SummonState summons, List<Capture> previous, long turn,
             MechanicSession session) {
         var corners = MoleminerHero.corners(landing);
         var choice = summons.choose(corners.size());
@@ -111,26 +109,20 @@ public final class MineMechanic implements MechanicDefinition<MineState> {
                     factory.createFigure(victim.type(), victim.position(), victim.color()), victim.position(), true,
                     Capture.Cause.BLAST));
             if (victim.color() != actor.color()) {
-                PieceState charged = session == null ? HeroAbilities.afterCapture(states.get(actorId), rules)
-                        : session.heroes().get(actor.hero()).afterCapture(states.get(actorId));
+                PieceState charged = session.heroes().get(actor.hero()).afterCapture(states.get(actorId));
                 states.put(actorId, charged);
             }
         }
-        if (session != null) {
-            session.state(MINES, mines.blast(blast));
-            session.state(SUMMONS, new SummonState(true, choice.nextState(), summons.records()));
-        }
+        session.state(MINES, mines.blast(blast));
+        session.state(SUMMONS, new SummonState(true, choice.nextState(), summons.records()));
         for (PieceState victim : victims) {
             if (victim.hero() == HeroType.ILLUSION) continue;
-            var reaction = session == null
-                    ? HeroAbilities.captureReaction(factory, states, victim, actorId, victim.position(), rules)
-                    : session.react(states, victim, actorId, victim.position());
+            var reaction = session.react(states, victim, actorId, victim.position());
             if (!reaction.result().isSuccess()) throw new IllegalArgumentException("Invalid explosion reaction");
             states.putAll(reaction.updates());
             captures.addAll(reaction.captures());
         }
-        return new Explosion(Map.copyOf(states), session == null ? mines.blast(blast) : session.state(MINES),
-                session == null ? new SummonState(true, choice.nextState(), summons.records()) : session.state(SUMMONS),
+        return new Explosion(Map.copyOf(states), session.state(MINES), session.state(SUMMONS),
                 List.copyOf(captures), List.copyOf(hits));
     }
 

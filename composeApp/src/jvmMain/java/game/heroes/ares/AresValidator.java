@@ -23,7 +23,7 @@ public final class AresValidator {
                     throw new IllegalArgumentException("Invalid stun source or target");
                 if (counts.merge(e.turn(), 1, Integer::sum) > 2 || s.events().stream().noneMatch(c->c.sequence() < e.sequence() && c.turn() == e.turn() && java.util.Objects.equals(c.actorId(),e.actorId()) && c.isAbility(yarn?KikimoraAbility.YARN:AresAbility.SPEAR)))throw new IllegalArgumentException("Stun without matching ability");
                 int duration=yarn && s.events().stream().filter(c->c.legacyKind() == GameEvent.Kind.YARN_STUN && c.turn()==e.turn() && java.util.Objects.equals(c.actorId(),e.actorId())).count()==2?2:1;
-                long until=yarn?game.heroes.kikimora.KikimoraAbilities.stunDeadline(e.turn(),actor.color(),target.color(),duration):Math.addExact(e.turn(), 1L);
+                long until=yarn?game.heroes.kikimora.KikimoraHero.stunDeadline(e.turn(),actor.color(),target.color(),duration):Math.addExact(e.turn(), 1L);
                 stuns.merge(e.targetId(),until, Math::max);
             } else if (e.legacyKind() == GameEvent.Kind.END_TURN) stuns.values().removeIf(t -> t <= e.turn());
             else if (e.targetId() != null && !(e.legacyKind()==GameEvent.Kind.MOVE && s.pieces().get(e.targetId()).hero()==HeroType.ILLUSION) && Set.of(GameEvent.Kind.CAPTURE, GameEvent.Kind.MOVE, GameEvent.Kind.COUNTER_CAPTURE, GameEvent.Kind.BOG_CAPTURE, GameEvent.Kind.ARES_REVENGE,GameEvent.Kind.MINE_CAPTURE,GameEvent.Kind.LIGHTNING_CAPTURE,GameEvent.Kind.BLAST_CAPTURE,GameEvent.Kind.BLAST_DEATH, GameEvent.Kind.REPLACE).contains(e.legacyKind()))

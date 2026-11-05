@@ -4,23 +4,18 @@ import game.heroes.Abilities;
 import game.heroes.AbilityCost;
 import game.heroes.AbilityEventDetails;
 import game.heroes.AbilityRequest;
-import game.heroes.AbilityUse;
 import game.heroes.AbstractHero;
 import game.heroes.HeroActionContext;
 import game.heroes.HeroEffect;
-import game.heroes.HeroType;
-import game.heroes.compat.LegacyPreview;
 import game.moves.AbilityRejection;
 import game.state.PieceState;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.function.Predicate;
-import model.Field;
 import model.Position;
-import model.figures.Empty;
 
 /** Геометрия коробки и иллюзии; жизненным циклом двойника управляет ClownMechanic. */
-public final class ClowngangerHero extends AbstractHero implements LegacyPreview {
+public final class ClowngangerHero extends AbstractHero {
     private final ClowngangerRules rules;
 
     public ClowngangerHero(ClowngangerRules rules) {
@@ -29,25 +24,12 @@ public final class ClowngangerHero extends AbstractHero implements LegacyPreview
         this.rules = rules;
     }
 
-    /** Совместимость ограниченного статического API; игровой путь использует полный AbilityRequest. */
-    @Override
-    public HeroEffect legacyPreview(Field field, PieceState actor, PieceState target, Position square,
-                                    Abilities ability) {
-        return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
-    }
-
     @Override protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor, PieceState target,
                                                     AbilityRequest request) {
         HeroEffect effect = calculate(square -> context.pieceAt(square) == null, actor, target, request.target(),
                 request.ability(), context.currentTurn());
         return effect.result().isSuccess() && request.ability() == ClowngangerAbility.ILLUSION
                 ? effect.withOperations(new ClownMechanic.Create(actor, request.target())) : effect;
-    }
-
-    HeroEffect detachedPreview(Field field, PieceState actor, PieceState target, Position square,
-                               Abilities ability, long turn, boolean borrowed) {
-        return calculate(position -> field.getFigureByPosition(position) instanceof Empty, actor, target, square, ability, turn)
-                .applyCost(actor, AbilityUse.of(HeroType.CLOWNGANGER, borrowed));
     }
 
     private HeroEffect calculate(Predicate<Position> vacant, PieceState actor, PieceState target, Position square,

@@ -37,13 +37,13 @@ public class AresHeroTest {
         assertEquals(nativeEffect, hero.preview(context, new AbilityRequest(actor.position(), AresAbility.SPEAR, pos("f2"))));
     }
 
-    @Test public void rawCallbacksKeepTheirOldPotSemanticsWithoutChangingTheNativeTemplate() {
+    @Test public void pottedCasterCannotActivateAbilitiesOrEarnCharge() {
         var actor = AresTest.basic().getPieceState(pos("c2")).asPot();
         var rules = new AresRules(6, 2);
         var hero = new AresHero(rules);
-        assertEquals(Success.SUCCESS, AresAbilities.availability(actor, AresAbility.SPEAR, rules));
+
         assertEquals(StatusRejection.POTTED, hero.availability(actor, AresAbility.SPEAR));
-        assertEquals(1, AresAbilities.afterCapture(actor, rules).ultimateCharge());
+
         assertEquals(actor, hero.afterCapture(actor));
     }
 

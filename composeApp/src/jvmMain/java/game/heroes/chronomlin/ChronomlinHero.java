@@ -6,7 +6,6 @@ import game.heroes.AbilityRequest;
 import game.heroes.AbstractHero;
 import game.heroes.HeroActionContext;
 import game.heroes.HeroEffect;
-import game.heroes.compat.LegacyPreview;
 import game.moves.AbilityRejection;
 import game.moves.MoveResult;
 import game.moves.Success;
@@ -14,7 +13,6 @@ import game.state.PieceState;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
-import model.Field;
 import model.Figure;
 import model.Position;
 import model.figures.Bishop;
@@ -24,20 +22,13 @@ import model.figures.Rook;
 import rules.moba.TerrainGeometry;
 
 /** Притяжение и эволюция сохраняют личность, инвентарь и длительные воздействия исполнителя. */
-public final class ChronomlinHero extends AbstractHero implements LegacyPreview {
+public final class ChronomlinHero extends AbstractHero {
     private final ChronomlinRules rules;
 
     public ChronomlinHero(ChronomlinRules rules) {
         super(ChronomlinDefinition.INSTANCE, ChronomlinAbility.getAbilities(), ChronomlinAbility.EVOLVE,
                 Objects.requireNonNull(rules, "rules").ultimateCaptures());
         this.rules = rules;
-    }
-
-    /** Совместимость ограниченного статического API; игровой путь использует полный AbilityRequest. */
-    @Override
-    public HeroEffect legacyPreview(Field field, PieceState actor, PieceState target, Position square,
-                                    Abilities ability) {
-        return ChronomlinAbilities.preview(field, actor, target, ability, rules, false);
     }
 
     @Override

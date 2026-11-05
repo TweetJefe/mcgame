@@ -52,7 +52,7 @@ public class ClowngangerHeroTest {
         assertEquals(actor, context.pieceById(1));
     }
 
-    @Test public void currentPiecesDetermineVacancyWhileTheDetachedFacadeKeepsFieldSemantics() {
+    @Test public void currentPiecesDetermineVacancy() {
         var rules = new ClowngangerRules(4, 2, 2, 3);
         var hero = new ClowngangerHero(rules);
         var base = context(HeroType.CLOWNGANGER, Knight.class, FigureColor.WHITE, 0, 3);
@@ -64,16 +64,13 @@ public class ClowngangerHeroTest {
         pieces.put(occupant.id(), occupant);
         var occupied = new HeroActionContext(base.field(), pieces, base.currentTurn(), base.mechanics());
         assertEquals(AbilityRejection.INVALID_ABILITY_TARGET, hero.preview(occupied, request).result());
-        assertEquals(Success.SUCCESS, ClowngangerAbilities.preview(base.field(), actor, null, pos("e4"),
-                ClowngangerAbility.ILLUSION, base.currentTurn(), rules, false).result());
 
         var board = new HashMap<>(base.field().getGameField());
         board.put(pos("e4"), base.field().createFigure(Pawn.class, pos("e4"), FigureColor.BLACK));
         var vacant = new HeroActionContext(Field.fromMobaPosition(board), base.pieces(),
                 base.currentTurn(), base.mechanics());
         assertEquals(Success.SUCCESS, hero.preview(vacant, request).result());
-        assertEquals(AbilityRejection.INVALID_ABILITY_TARGET, ClowngangerAbilities.preview(vacant.field(), actor,
-                null, pos("e4"), ClowngangerAbility.ILLUSION, base.currentTurn(), rules, false).result());
+
         assertEquals(actor, base.pieceById(1));
     }
 

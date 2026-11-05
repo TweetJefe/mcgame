@@ -9,7 +9,6 @@ import game.heroes.HeroActionContext;
 import game.heroes.HeroDefinitions;
 import game.heroes.HeroEffect;
 import game.heroes.HeroType;
-import game.heroes.compat.LegacyPreview;
 import game.moves.AbilityRejection;
 import game.moves.MovementRejection;
 import game.moves.StatusRejection;
@@ -20,26 +19,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
-import model.Field;
 import model.Position;
 import model.figures.King;
 import rules.standard.MoveValidator;
 
 /** Сдвиг и получение копии; исполнение сохранённой копии остаётся общим путём реестра. */
-public final class GinsengHero extends AbstractHero implements LegacyPreview {
+public final class GinsengHero extends AbstractHero {
     private final GinsengRules rules;
 
     public GinsengHero(GinsengRules rules) {
         super(GinsengDefinition.INSTANCE, GinsengAbility.getAbilities(), GinsengAbility.COPY_SPELL,
                 Objects.requireNonNull(rules, "rules").ultimateCaptures());
         this.rules = rules;
-    }
-
-    /** Совместимость ограниченного статического API; игровой путь использует полный AbilityRequest. */
-    @Override
-    public HeroEffect legacyPreview(Field field, PieceState actor, PieceState target, Position square,
-                                    Abilities ability) {
-        return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
     }
 
     @Override

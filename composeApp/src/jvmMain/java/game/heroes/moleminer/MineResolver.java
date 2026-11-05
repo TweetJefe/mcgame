@@ -24,10 +24,10 @@ public final class MineResolver{
             if(++reactions>states.size()*2L+64)return new Result(MovementRejection.INVALID_BOARD,before,mines,previous,List.of());
             var owner=states.get(mines.cells().get(p.position()).ownerId());mines=mines.trigger(owner.id(),p.id(),p.position(),turn);
             if(p.hero()==HeroType.ILLUSION){hits.add(p.id());continue;}
-            states.put(p.id(),p.hidden(PieceState.Status.CAPTURED));states.put(owner.id(),HeroAbilities.afterCapture(owner,rules));
+            states.put(p.id(),p.hidden(PieceState.Status.CAPTURED));states.put(owner.id(),HeroRegistry.fromRules(rules).get(owner.hero()).afterCapture(owner));
             captures.add(new Capture(owner.id(),p.id(),owner.color(),factory.createFigure(p.type(),p.position(),p.color()),p.position(),true,Capture.Cause.MINE));
             if(session!=null)session.state(game.mechanics.BuiltInStates.MINES,mines);
-            var reaction=session==null?HeroAbilities.captureReaction(factory,states,p,owner.id(),p.position(),rules):session.react(states,p,owner.id(),p.position());
+            var reaction=session==null?CaptureReactions.resolve(factory,states,p,owner.id(),p.position(),rules):session.react(states,p,owner.id(),p.position());
             if(session!=null)mines=session.state(game.mechanics.BuiltInStates.MINES);if(!reaction.result().isSuccess())return new Result(reaction.result(),before,mines,previous,List.of());
             states.putAll(reaction.updates());captures.addAll(reaction.captures());for(var update:reaction.updates().values())if(update.position()!=null)entries.add(update.id());
         }

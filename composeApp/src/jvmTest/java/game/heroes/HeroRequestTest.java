@@ -34,7 +34,6 @@ public class HeroRequestTest {
         assertEquals(first, hero.preview(context, request));
         assertSame(target, context.pieceAt(pos("a2")));
         assertSame(actor, context.pieceAt(pos("a1")));
-        assertEquals(first, hero.previewRequest(context, actor, target, request));
     }
 
     @Test public void canonicalPreviewValidatesAvailabilityBeforeTargeting() {
@@ -80,15 +79,6 @@ public class HeroRequestTest {
             assertEquals(pos("b3"), effect.updates().get(target.id()).position());
             assertEquals(borrowed ? 8 : 3, effect.updates().get(actor.id()).cooldown());
         }
-    }
-
-    @Test public void detachedCompatibilityEntryPreservesItsOriginalPieceArguments() {
-        var context = new HeroActionContext(field, Map.of(), 0);
-        assertEquals(Success.SUCCESS, hero.preview(context, actor, target, target.position(), PudgeAbility.SWALLOW).result());
-        assertEquals(Success.SUCCESS, hero.previewRequest(context, actor, target,
-                new AbilityRequest(actor.position(), PudgeAbility.SWALLOW, target.position())).result());
-        assertEquals(MovementRejection.EMPTY_SOURCE, hero.preview(context,
-                new AbilityRequest(actor.position(), PudgeAbility.SWALLOW, target.position())).result());
     }
 
     private enum Shift implements Abilities {

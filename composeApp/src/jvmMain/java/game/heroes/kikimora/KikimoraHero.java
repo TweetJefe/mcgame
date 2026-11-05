@@ -1,12 +1,10 @@
 package game.heroes.kikimora;
 
-import game.heroes.Abilities;
 import game.heroes.AbilityCost;
 import game.heroes.AbilityRequest;
 import game.heroes.AbstractHero;
 import game.heroes.HeroActionContext;
 import game.heroes.HeroEffect;
-import game.heroes.compat.LegacyPreview;
 import game.moves.AbilityRejection;
 import game.moves.StatusRejection;
 import game.state.PieceState;
@@ -15,26 +13,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import model.Field;
 import model.FigureColor;
 import model.Position;
 import model.figures.King;
 
 /** Геометрия полёта пряжи и превращение цели в горшок. */
-public final class KikimoraHero extends AbstractHero implements LegacyPreview {
+public final class KikimoraHero extends AbstractHero {
     private final KikimoraRules rules;
 
     public KikimoraHero(KikimoraRules rules) {
         super(KikimoraDefinition.INSTANCE, KikimoraAbility.getAbilities(), KikimoraAbility.CLAY_POT,
                 Objects.requireNonNull(rules, "rules").ultimateCaptures());
         this.rules = rules;
-    }
-
-    /** Совместимость ограниченного статического API; игровой путь использует полный AbilityRequest. */
-    @Override
-    public HeroEffect legacyPreview(Field field, PieceState actor, PieceState target, Position square,
-                                    Abilities ability) {
-        return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
     }
 
     @Override
@@ -65,7 +55,7 @@ public final class KikimoraHero extends AbstractHero implements LegacyPreview {
     }
 
     /** Точный решётчатый луч продолжает полёт, включая направления с наклоном (1, 2). */
-    static List<PieceState> yarnTargets(Map<Long, PieceState> pieces, PieceState actor, PieceState first) {
+    public static List<PieceState> yarnTargets(Map<Long, PieceState> pieces, PieceState actor, PieceState first) {
         var result = new ArrayList<PieceState>();
         result.add(first);
         int dr = first.position().getRow() - actor.position().getRow();
@@ -85,7 +75,7 @@ public final class KikimoraHero extends AbstractHero implements LegacyPreview {
         return List.copyOf(result);
     }
 
-    static long stunDeadline(long turn, FigureColor caster, FigureColor owner, int turns) {
+    public static long stunDeadline(long turn, FigureColor caster, FigureColor owner, int turns) {
         return Math.addExact(turn, 2L * turns - (caster == owner ? 0 : 1));
     }
 

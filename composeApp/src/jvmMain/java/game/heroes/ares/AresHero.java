@@ -7,7 +7,6 @@ import game.heroes.AbstractHero;
 import game.heroes.HeroActionContext;
 import game.heroes.HeroEffect;
 import game.heroes.HeroType;
-import game.heroes.compat.LegacyPreview;
 import game.moves.AbilityRejection;
 import game.moves.Capture;
 import game.moves.MovementRejection;
@@ -19,25 +18,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import model.Field;
 import model.Position;
 import model.figures.King;
 
 /** Направление копья задаётся клеткой луча; полёт всегда использует полную дальность. */
-public final class AresHero extends AbstractHero implements LegacyPreview {
+public final class AresHero extends AbstractHero {
     private final AresRules rules;
 
     public AresHero(AresRules rules) {
         super(AresDefinition.INSTANCE, AresAbility.getAbilities(), null,
                 Objects.requireNonNull(rules, "rules").revengeCaptures());
         this.rules = rules;
-    }
-
-    /** Совместимость ограниченного статического API; игровой путь использует полный AbilityRequest. */
-    @Override
-    public HeroEffect legacyPreview(Field field, PieceState actor, PieceState target, Position square,
-                                    Abilities ability) {
-        return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
     }
 
     @Override

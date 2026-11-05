@@ -34,6 +34,7 @@ public class HeroDefinitionsTest {
         CAST;
         @Override public String id() { return "TEST_ONLY"; }
         @Override public String getDisplayName() { return "Test cast"; }
+        @Override public HeroTargeting targeting() { return HeroTargeting.untargeted(); }
     }
     private static final HeroRulesCodec<TestRules> CODEC = new HeroRulesCodec<>() {
         @Override public String section() { return "testRules"; }
@@ -112,7 +113,7 @@ public class HeroDefinitionsTest {
         Position square = new Position(0, 2);
         PieceState actor = PieceState.initial(1, field.getFigureByPosition(square), TEST.type());
         var context = new HeroActionContext(field, Map.of(actor.id(), actor), 1);
-        assertEquals(7, strategy.preview(context, actor, null, null, TestAbility.CAST)
+        assertEquals(7, strategy.preview(context, new AbilityRequest(actor.position(), TestAbility.CAST, null))
                 .updates().get(actor.id()).cooldown());
         assertEquals(0, actor.cooldown());
         assertEquals(2, ((TestHero) HeroRegistry.fromRules(defaults).get(TEST.type())).rules.cooldown());

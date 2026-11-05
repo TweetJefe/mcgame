@@ -36,7 +36,7 @@ public class ChronomlinHeroTest {
         assertEquals(actor, context.pieceById(actor.id()));
     }
 
-    @Test public void nativeRayUsesPreparedPiecesWhileTheDetachedFacadeRetainsItsOriginalFieldSemantics() {
+    @Test public void nativeRayUsesPreparedPieces() {
         var snapshot = ChronomlinTest.basic().getSnapshot();
         var actor = snapshot.pieceAt(pos("c2"));
         var target = snapshot.pieceAt(pos("c6"));
@@ -47,10 +47,7 @@ public class ChronomlinHeroTest {
         assertEquals(AbilityRejection.ABILITY_BLOCKED, hero.preview(
                 new HeroActionContext(snapshot.field(), pieces, 1, snapshot.mechanics()),
                 new AbilityRequest(actor.position(), ChronomlinAbility.GRAPPLE, target.position())).result());
-        assertEquals(Success.SUCCESS, ChronomlinAbilities.preview(snapshot.field(), actor, target,
-                ChronomlinAbility.GRAPPLE, ChronomlinRules.prototype(), false).result());
-        assertEquals(Success.SUCCESS, ChronomlinAbilities.availability(actor.asPot(), ChronomlinAbility.GRAPPLE,
-                ChronomlinRules.prototype(), false));
+
         assertEquals(StatusRejection.POTTED, hero.availability(actor.asPot(), ChronomlinAbility.GRAPPLE));
     }
 

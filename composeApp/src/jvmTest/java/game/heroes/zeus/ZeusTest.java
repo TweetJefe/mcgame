@@ -1,5 +1,13 @@
 package game.heroes.zeus;
 
+import game.heroes.ginseng.BorrowedAbility;
+import game.heroes.ginseng.SpellState;
+import game.mechanics.MechanicSession;
+import game.mechanics.MechanicStates;
+import game.mechanics.MechanicPhase;
+import game.mechanics.BuiltInStates;
+import game.summoning.SummonState;
+
 import game.heroes.pudge.PudgeAbility;
 import game.heroes.ginseng.GinsengAbility;
 import game.heroes.faun.FaunAbility;
@@ -72,9 +80,33 @@ public class ZeusTest {
     @Test public void sameTargetChargesOfZeusAndGinsengNeverCombineAndOnlyKillerPoolResets(){
         Game g=basic();var s=g.getSnapshot();var actor=s.pieceAt(pos("e2"));var target=s.pieceAt(pos("e4"));var ally=new PieceState(999,Bishop.class,WHITE,pos("c2"),PieceState.Status.BOARD,HeroType.GINSENG,0,0,actor.inventory(),null,0,SquareColor.at(pos("c2")));var pieces=new HashMap<>(s.pieces());pieces.put(ally.id(),ally);
         var lightning=LightningState.empty();for(int i=0;i<2;i++)lightning=lightning.pulse(new LightningState.Pulse(actor.id(),target.id(),1,target.position(),LightningState.Kind.HIT),s.heroRules().zeus());
-        var first=ZeusAbilities.cast(s.field(),pieces,ally,target,ZeusAbility.CHAIN_LIGHTNING,lightning,s.summons(),1,s.heroRules(),true);assertTrue(first.effect().captures().isEmpty());assertEquals(2,first.lightning().count(actor.id(),target.id()));assertEquals(1,first.lightning().count(ally.id(),target.id()));
-        putOtherTarget(pieces,s);long other=998;lightning=first.lightning().pulse(new LightningState.Pulse(ally.id(),other,1,pos("h4"),LightningState.Kind.HIT),s.heroRules().zeus());var killed=ZeusAbilities.cast(s.field(),pieces,actor,target,ZeusAbility.CHAIN_LIGHTNING,lightning,s.summons(),1,s.heroRules(),false);assertEquals(1,killed.effect().captures().size());assertEquals(0,killed.lightning().count(actor.id(),target.id()));assertEquals(1,killed.lightning().count(ally.id(),other));assertEquals(0,killed.lightning().count(ally.id(),target.id()));
+        var first=prepareLightning(s.field(),pieces,ally,target,ZeusAbility.CHAIN_LIGHTNING,lightning,s.summons(),3,s.heroRules(),true);assertTrue(first.captures().isEmpty());assertEquals(2,first.state(BuiltInStates.LIGHTNING).count(actor.id(),target.id()));assertEquals(1,first.state(BuiltInStates.LIGHTNING).count(ally.id(),target.id()));
+        putOtherTarget(pieces,s);long other=998;lightning=first.state(BuiltInStates.LIGHTNING).pulse(new LightningState.Pulse(ally.id(),other,1,pos("h4"),LightningState.Kind.HIT),s.heroRules().zeus());var killed=prepareLightning(s.field(),pieces,actor,target,ZeusAbility.CHAIN_LIGHTNING,lightning,s.summons(),3,s.heroRules(),false);assertEquals(1,killed.captures().size());assertEquals(0,killed.state(BuiltInStates.LIGHTNING).count(actor.id(),target.id()));assertEquals(1,killed.state(BuiltInStates.LIGHTNING).count(ally.id(),other));assertEquals(0,killed.state(BuiltInStates.LIGHTNING).count(ally.id(),target.id()));
     }
+    private static MechanicSession prepareLightning(Field field, Map<Long, PieceState> pieces, PieceState actor,
+            PieceState target, Abilities ability, LightningState lightning, SummonState summons,
+            long turn, HeroRules rules, boolean borrowed) {
+        HeroRegistry heroes = HeroRegistry.fromRules(rules);
+        var mechanics = MechanicStates.empty().with(BuiltInStates.LIGHTNING, lightning)
+                .with(BuiltInStates.SUMMONS, summons);
+        if (borrowed) {
+            long sourceId = pieces.values().stream().filter(piece -> piece.hero() == HeroType.ZEUS)
+                    .findFirst().orElseThrow().id();
+            mechanics = mechanics.with(BuiltInStates.SPELLS, new SpellState(Map.of(sourceId, ability),
+                    Map.of(actor.id(), new BorrowedAbility(ability, sourceId, turn - 2))));
+        }
+        var context = new HeroActionContext(field, pieces, turn, mechanics);
+        var request = new AbilityRequest(actor.position(), ability, target.position(), null, borrowed);
+        HeroEffect effect = heroes.ownerOf(ability).preview(context, request);
+        assertEquals(Success.SUCCESS, effect.result());
+        var prepared = new HashMap<>(pieces);
+        prepared.putAll(effect.updates());
+        var session = new MechanicSession(context, prepared, rules, heroes, actor.color(), request, effect.captures());
+        session.enqueue(effect.operations());
+        assertEquals(Success.SUCCESS, session.run(MechanicPhase.ABILITY_PREPARE));
+        return session;
+    }
+
     private static void putOtherTarget(Map<Long,PieceState> pieces,GameSnapshot s){pieces.put(998L,PieceState.initial(998,s.field().createFigure(Knight.class,pos("h4"),BLACK),HeroType.NONE));}
     @Test public void ginsengCanCopyLightningAndOwnsTheResultingCharges()throws Exception{
         var b=setup();put(b,Bishop.class,WHITE,"c2");put(b,Knight.class,BLACK,"e4");Game g=AresTest.charge(create(b,Map.of(pos("c2"),HeroType.GINSENG)),"c2",2);chain(g,"e4");cycle(g);cast(g,"c2","e2",GinsengAbility.COPY_SPELL);cycle(g);assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),new AbilityRequest(pos("c2"),ZeusAbility.CHAIN_LIGHTNING,pos("e4"),null,true)));assertEquals(1,count(g,"e2","e4"));assertEquals(1,count(g,"c2","e4"));assertEquals(0,g.getPieceState(pos("c2")).cooldown());assertTrue(g.getSpells().borrowed().isEmpty());AresTest.roundtrip(g);

@@ -3,7 +3,6 @@ package game.heroes.kikimora;
 import game.heroes.AbilityRequest;
 import game.heroes.HeroActionContext;
 import game.heroes.HeroType;
-import game.moves.AbilityRejection;
 import game.moves.StatusRejection;
 import game.moves.Success;
 import game.state.PieceState;
@@ -35,11 +34,10 @@ public class KikimoraHeroTest {
         assertEquals(snapshot.pieces().get(actor.id()), context.pieceById(actor.id()));
     }
 
-    @Test public void rawUtilityKeepsItsIdentityBeforePotValidationOrder() {
+    @Test public void pottedCasterIsRejectedBeforeAbilityIdentity() {
         var foreign = PieceState.initial(1, new Field(8).createFigure(Knight.class, pos("c2"), FigureColor.WHITE),
                 HeroType.NONE).asPot();
-        assertEquals(AbilityRejection.NO_ABILITY,
-                KikimoraAbilities.availability(foreign, KikimoraAbility.YARN, KikimoraRules.prototype(), true));
+
         assertEquals(StatusRejection.POTTED,
                 new KikimoraHero(KikimoraRules.prototype()).availability(foreign, KikimoraAbility.YARN));
     }

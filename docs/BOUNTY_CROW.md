@@ -73,7 +73,7 @@
 
 ## Код и проверки
 
-- Герой: [BountyCrowAbilities.java](../composeApp/src/jvmMain/java/game/heroes/bountycrow/BountyCrowAbilities.java), [BountyCrowRules.java](../composeApp/src/jvmMain/java/game/heroes/bountycrow/BountyCrowRules.java).
+- Герой: [BountyCrowHero.java](../composeApp/src/jvmMain/java/game/heroes/bountycrow/BountyCrowHero.java), [BountyCrowRules.java](../composeApp/src/jvmMain/java/game/heroes/bountycrow/BountyCrowRules.java).
 - Экономика: [EconomyState.java](../composeApp/src/jvmMain/java/game/economy/EconomyState.java), [GoldEngine.java](../composeApp/src/jvmMain/java/game/economy/GoldEngine.java), [EconomyValidator.java](../composeApp/src/jvmMain/java/game/economy/EconomyValidator.java).
 - Проверки: [BountyCrowTest.java](../composeApp/src/jvmTest/java/game/heroes/bountycrow/BountyCrowTest.java), [BountyCrowSaveTest.java](../composeApp/src/jvmTest/java/game/persistence/BountyCrowSaveTest.java), [BountyCrowUiTest.kt](../composeApp/src/jvmTest/kotlin/org/chess/BountyCrowUiTest.kt).
 

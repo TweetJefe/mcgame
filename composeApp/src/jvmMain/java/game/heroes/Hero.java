@@ -58,18 +58,6 @@ public interface Hero {
     /** Resolves the actor and target from one snapshot and proposes an effect for the full request. */
     HeroEffect preview(HeroActionContext context, AbilityRequest request);
 
-    /** Compatibility entry for callers supplying detached piece states. */
-    default HeroEffect preview(HeroActionContext context, PieceState actor, PieceState target,
-                               Position square, Abilities ability) {
-        return preview(context, new AbilityRequest(actor == null ? null : actor.position(), ability, square));
-    }
-
-    /** Compatibility facade for callers supplying detached piece states and a full request. */
-    default HeroEffect previewRequest(HeroActionContext context, PieceState actor, PieceState target,
-                                      AbilityRequest request) {
-        return preview(context, request);
-    }
-
     default AbilityEventDetails abilityEventDetails(HeroActionContext before, HeroActionContext after,
             PieceState actor, PieceState target, AbilityRequest request) {
         return new AbilityEventDetails(target == null || request.ability().eventTarget() == AbilityEventTarget.NONE

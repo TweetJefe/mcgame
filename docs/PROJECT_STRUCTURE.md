@@ -14,11 +14,11 @@
 | `game.state` | Неизменяемые данные: `GameSnapshot`, `GamePosition`, `PieceState`, `TurnState`, `GameMode`, `GameOutcome`, `Termination`, `CastlingRights`, `ClockSnapshot`, `ItemSlot`, `SquareColor` |
 | `game.moves` | Запросы/результаты действий: `AvailableMoves`, интерфейсы `MoveResult` и `Rejection`, успех `Success`, тематические `*Rejection`; `MoveKind`, `Promotion`; описание подготовленного взятия `Capture` |
 | `game.history` | История: `MadeMove`, `GameEvent` с общей категорией `ABILITY_USED`, отдельной способностью и политикой `AbilityEventTarget` |
-| `game.heroes` | Контракты `Hero` и `Abilities`, шаблон `AbstractHero`, описания `HeroDefinition<R>` и их список `HeroDefinitions`, неизменяемый `HeroRegistry`, `HeroActionContext`, каналы `AbilityUse` и стоимость `AbilityCost`, правила целей `HeroTargeting`; типизированный контейнер `HeroRules`, явный `HeroRulesCodec<R>` и `HeroEffect`; фасад `HeroAbilities` и временные адаптеры остальных героев |
-| `game.heroes.pudge` | `PudgeAbility`, `PudgeRules`, `PudgeDefinition`, `PudgeRulesCodec` и `PudgeHero`: хук, проглатывание, заряд, болото, реакция на гибель и журнал; `PudgeAbilities` сохранён как фасад совместимости |
-| `game.heroes.lumeshard` | `LumeshardRules` и `LumeshardAbilities`: лазер, ослепление, телепорт и заряд |
-| `game.heroes.bountycrow` | `BountyCrowRules`, `BountyCrowAbilities`: метка, заряд и кража |
-| `game.heroes.bolotnik` | `BolotnikRules`, `BolotnikAbilities`: грязь, укрытие и заряд |
+| `game.heroes` | Контракты `Hero` и `Abilities`, шаблон `AbstractHero`, описания `HeroDefinition<R>` и их список `HeroDefinitions`, неизменяемый `HeroRegistry`, `HeroActionContext`, каналы `AbilityUse` и стоимость `AbilityCost`, правила целей `HeroTargeting`; типизированный контейнер `HeroRules`, явный `HeroRulesCodec<R>` и `HeroEffect`; единый вход `Hero.preview(context, request)` |
+| `game.heroes.pudge` | `PudgeAbility`, `PudgeRules`, `PudgeDefinition`, `PudgeRulesCodec` и `PudgeHero`: хук, проглатывание, заряд, болото, реакция на гибель и журнал |
+| `game.heroes.lumeshard` | `LumeshardRules` и `LumeshardHero`: лазер, ослепление, телепорт и заряд |
+| `game.heroes.bountycrow` | `BountyCrowRules`, `BountyCrowHero`: метка, заряд и кража |
+| `game.heroes.bolotnik` | `BolotnikRules`, `BolotnikHero`: грязь, укрытие и заряд |
 | `game.terrain` | `MudCell`, `TerrainState`, `TerrainResolver`, `TerrainValidator`: клетки болота, срабатывания и проверка скрытых героев |
 | `game.economy` | `GoldRules`, `EconomyState`, `BountyMark`, `GoldChange`, `GoldEngine`, `EconomyValidator`: цены, кошельки, метки и финансовая история |
 | `rules.moba` | `AttackRules`, `TerrainGeometry`: ослепление и вражеское болото в обычных атаках/перемещениях |
@@ -60,7 +60,7 @@
 - `ActionEngine` и `ChessClock` не стали публичными при переносе.
 - `PieceState` предоставляет публичные операции, возвращающие новый неизменяемый объект: размещение, скрытие, изменение заряда. Они нужны ядру и реализациям героев, но не изменяют исходную фигуру.
 - `SnapshotValidator.validate` публичен и не изменяет игру. Проверка остаётся в ядре: восстановление из памяти не зависит от XML. `GameSaveFile` обращается к ядру, а ядро не вызывает файловый слой.
-- `HeroAbilities` — фасад совместимости над `HeroRegistry`. Внутренние диспетчеры удалены; ограниченный старый предпросмотр обслуживают локальные `LegacyPreview`. Параметры героев объединены в `HeroRules`.
+- Способности доступны через `HeroRegistry` и `Hero.preview(context, request)`. Статические фасады и detached-перегрузки удалены. Параметры героев объединены в `HeroRules`.
 
 ## Куда добавлять изменения
 
@@ -94,19 +94,19 @@ Java-тесты повторяют основные границы: `game.core`,
 
 ## Ginseng и копии способностей
 
-`game.heroes.ginseng` содержит `GinsengRules`, `GinsengAbilities`, `BorrowedEffects`, `BorrowedAbility`, `SpellState`, `SpellValidator`. Сдвиг и копирование отделены от общей обработки реакции, болота, золота и призыва. `BorrowedEffects` сохранён как совместимый фасад; игровой путь вызывает владельца способности из реестра с настоящим состоянием исполнителя и сохраняет его собственные ресурсы.
+`game.heroes.ginseng` содержит `GinsengRules`, `GinsengHero`, `BorrowedAbility`, `SpellState`, `SpellValidator`. Сдвиг и копирование отделены от общей обработки реакции, болота, золота и призыва. Игровой путь вызывает владельца способности из реестра с настоящим состоянием исполнителя и сохраняет его собственные ресурсы.
 
 `game.heroes.AbilityRequest` передаёт исполнителя, способность, цель, отдельную клетку назначения и признак использования копии. `GameSnapshot.spells` и `ActionEngine.Context.spells` хранят неизменяемую память успешных активаций и копий. Источник истины при восстановлении — метаданные `GameEvent`; XML 7 сохраняет их и `GinsengRules`. Подсветка, команды и поиск доступного составного хода проверяют оба канала: собственные способности и сохранённую копию. Подробнее: [GINSENG.md](GINSENG.md).
 
 ## Faun и видимость
 
-`game.heroes.faun` содержит `FaunRules`, `FaunAbilities`, `Cloud`, `Invisibility`, `FaunState`, `FaunValidator`, `FaunView`. Тучи и невидимость отделены от `TerrainState`: они не заменяют болото и не удаляют физическую фигуру с поля. `FaunState` передаётся в контексте подготовки действий и полном снимке; после принятого взятия/активации обновляется вместе с остальными эффектами.
+`game.heroes.faun` содержит `FaunRules`, `FaunHero`, `Cloud`, `Invisibility`, `FaunState`, `FaunValidator`, `FaunView`. Тучи и невидимость отделены от `TerrainState`: они не заменяют болото и не удаляют физическую фигуру с поля. `FaunState` передаётся в контексте подготовки действий и полном снимке; после принятого взятия/активации обновляется вместе с остальными эффектами.
 
 `FaunView` строит локальное представление активной стороны, подсказки по видимой доске и сообщения без текущих скрытых координат. Проверка реальной команды и шаха остаётся в ядре на полной доске. XML 8 хранит правила, а текущее состояние эффектов восстанавливается по событиям. Подробнее: [FAUN.md](FAUN.md).
 
 ## Ares, стан и общие ответные взятия
 
-`game.heroes.ares` содержит `AresRules`, `AresAbilities`, `AresValidator`. Стан привязан к ID через `PieceState.stunnedThroughTurn`; общие неизменяемые операции его сохраняют. `AttackRules` исключает оглушённых атакующих и готовит восстановление атак к концу срока. `ActionEngine` проверяет движение, активные способности, рокировку и возможность безопасно завершить ход после истечения.
+`game.heroes.ares` содержит `AresRules`, `AresHero`, `AresValidator`. Стан привязан к ID через `PieceState.stunnedThroughTurn`; общие неизменяемые операции его сохраняют. `AttackRules` исключает оглушённых атакующих и готовит восстановление атак к концу срока. `ActionEngine` проверяет движение, активные способности, рокировку и возможность безопасно завершить ход после истечения.
 
 `game.heroes.CaptureReactions` обрабатывает очередь гибелей и ответных взятий: выход союзника из держателя, месть Ares, дальнейшие реакции погибшего убийцы. `Capture.Cause.ARES` отделяет месть от проглоченного союзника и болота. Все новые взятия проходят существующие слои призыва и экономики. Прежний отдельный помощник Пуджа сохранён для совместимости; игровой диспетчер использует общую очередь.
 
@@ -126,7 +126,7 @@ XML 9 хранит настройки, срок стана и события; к
 
 ## Zeus и состояние молнии
 
-`game.heroes.zeus` содержит `ZeusRules`, `ZeusAbilities`, `LightningState` и `LightningValidator`. `LightningState` передаётся через снимок и контекст действия. Источники индексируются по ID, поэтому скопированные молнии Ginseng независимы. Убийства проходят общий механизм наград и реакций. История восстанавливает заряды в XML 12, новые драфты используют каталог 8. Подробности: [ZEUS.md](ZEUS.md).
+`game.heroes.zeus` содержит `ZeusRules`, `ZeusHero`, `LightningState` и `LightningValidator`. `LightningState` передаётся через снимок и контекст действия. Источники индексируются по ID, поэтому скопированные молнии Ginseng независимы. Убийства проходят общий механизм наград и реакций. История восстанавливает заряды в XML 12, новые драфты используют каталог 8. Подробности: [ZEUS.md](ZEUS.md).
 
 ## Chronomlin и история форм
 

@@ -42,7 +42,7 @@ public class GinsengTest {
         for(FigureColor color:List.of(WHITE,BLACK)) {
             var b=board();put(b,Rook.class,color,"f5");Game g=create(b,Map.of());long id=g.getPieceState(pos("f5")).id();
             assertTrue(g.getAbilityTargets(pos("c2"),GinsengAbility.DISPLACE).contains(pos("f5")));
-            assertTrue(g.getDisplacementDestinations(pos("c2"),pos("f5"),false).contains(pos("g6")));
+            assertTrue(g.getAbilityDestinations(pos("c2"),GinsengAbility.DISPLACE,pos("f5"),false).contains(pos("g6")));
             shift(g,"f5","g6");assertEquals(id,g.getPieceState(pos("g6")).id());assertEquals(3,g.getPieceState(pos("c2")).cooldown());
             assertFalse(g.getTurnState().moveUsed());assertTrue(g.getTurnState().abilityUsed());assertEquals(TurnRejection.MOVE_REQUIRED,g.endTurn(g.getCurrentPlayer()));roundtrip(g);
         }
@@ -140,7 +140,10 @@ public class GinsengTest {
     @Test public void copiedEffectsKeepExistingSwallowedAllyAndDoNotChangeNativeIdentity() {
         Game g=hook();var actor=g.getPieceState(pos("c2"));var ally=g.getPieceState(pos("f2"));actor=actor.withAbilityState(2,1,ally.id());
         var b=board();put(b,Rook.class,BLACK,"f4");var factory=new Field(8);var target=PieceState.initial(999,factory.createFigure(Rook.class,pos("f4"),BLACK),HeroType.NONE);
-        var effect=BorrowedEffects.preview(g.getGameField(),actor,target,pos("f4"),LumeshardAbility.LASER,g.getSnapshot().heroRules());var result=effect.updates().get(actor.id());
+        var pieces=new HashMap<>(g.getSnapshot().pieces());pieces.put(actor.id(),actor);pieces.put(target.id(),target);
+        var effect=g.getHeroRegistry().ownerOf(LumeshardAbility.LASER).preview(
+                new HeroActionContext(g.getGameField(),pieces,g.getTurnState().number(),g.getSnapshot().mechanics()),
+                new AbilityRequest(actor.position(),LumeshardAbility.LASER,target.position(),null,true));var result=effect.updates().get(actor.id());
         assertEquals(Success.SUCCESS,effect.result());assertEquals(Long.valueOf(ally.id()),result.storedPieceId());assertEquals(2,result.cooldown());assertEquals(1,result.ultimateCharge());assertEquals(HeroType.GINSENG,result.hero());
     }
     @Test public void borrowedDisplacementUsesTwoTargetsAndDoesNotStartNativeCooldown()throws Exception {

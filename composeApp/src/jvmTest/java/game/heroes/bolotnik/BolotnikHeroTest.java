@@ -38,7 +38,7 @@ public class BolotnikHeroTest {
         assertEquals(4, nativeEffect.updates().get(2L).cooldown());
     }
 
-    @Test public void invalidMudHasNoCostOrPlacementAndTheRawFacadeKeepsItsEffectShape() {
+    @Test public void invalidMudHasNoCostOrPlacement() {
         var rules = new BolotnikRules(4, 2, 3);
         var hero = new BolotnikHero(rules);
         var caster = state(1, Knight.class, FigureColor.WHITE, "c2", HeroType.BOLOTNIK, 0, 3, null);
@@ -48,9 +48,7 @@ public class BolotnikHeroTest {
         assertTrue(rejected.updates().isEmpty());
         assertTrue(rejected.operations().isEmpty());
         var effect = hero.preview(context(caster), new AbilityRequest(caster.position(), BolotnikAbility.MUD, pos("e4")));
-        var detached = BolotnikAbilities.preview(caster, null, pos("e4"), BolotnikAbility.MUD, rules);
-        assertEquals(effect.updates(), detached.updates());
-        assertTrue(detached.operations().isEmpty());
+
         assertEquals(1, effect.operations().size());
     }
 

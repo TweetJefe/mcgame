@@ -30,7 +30,7 @@ public final class ChronomlinValidator {
                 }
             }
             if(e.isAbility(ChronomlinAbility.EVOLVE)){
-                var next=ChronomlinAbilities.nextType(forms.get(e.actorId()));
+                var next=ChronomlinHero.nextType(forms.get(e.actorId()));
                 require(next!=null && e.targetId()==null && e.from().equals(e.to()),"Invalid evolution step");
                 forms.put(e.actorId(),next);
             }

@@ -48,7 +48,7 @@
 
 ## Модель и API
 
-Пакет `game.heroes.ginseng` содержит `GinsengRules`, `GinsengAbilities`, `BorrowedEffects`, `BorrowedAbility`, `SpellState`, `SpellValidator`. Правила прототипа: `new GinsengRules(3, 2)`; тестовый режим снимает КД и стоимость собственной ульты.
+Пакет `game.heroes.ginseng` содержит `GinsengRules`, `GinsengHero`, `BorrowedEffects`, `BorrowedAbility`, `SpellState`, `SpellValidator`. Правила прототипа: `new GinsengRules(3, 2)`; тестовый режим снимает КД и стоимость собственной ульты.
 
 `SpellState.lastUsed` связывает ID фигуры с её последней успешной активной способностью. `SpellState.borrowed` хранит по одной копии на ID Ginseng: способность, источник и ход получения. История `GameEvent` содержит признаки `borrowed` и `copiedAbility`; память восстанавливается из принятых событий. Отказы и предварительные проверки не меняют её.
 

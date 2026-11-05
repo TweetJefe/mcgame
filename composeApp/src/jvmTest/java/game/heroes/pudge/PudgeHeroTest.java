@@ -1,7 +1,5 @@
 package game.heroes.pudge;
 
-import game.heroes.lumeshard.LumeshardAbility;
-
 import game.moves.AbilityRejection;
 import game.moves.StatusRejection;
 import game.moves.Success;
@@ -69,7 +67,7 @@ public class PudgeHeroTest {
                         fixture(new Position(5, 5), FigureColor.BLACK, null), PudgeAbility.HOOK).result());
     }
 
-    @Test public void canonicalHookUsesCurrentPiecesWhileTheDetachedFacadeRetainsFieldOccupancy() {
+    @Test public void canonicalHookUsesCurrentPieces() {
         Position targetSquare = new Position(3, 6), blockerSquare = new Position(3, 4);
         Fixture staleBlocked = fixture(targetSquare, FigureColor.BLACK, blockerSquare).withState(0, 2, null);
         var currentPieces = new HashMap<>(staleBlocked.context().pieces());
@@ -80,8 +78,7 @@ public class PudgeHeroTest {
         assertEquals(Success.SUCCESS, effect.result());
         assertEquals(blockerSquare, effect.updates().get(staleBlocked.target().id()).position());
         assertEquals(staleBlocked.actor().withAbilityState(4, 2, null), effect.updates().get(staleBlocked.actor().id()));
-        assertEquals(AbilityRejection.ABILITY_BLOCKED, PudgeAbilities.preview(current.field(),
-                staleBlocked.actor(), staleBlocked.target(), PudgeAbility.HOOK, RULES).result());
+
         assertEquals(staleBlocked.target(), current.pieceById(staleBlocked.target().id()));
 
         Fixture staleVacant = fixture(targetSquare, FigureColor.BLACK, null).withState(0, 2, null);
@@ -90,8 +87,7 @@ public class PudgeHeroTest {
                 PieceState.Status.BOARD, HeroType.NONE, 0, 0, staleVacant.target().inventory(), null));
         current = new HeroActionContext(staleVacant.context().field(), currentPieces, 10);
         assertEquals(AbilityRejection.ABILITY_BLOCKED, new PudgeHero(RULES).preview(current, request).result());
-        assertEquals(Success.SUCCESS, PudgeAbilities.preview(current.field(), staleVacant.actor(),
-                staleVacant.target(), PudgeAbility.HOOK, RULES).result());
+
     }
 
     @Test public void swallowSpendsConfiguredChargeAndPreservesCooldownAndOtherState() {
@@ -132,22 +128,6 @@ public class PudgeHeroTest {
         }
     }
 
-    @Test public void availabilityAndCaptureChargingMatchLegacyRules() {
-        Fixture f = fixture(new Position(3, 4), FigureColor.WHITE, null);
-        for (PudgeRules rules : List.of(RULES, PudgeRules.prototype(), PudgeRules.sandbox())) {
-            var hero = new PudgeHero(rules);
-            PieceState[] actors = {null, f.actor(), f.actor().hidden(PieceState.Status.CAPTURED), f.target(),
-                    f.actor().withAbilityState(1, 0, null), f.actor().withAbilityState(1, 5, null),
-                    f.actor().withAbilityState(0, 0, 2L), f.actor().withAbilityState(0, 5, 2L)};
-            for (PieceState actor : actors) {
-                for (Abilities ability : new Abilities[]{null, PudgeAbility.HOOK, PudgeAbility.SWALLOW, LumeshardAbility.LASER})
-                    assertEquals(PudgeAbilities.availability(actor, ability, rules), hero.availability(actor, ability));
-                if (actor != null)
-                    assertEquals(PudgeAbilities.afterCapture(actor, rules), hero.afterCapture(actor));
-            }
-        }
-    }
-
     @Test public void rejectedAvailabilityNeverProducesUpdatesAndSandboxUltimatesAreFree() {
         Fixture f = fixture(new Position(3, 4), FigureColor.WHITE, null);
         assertEquals(HeroEffect.rejected(AbilityRejection.ULTIMATE_NOT_READY), preview(RULES, f, PudgeAbility.SWALLOW));
@@ -165,9 +145,13 @@ public class PudgeHeroTest {
     }
 
     private static HeroEffect preview(PudgeRules rules, Fixture f, PieceState target, Abilities ability) {
-        HeroEffect effect = new PudgeHero(rules).preview(f.context(), f.actor(), target,
-                target == null ? null : target.position(), ability);
-        assertEquals(PudgeAbilities.preview(f.context().field(), f.actor(), target, ability, rules), effect);
+        var pieces = new HashMap<>(f.context().pieces());
+        Position square = target == null || target.position() == null ? f.target().position() : target.position();
+        if (target == null) pieces.remove(f.target().id());
+        else pieces.put(target.id(), target);
+        var context = new HeroActionContext(f.context().field(), pieces, f.context().currentTurn(), f.context().mechanics());
+        HeroEffect effect = new PudgeHero(rules).preview(context,
+                new AbilityRequest(f.actor().position(), ability, square));
         return effect;
     }
 

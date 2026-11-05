@@ -37,7 +37,7 @@ public final class LightningMechanic implements MechanicDefinition<LightningStat
         return List.of(handler(Cast.class, "lightning.cast", ABILITY_PREPARE, null, (s, op) -> {
             var result = new ZeusHero(s.rules().zeus()).resolve(s.before().field(), s.pieces(),
                     s.pieces().get(op.actor().id()), op.target(), op.ability(),
-                    s.state(LIGHTNING), s.state(SUMMONS), s.turn(), s.rules(), s);
+                    s.state(LIGHTNING), s.state(SUMMONS), s.turn(), s);
             if (!result.effect().result().isSuccess()) return result.effect().result();
             s.update(result.effect().updates());
             var captures = new ArrayList<>(s.captures()); captures.addAll(result.effect().captures());

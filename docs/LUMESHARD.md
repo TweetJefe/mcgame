@@ -61,7 +61,7 @@
 
 `PieceState` хранит `blindTurns` для любой фигуры и `startingColor` для Lumeshard. Они включены в [сохранение партии](SAVE_STATE.md). Партии с экономикой без Bolotnik записываются в XML версии 3, с Bolotnik — в версии 4; версия 2 содержит расширение Lumeshard; прежние файлы версии 1 продолжают читаться. Партии без расширения Lumeshard могут по-прежнему записываться в совместимую версию 1.
 
-Исходники: [LumeshardAbilities.java](../composeApp/src/jvmMain/java/game/heroes/lumeshard/LumeshardAbilities.java), [LumeshardRules.java](../composeApp/src/jvmMain/java/game/heroes/lumeshard/LumeshardRules.java), [AttackRules.java](../composeApp/src/jvmMain/java/rules/moba/AttackRules.java), [LumeshardScenario.java](../composeApp/src/jvmMain/java/game/scenarios/LumeshardScenario.java).
+Исходники: [LumeshardHero.java](../composeApp/src/jvmMain/java/game/heroes/lumeshard/LumeshardHero.java), [LumeshardRules.java](../composeApp/src/jvmMain/java/game/heroes/lumeshard/LumeshardRules.java), [AttackRules.java](../composeApp/src/jvmMain/java/rules/moba/AttackRules.java), [LumeshardScenario.java](../composeApp/src/jvmMain/java/game/scenarios/LumeshardScenario.java).
 
 Проверки: [LumeshardTest.java](../composeApp/src/jvmTest/java/game/heroes/lumeshard/LumeshardTest.java), [LumeshardSaveTest.java](../composeApp/src/jvmTest/java/game/persistence/LumeshardSaveTest.java), [LumeshardUiTest.kt](../composeApp/src/jvmTest/kotlin/org/chess/LumeshardUiTest.kt). Общий набор проекта — **292 теста**.
 

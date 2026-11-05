@@ -24,7 +24,7 @@ public final class MineValidator{
                 require((e.legacyKind()==GameEvent.Kind.BLAST_CAPTURE)==enemy && s.mines().blasts().stream().anyMatch(b->b.ownerId()==e.actorId() && b.turn()==e.turn() && b.contains(e.to())),"Death outside explosion");
             }
         }
-        for(var b:s.mines().blasts())require(b.landing()!=null && MoleminerAbilities.corners(b.landing()).contains(b.corner()) && s.events().stream().anyMatch(e->e.isAbility(MoleminerAbility.DETONATE) && e.turn()==b.turn() && e.actorId()==b.ownerId()),"Invalid random explosion area");
+        for(var b:s.mines().blasts())require(b.landing()!=null && MoleminerHero.corners(b.landing()).contains(b.corner()) && s.events().stream().anyMatch(e->e.isAbility(MoleminerAbility.DETONATE) && e.turn()==b.turn() && e.actorId()==b.ownerId()),"Invalid random explosion area");
         for(var p:s.pieces().values())if(p.status()==PieceState.Status.DESTROYED)require(s.events().stream().anyMatch(e->Objects.equals(e.targetId(),p.id()) && Set.of(GameEvent.Kind.CAPTURE,GameEvent.Kind.BLAST_DEATH,GameEvent.Kind.COUNTER_CAPTURE,GameEvent.Kind.ARES_REVENGE).contains(e.legacyKind())),"Destroyed piece without a death event");
     }
 }

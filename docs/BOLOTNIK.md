@@ -84,7 +84,7 @@ Bolotnik исчезает с доски и переходит в состоян�
 
 Болото хранится отдельно от фигур в `TerrainState`: оно может находиться под союзником. `MudCell` хранит ID владельца, вид и срок. Скрытый герой сохраняется с состоянием `HIDDEN_BOG`, без клетки. Все данные, КД, заряды, деньги и события включены в XML **версии 4**. Версии 1/2/3 по-прежнему читаются; партии без Bolotnik и его расширения сохраняют прежнюю подходящую версию.
 
-Герой: [BolotnikAbilities.java](../composeApp/src/jvmMain/java/game/heroes/bolotnik/BolotnikAbilities.java), [BolotnikRules.java](../composeApp/src/jvmMain/java/game/heroes/bolotnik/BolotnikRules.java). Болото: [TerrainResolver.java](../composeApp/src/jvmMain/java/game/terrain/TerrainResolver.java), [TerrainValidator.java](../composeApp/src/jvmMain/java/game/terrain/TerrainValidator.java), [TerrainGeometry.java](../composeApp/src/jvmMain/java/rules/moba/TerrainGeometry.java).
+Герой: [BolotnikHero.java](../composeApp/src/jvmMain/java/game/heroes/bolotnik/BolotnikHero.java), [BolotnikRules.java](../composeApp/src/jvmMain/java/game/heroes/bolotnik/BolotnikRules.java). Болото: [TerrainResolver.java](../composeApp/src/jvmMain/java/game/terrain/TerrainResolver.java), [TerrainValidator.java](../composeApp/src/jvmMain/java/game/terrain/TerrainValidator.java), [TerrainGeometry.java](../composeApp/src/jvmMain/java/rules/moba/TerrainGeometry.java).
 
 Проверки: [BolotnikTest.java](../composeApp/src/jvmTest/java/game/heroes/bolotnik/BolotnikTest.java), [BolotnikSaveTest.java](../composeApp/src/jvmTest/java/game/persistence/BolotnikSaveTest.java), [BolotnikUiTest.kt](../composeApp/src/jvmTest/kotlin/org/chess/BolotnikUiTest.kt). Общий набор проекта — **338 тестов**.
 

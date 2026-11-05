@@ -25,7 +25,6 @@ public class GinsengRequestTest {
         assertFalse(targets.isEmpty());
         for (var target : before.field().getGameField().keySet()) {
             var destinations = game.getAbilityDestinations(pos("c2"), GinsengAbility.DISPLACE, target, borrowed);
-            assertEquals(destinations, game.getDisplacementDestinations(pos("c2"), target, borrowed));
             assertEquals(targets.contains(target), !destinations.isEmpty());
             for (var destination : destinations) {
                 Game attempt = Game.fromSnapshot(before, () -> 0L);

@@ -6,7 +6,6 @@ import game.moves.StatusRejection;
 import game.moves.Success;
 import game.moves.MoveResult;
 import game.state.PieceState;
-import model.Position;
 import rules.standard.MoveValidator;
 
 import java.util.List;
@@ -116,24 +115,6 @@ public abstract class AbstractHero implements Hero {
         MoveResult targeting = targeting(request.ability()).validate(context, actor, request);
         if (!targeting.isSuccess()) return HeroEffect.rejected(targeting);
         return previewAvailable(context, actor, context.pieceAt(request.target()), request).applyCost(actor, use);
-    }
-
-    /** Keeps the historical detached-state entry's validation order and target semantics. */
-    @Override
-    public final HeroEffect preview(HeroActionContext context, PieceState actor, PieceState target,
-                                    Position square, Abilities ability) {
-        return previewRequest(context, actor, target,
-                new AbilityRequest(actor == null ? null : actor.position(), ability, square));
-    }
-
-    @Override
-    public final HeroEffect previewRequest(HeroActionContext context, PieceState actor, PieceState target,
-                                           AbilityRequest request) {
-        Objects.requireNonNull(context, "context");
-        AbilityUse use = AbilityUse.of(type, request.borrowed());
-        MoveResult ready = availability(actor, request.ability(), use);
-        if (!ready.isSuccess()) return HeroEffect.rejected(ready);
-        return previewAvailable(context, actor, target, request).applyCost(actor, use);
     }
 
     /**

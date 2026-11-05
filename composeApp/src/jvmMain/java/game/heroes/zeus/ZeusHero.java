@@ -3,14 +3,10 @@ package game.heroes.zeus;
 import game.heroes.Abilities;
 import game.heroes.AbilityCost;
 import game.heroes.AbilityRequest;
-import game.heroes.AbilityUse;
 import game.heroes.AbstractHero;
-import game.heroes.HeroAbilities;
 import game.heroes.HeroActionContext;
 import game.heroes.HeroEffect;
-import game.heroes.HeroRules;
 import game.heroes.HeroType;
-import game.heroes.compat.LegacyPreview;
 import game.mechanics.MechanicSession;
 import game.moves.AbilityRejection;
 import game.moves.Capture;
@@ -30,20 +26,13 @@ import model.Position;
 import model.figures.King;
 
 /** Геометрия, цепочка и эффекты молнии; состояние и применение обслуживает LightningMechanic. */
-public final class ZeusHero extends AbstractHero implements LegacyPreview {
+public final class ZeusHero extends AbstractHero {
     private final ZeusRules rules;
 
     public ZeusHero(ZeusRules rules) {
         super(ZeusDefinition.INSTANCE, ZeusAbility.getAbilities(), ZeusAbility.THUNDERSTORM,
                 Objects.requireNonNull(rules, "rules").ultimateCaptures());
         this.rules = rules;
-    }
-
-    /** Совместимость ограниченного статического API; игровой путь использует полный AbilityRequest. */
-    @Override
-    public HeroEffect legacyPreview(Field field, PieceState actor, PieceState target, Position square,
-                                    Abilities ability) {
-        return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
     }
 
     @Override protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor, PieceState target,
@@ -78,21 +67,11 @@ public final class ZeusHero extends AbstractHero implements LegacyPreview {
                 && !piece.isBoxed() && !piece.isPotted();
     }
 
-    public record CastResult(HeroEffect effect, LightningState lightning, SummonState summons, List<Long> illusionHits) {}
-
-    CastResult detachedCast(Field factory, Map<Long, PieceState> pieces, PieceState actor, PieceState first,
-            Abilities ability, LightningState lightning, SummonState summons, long turn, HeroRules rules,
-            boolean borrowed, MechanicSession session) {
-        MoveResult result = validateFirst(actor, first, ability);
-        if (!result.isSuccess()) return rejected(result, lightning, summons);
-        PieceState prepared = cost(ability).apply(actor, AbilityUse.of(HeroType.ZEUS, borrowed));
-        return resolve(factory, pieces, prepared, first, ability, lightning, summons, turn, rules, session);
-    }
+    record CastResult(HeroEffect effect, LightningState lightning, SummonState summons, List<Long> illusionHits) {}
 
     /** Исполнитель уже оплатил активацию в AbstractHero; здесь выполняется только эффект. */
     CastResult resolve(Field factory, Map<Long, PieceState> pieces, PieceState actor, PieceState first,
-            Abilities ability, LightningState lightning, SummonState summons, long turn, HeroRules rules,
-            MechanicSession session) {
+            Abilities ability, LightningState lightning, SummonState summons, long turn, MechanicSession session) {
         var states = new HashMap<>(pieces);
         var updates = new HashMap<Long, PieceState>();
         var captures = new ArrayList<Capture>();
@@ -127,8 +106,7 @@ public final class ZeusHero extends AbstractHero implements LegacyPreview {
                     PieceState dead = target.hidden(PieceState.Status.CAPTURED);
                     states.put(dead.id(), dead);
                     updates.put(dead.id(), dead);
-                    PieceState charged = session == null ? HeroAbilities.afterCapture(states.get(actor.id()), rules)
-                            : session.heroes().get(actor.hero()).afterCapture(states.get(actor.id()));
+                    PieceState charged = session.heroes().get(actor.hero()).afterCapture(states.get(actor.id()));
                     states.put(actor.id(), charged);
                     updates.put(actor.id(), charged);
                     captures.add(new Capture(actor.id(), dead.id(), actor.color(),
@@ -136,17 +114,11 @@ public final class ZeusHero extends AbstractHero implements LegacyPreview {
                             Capture.Cause.LIGHTNING));
                     lightning = lightning.pulse(new LightningState.Pulse(actor.id(), actor.id(), turn, square,
                             LightningState.Kind.RESET), this.rules);
-                    if (session != null) {
-                        session.state(game.mechanics.BuiltInStates.LIGHTNING, lightning);
-                        session.state(game.mechanics.BuiltInStates.SUMMONS, summons);
-                    }
-                    HeroEffect reaction = session == null
-                            ? HeroAbilities.captureReaction(factory, states, target, actor.id(), square, rules)
-                            : session.react(states, target, actor.id(), square);
-                    if (session != null) {
-                        lightning = session.state(game.mechanics.BuiltInStates.LIGHTNING);
-                        summons = session.state(game.mechanics.BuiltInStates.SUMMONS);
-                    }
+                    session.state(game.mechanics.BuiltInStates.LIGHTNING, lightning);
+                    session.state(game.mechanics.BuiltInStates.SUMMONS, summons);
+                    HeroEffect reaction = session.react(states, target, actor.id(), square);
+                    lightning = session.state(game.mechanics.BuiltInStates.LIGHTNING);
+                    summons = session.state(game.mechanics.BuiltInStates.SUMMONS);
                     if (!reaction.result().isSuccess()) return rejected(reaction.result(), lightning, summons);
                     states.putAll(reaction.updates());
                     updates.putAll(reaction.updates());

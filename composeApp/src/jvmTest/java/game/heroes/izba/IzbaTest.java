@@ -50,7 +50,7 @@ public class IzbaTest {
     @Test public void chargeComesFromOwnCapturesIncludingPawnsAndNoActiveSkillExists() {
         var b=board("a1","h8");put(b,Rook.class,WHITE,"e2");put(b,Pawn.class,BLACK,"e4");put(b,Pawn.class,BLACK,"e5");put(b,Knight.class,BLACK,"g8");
         Game g=create(b,Map.of(pos("e2"),HeroType.IZBA),WHITE,0);
-        assertEquals(AbilityRejection.ULTIMATE_NOT_READY,g.getAbilityAvailability(pos("e2"),IzbaAbility.SUMMON_YAGA));assertEquals(List.of(IzbaAbility.SUMMON_YAGA),HeroAbilities.abilities(HeroType.IZBA));
+        assertEquals(AbilityRejection.ULTIMATE_NOT_READY,g.getAbilityAvailability(pos("e2"),IzbaAbility.SUMMON_YAGA));assertEquals(List.of(IzbaAbility.SUMMON_YAGA),HeroRegistry.standard().get(HeroType.IZBA).abilities());
         move(g,"e2","e4");assertEquals(1,g.getPieceState(pos("e4")).ultimateCharge());end(g);waitTurn(g,"g8","f6");
         move(g,"e4","e5");assertEquals(2,g.getPieceState(pos("e5")).ultimateCharge());summon(g,"e5");assertEquals(0,g.getPieceState(pos("e5")).ultimateCharge());
     }
@@ -172,7 +172,7 @@ public class IzbaTest {
         Game g=charge(create(b,Map.of(pos("e2"),HeroType.IZBA),WHITE,seedFor(12,0)),"e2");summon(g,"e2");PieceState p=baby(g);
         assertEquals(pos("c1"),p.position());move(g,"c1","d2");assertEquals(p.id(),g.getPieceState(pos("d2")).id());
         assertEquals(0,g.getPieceState(pos("d2")).ultimateCharge());assertEquals(2,g.getEconomy().whiteHalves());assertEquals(7,g.getSummons().records().get(p.id()).transformsAfterTurn());
-        assertTrue(HeroAbilities.abilities(HeroType.BABA_YAGA).isEmpty());assertArrayEquals(GameSaveFile.encode(g.getSnapshot()),GameSaveFile.encode(reload(g).getSnapshot()));
+        assertTrue(HeroRegistry.standard().get(HeroType.BABA_YAGA).abilities().isEmpty());assertArrayEquals(GameSaveFile.encode(g.getSnapshot()),GameSaveFile.encode(reload(g).getSnapshot()));
     }
     @Test public void rejectedCaptureCannotRerollADangerousPassiveSpawn()throws Exception {
         var b=board("a1","h8");put(b,Rook.class,WHITE,"h6");put(b,Rook.class,BLACK,"h4");

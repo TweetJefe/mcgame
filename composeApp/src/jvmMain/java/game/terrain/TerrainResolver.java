@@ -108,12 +108,12 @@ public final class TerrainResolver {
             }
             states.put(entrant.id(), entrant.hidden(PieceState.Status.CAPTURED));
             PieceState emerged = owner.placed(square, owner.type());
-            states.put(owner.id(), session == null ? HeroAbilities.afterCapture(emerged, rules)
+            states.put(owner.id(), session == null ? HeroRegistry.fromRules(rules).get(emerged.hero()).afterCapture(emerged)
                     : session.heroes().get(owner.hero()).afterCapture(emerged));
             captures.add(new Capture(owner.id(), entrant.id(), owner.color(), factory.createFigure(entrant.type(), square, entrant.color()),
                     square, true, Capture.Cause.BOG));
             if (session != null) session.state(game.mechanics.BuiltInStates.TERRAIN, new TerrainState(cells));
-            HeroEffect reaction = session == null ? HeroAbilities.captureReaction(factory, states, entrant, owner.id(), square, rules)
+            HeroEffect reaction = session == null ? CaptureReactions.resolve(factory, states, entrant, owner.id(), square, rules)
                     : session.react(states, entrant, owner.id(), square);
             if (session != null) cells = new HashMap<>(session.state(game.mechanics.BuiltInStates.TERRAIN).cells());
             if (!reaction.result().isSuccess()) return new Result(reaction.result(), before, terrain, initialCaptures);

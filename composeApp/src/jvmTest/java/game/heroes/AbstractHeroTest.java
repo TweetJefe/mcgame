@@ -6,7 +6,6 @@ import game.heroes.lumeshard.LumeshardAbility;
 import game.moves.AbilityRejection;
 import game.moves.MovementRejection;
 import game.moves.Success;
-import game.heroes.pudge.PudgeAbilities;
 import game.heroes.pudge.PudgeRules;
 import game.moves.MoveResult;
 import game.state.PieceState;
@@ -50,23 +49,23 @@ public class AbstractHeroTest {
         assertEquals(AbilityRejection.ALREADY_SWALLOWED, hero.availability(loaded, PudgeAbility.SWALLOW));
         var context = new HeroActionContext(field, Map.of(actor.id(), loaded), 0);
         assertEquals(HeroEffect.rejected(AbilityRejection.ALREADY_SWALLOWED),
-                hero.preview(context, loaded, target, target.position(), PudgeAbility.SWALLOW));
+                hero.preview(context, new AbilityRequest(loaded.position(), PudgeAbility.SWALLOW, target.position())));
     }
 
     @Test public void rejectedPreviewsHaveNoUpdatesOrCaptures() {
         var context = new HeroActionContext(field, Map.of(actor.id(), actor), 0);
         assertEquals(HeroEffect.rejected(AbilityRejection.ULTIMATE_NOT_READY),
-                hero.preview(context, actor, null, null, PudgeAbility.SWALLOW));
+                hero.preview(context, new AbilityRequest(actor.position(), PudgeAbility.SWALLOW, null)));
         assertEquals(HeroEffect.rejected(AbilityRejection.NO_ABILITY),
-                hero.preview(context, actor, target, target.position(), LumeshardAbility.LASER));
-        assertThrows(NullPointerException.class, () -> hero.preview(null, actor, target, target.position(), PudgeAbility.HOOK));
+                hero.preview(context, new AbilityRequest(actor.position(), LumeshardAbility.LASER, target.position())));
+        assertThrows(NullPointerException.class, () -> hero.preview(null, new AbilityRequest(actor.position(), PudgeAbility.HOOK, target.position())));
     }
 
     @Test public void oneStrategyCanPreviewDifferentPiecesWithoutMutatingSnapshots() {
         PieceState charged = actor.withAbilityState(0, 3, null);
         var context = new HeroActionContext(field, Map.of(charged.id(), charged, target.id(), target), 7);
-        HeroEffect effect = hero.preview(context, charged, target, target.position(), PudgeAbility.SWALLOW);
-        assertEquals(PudgeAbilities.preview(field, charged, target, PudgeAbility.SWALLOW, rules), effect);
+        HeroEffect effect = hero.preview(context, new AbilityRequest(charged.position(), PudgeAbility.SWALLOW, target.position()));
+
         assertEquals(Success.SUCCESS, effect.result());
         assertEquals(PieceState.Status.SWALLOWED, effect.updates().get(target.id()).status());
         assertEquals(0, effect.updates().get(charged.id()).ultimateCharge());
@@ -76,7 +75,7 @@ public class AbstractHeroTest {
         PieceState another = PieceState.initial(3, field.getFigureByPosition(new Position(0, 7)), HeroType.PUDGE);
         assertEquals(AbilityRejection.ULTIMATE_NOT_READY, hero.availability(another, PudgeAbility.SWALLOW));
         assertEquals(Success.SUCCESS, hero.availability(charged, PudgeAbility.SWALLOW));
-        assertEquals(effect, hero.preview(context, charged, target, target.position(), PudgeAbility.SWALLOW));
+        assertEquals(effect, hero.preview(context, new AbilityRequest(charged.position(), PudgeAbility.SWALLOW, target.position())));
     }
 
     @Test public void captureChargeIsCappedAndPreservesAllOtherPieceState() {
@@ -107,7 +106,7 @@ public class AbstractHeroTest {
         assertEquals(1, passive.afterCapture(cooling).ultimateCharge());
         var context = new HeroActionContext(field, Map.of(cooling.id(), cooling), 0);
         assertEquals(HeroEffect.rejected(AbilityRejection.ABILITY_COOLDOWN),
-                passive.preview(context, cooling, target, target.position(), PudgeAbility.HOOK));
+                passive.preview(context, new AbilityRequest(cooling.position(), PudgeAbility.HOOK, target.position())));
     }
 
     @Test public void configurationIsCopiedAndValidated() {
@@ -120,17 +119,14 @@ public class AbstractHeroTest {
         assertThrows(IllegalArgumentException.class, () -> new PudgeBehavior(rules, List.of(PudgeAbility.HOOK)));
     }
 
-    /** Test-only adapter demonstrates that migrating a hero need not change its effects. */
+    /** Контролируемая стратегия для проверки общего шаблона и стоимости эффекта. */
     private static final class PudgeBehavior extends AbstractHero {
-        private final PudgeRules rules;
-
         private PudgeBehavior(PudgeRules rules) {
-            this(rules, PudgeAbilities.abilities());
+            this(rules, PudgeAbility.getAbilities());
         }
 
         private PudgeBehavior(PudgeRules rules, List<? extends Abilities> abilities) {
             super(HeroType.PUDGE, abilities, PudgeAbility.SWALLOW, rules.ultimateCaptures());
-            this.rules = rules;
         }
 
         @Override protected MoveResult availabilitySpecific(PieceState actor, Abilities ability) {
@@ -140,7 +136,9 @@ public class AbstractHeroTest {
 
         @Override protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor,
                                                          PieceState target, AbilityRequest request) {
-            return PudgeAbilities.preview(context.field(), actor, target, request.ability(), rules);
+            return HeroEffect.success(Map.of(actor.id(), actor.withAbilityState(actor.cooldown(),
+                    actor.ultimateCharge(), target.id()), target.id(), target.hidden(PieceState.Status.SWALLOWED)))
+                    .withCost(AbilityCost.ultimate(ultimateCaptures()));
         }
     }
 }

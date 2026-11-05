@@ -3,7 +3,7 @@ package game.mechanics.compat;
 import game.heroes.HeroActionContext;
 import game.heroes.HeroType;
 import game.heroes.ares.AresAbility;
-import game.heroes.kikimora.KikimoraAbilities;
+import game.heroes.kikimora.KikimoraHero;
 import game.heroes.kikimora.KikimoraAbility;
 import game.heroes.moleminer.MineState;
 import game.heroes.zeus.LightningState;
@@ -108,7 +108,7 @@ public final class HistoricalJournal {
         var yarnEvent=last!=null && last.isAbility(KikimoraAbility.YARN)?last:null;
         if(yarnEvent!=null){
             var actor=before.pieces().get(yarnEvent.actorId());var target=before.pieces().get(yarnEvent.targetId());
-            for(var p:KikimoraAbilities.yarnTargets(before.pieces(),actor,target))addEvent(GameEvent.Kind.YARN_STUN,actor.color(),actor.id(),p.id(),actor.position(),p.position(),"Пряжа оглушила фигуру на "+cell(p.position()));
+            for(var p:KikimoraHero.yarnTargets(before.pieces(),actor,target))addEvent(GameEvent.Kind.YARN_STUN,actor.color(),actor.id(),p.id(),actor.position(),p.position(),"Пряжа оглушила фигуру на "+cell(p.position()));
         }
         Long spearActor = lastHistoricalEvent().isAbility(AresAbility.SPEAR) ? events.getLast().actorId() : null;
         if (spearActor != null)

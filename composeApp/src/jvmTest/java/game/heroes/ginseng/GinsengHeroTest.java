@@ -36,7 +36,7 @@ public class GinsengHeroTest {
         assertEquals(actor, context.pieceById(actor.id()));
     }
 
-    @Test public void canonicalVacancyUsesThePieceSnapshotAndRawAvailabilityKeepsItsHistoricalIdentityGuard() {
+    @Test public void canonicalVacancyUsesThePieceSnapshot() {
         var snapshot = GinsengFixtures.hook().getSnapshot();
         var actor = snapshot.pieceAt(pos("c2"));
         var blocker = PieceState.initial(100, new Field(8).createFigure(Knight.class, pos("d2"), FigureColor.WHITE), HeroType.NONE);
@@ -46,8 +46,7 @@ public class GinsengHeroTest {
         assertEquals(AbilityRejection.INVALID_ABILITY_TARGET,
                 new GinsengHero(GinsengRules.prototype()).preview(context,
                         new AbilityRequest(actor.position(), GinsengAbility.DISPLACE, actor.position(), pos("d2"), false)).result());
-        assertEquals(AbilityRejection.NO_ABILITY, GinsengAbilities.availability(snapshot.pieceAt(pos("e2")),
-                GinsengAbility.DISPLACE, GinsengRules.prototype(), true));
+
     }
 
     @Test public void copySpendsOnlyTheConfiguredChargeAndKeepsTheCanonicalSourceMetadata() {

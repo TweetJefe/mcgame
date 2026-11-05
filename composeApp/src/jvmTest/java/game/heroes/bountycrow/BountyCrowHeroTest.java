@@ -37,16 +37,14 @@ public class BountyCrowHeroTest {
         assertEquals(borrowed, before.pieceById(3));
     }
 
-    @Test public void stealPreservesCooldownAndTheCompatibilityFacadeDoesNotExecuteEconomy() {
+    @Test public void stealPreservesCooldownAndProposesAnEconomyOperation() {
         var rules = new BountyCrowRules(4, 2, 3);
         var hero = new BountyCrowHero(rules);
         var caster = state(1, Pawn.class, FigureColor.WHITE, "c2", HeroType.BOUNTY_CROW, 4, 3, null);
         var effect = hero.preview(context(caster), new AbilityRequest(caster.position(), BountyCrowAbility.STEAL, null));
         assertEquals(caster.withAbilityState(4, 0, null), effect.updates().get(1L));
         assertEquals(List.of(new game.economy.EconomyMechanic.Steal(caster.id())), effect.operations());
-        var detached = BountyCrowAbilities.preview(caster, null, BountyCrowAbility.STEAL, rules);
-        assertEquals(effect.updates(), detached.updates());
-        assertTrue(detached.operations().isEmpty());
+
     }
 
     private static PieceState state(long id, Class<? extends Figure> body, FigureColor side,

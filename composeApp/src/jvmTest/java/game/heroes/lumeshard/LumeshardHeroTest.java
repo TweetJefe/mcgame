@@ -53,10 +53,10 @@ public class LumeshardHeroTest {
         assertEquals(caster, before.pieceById(1));
     }
 
-    @Test public void rawFacadeRetainsItsHistoricalReadinessWithoutBypassingTheCanonicalGuard() {
+    @Test public void pottedCasterCannotActivateAnAbility() {
         var rules = new LumeshardRules(4, 2, 3);
         var caster = state(1, Bishop.class, FigureColor.WHITE, "c2", HeroType.LUMESHARD, 0, 3, null).asPot();
-        assertEquals(Success.SUCCESS, LumeshardAbilities.availability(caster, LumeshardAbility.LASER, rules));
+
         assertEquals(StatusRejection.POTTED, new LumeshardHero(rules).availability(caster, LumeshardAbility.LASER));
     }
 

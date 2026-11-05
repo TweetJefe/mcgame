@@ -17,7 +17,6 @@ import game.heroes.chronomlin.ChronomlinRules;
 import game.heroes.clownganger.ClowngangerRules;
 import game.heroes.faun.FaunRules;
 import game.heroes.faun.FaunState;
-import game.heroes.ginseng.GinsengAbility;
 import game.heroes.ginseng.GinsengRules;
 import game.heroes.ginseng.SpellState;
 import game.heroes.izba.IzbaRules;
@@ -439,10 +438,6 @@ public final class Game {
             if (canCompleteAbility(preview)) targets.add(request.target());
         }
         return List.copyOf(targets);
-    }
-
-    public synchronized List<Position> getDisplacementDestinations(Position actor, Position target, boolean borrowed) {
-        return getAbilityDestinations(actor, GinsengAbility.DISPLACE, target, borrowed);
     }
 
     public synchronized List<Position> getAbilityDestinations(Position actor, Abilities ability, Position target) {

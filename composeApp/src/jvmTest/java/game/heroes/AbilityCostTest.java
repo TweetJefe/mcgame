@@ -46,9 +46,8 @@ public class AbilityCostTest {
         assertEquals(AbilityRejection.NO_ABILITY, hero.availability(actor, PudgeAbility.HOOK,
                 AbilityUse.of(HeroType.ZEUS, true)));
         PieceState target = game.getPieceState(pos("a4"));
-        HeroEffect effect = hero.previewRequest(new HeroActionContext(game.getGameField(),
-                Map.of(actor.id(), actor, target.id(), target), 1), actor, target,
-                new AbilityRequest(actor.position(), PudgeAbility.HOOK, target.position(), null, true));
+        HeroEffect effect = hero.preview(new HeroActionContext(game.getGameField(),
+                Map.of(actor.id(), actor, target.id(), target), 1), new AbilityRequest(actor.position(), PudgeAbility.HOOK, target.position(), null, true));
         assertEquals(Success.SUCCESS, effect.result());
         assertEquals(actor, effect.updates().get(actor.id()));
     }
