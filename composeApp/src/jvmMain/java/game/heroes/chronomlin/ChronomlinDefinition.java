@@ -1,11 +1,12 @@
 package game.heroes.chronomlin;
 
 import game.heroes.HeroDefinition;
+import game.heroes.DraftProfile;
 import game.heroes.HeroType;
-import game.heroes.LegacyHeroes;
-import model.figures.Pawn;
-
+import game.mechanics.compat.HistoricalMechanics;
+import java.util.List;
 import java.util.Set;
+import model.figures.Pawn;
 
 /** Registration metadata; behavior is created separately for each game's rules. */
 public final class ChronomlinDefinition {
@@ -14,5 +15,7 @@ public final class ChronomlinDefinition {
     public static final HeroDefinition<ChronomlinRules> INSTANCE = new HeroDefinition<>(
             HeroType.CHRONOMLIN, "Chronomlin-Пешка", Set.of(Pawn.class),
             ChronomlinRules.class, ChronomlinRules.prototype(), new ChronomlinRulesCodec(),
-            (parameters, configuration) -> LegacyHeroes.create(HeroType.CHRONOMLIN, configuration));
+            ChronomlinHero::new, List.of(HistoricalMechanics.INSTANCE))
+            .withStatePolicy(new ChronomlinStatePolicy())
+            .withDraftProfile(DraftProfile.pickable(12));
 }

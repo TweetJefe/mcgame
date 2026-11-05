@@ -23,8 +23,8 @@ public record MineState(Map<Position,Mine> cells,List<Trigger> triggers,List<Bla
         for(var e:events){
             if(e.isAbility(MoleminerAbility.PLANT_MINE))state=state.plant(e.actorId(),e.to(),e.turn());
             if(e.isAbility(MoleminerAbility.DETONATE))landings.put(e.actorId(),e.to());
-            if(e.kind()==GameEvent.Kind.MINE_TRIGGER)state=state.trigger(e.actorId(),e.targetId(),e.to(),e.turn());
-            if(e.kind()==GameEvent.Kind.BLAST_AREA){var b=new Blast(e.actorId(),e.turn(),landings.get(e.actorId()),e.from());if(!b.end().equals(e.to()))throw new IllegalArgumentException("Invalid blast footprint");state=state.blast(b);}
+            if(e.legacyKind()==GameEvent.Kind.MINE_TRIGGER)state=state.trigger(e.actorId(),e.targetId(),e.to(),e.turn());
+            if(e.legacyKind()==GameEvent.Kind.BLAST_AREA){var b=new Blast(e.actorId(),e.turn(),landings.get(e.actorId()),e.from());if(!b.end().equals(e.to()))throw new IllegalArgumentException("Invalid blast footprint");state=state.blast(b);}
         }
         return state;
     }

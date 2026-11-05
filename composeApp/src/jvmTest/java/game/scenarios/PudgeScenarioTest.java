@@ -62,7 +62,7 @@ public class PudgeScenarioTest {
         move(game, "e2", "f2"); end(game); move(game, "f8", "f2");
         assertEquals(ally, game.getPieceState(pos("f2")).id());
         assertEquals(PieceState.Status.CAPTURED, game.getPieceState(pudge).status());
-        assertEquals(GameEvent.Kind.COUNTER_CAPTURE, game.getEvents().getLast().kind());
+        assertEquals(GameEvent.Kind.COUNTER_CAPTURE, game.getEvents().getLast().legacyKind());
         end(game);
     }
     @Test public void twoCapturesChargeUltimateAndSuccessfulSwallowSpendsBoth() {

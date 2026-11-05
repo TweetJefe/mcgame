@@ -6,6 +6,7 @@ import game.moves.AbilityRejection;
 import game.moves.StatusRejection;
 import game.moves.Success;
 import game.heroes.Abilities;
+import game.heroes.AbilityRequest;
 import game.heroes.HeroActionContext;
 import game.heroes.HeroEffect;
 import game.heroes.HeroType;
@@ -66,6 +67,31 @@ public class PudgeHeroTest {
         assertEquals(AbilityRejection.ABILITY_OUT_OF_RANGE,
                 preview(new PudgeRules(4, 3, false, true),
                         fixture(new Position(5, 5), FigureColor.BLACK, null), PudgeAbility.HOOK).result());
+    }
+
+    @Test public void canonicalHookUsesCurrentPiecesWhileTheDetachedFacadeRetainsFieldOccupancy() {
+        Position targetSquare = new Position(3, 6), blockerSquare = new Position(3, 4);
+        Fixture staleBlocked = fixture(targetSquare, FigureColor.BLACK, blockerSquare).withState(0, 2, null);
+        var currentPieces = new HashMap<>(staleBlocked.context().pieces());
+        currentPieces.remove(5L);
+        var current = new HeroActionContext(staleBlocked.context().field(), currentPieces, 10);
+        var request = new AbilityRequest(staleBlocked.actor().position(), PudgeAbility.HOOK, targetSquare);
+        var effect = new PudgeHero(RULES).preview(current, request);
+        assertEquals(Success.SUCCESS, effect.result());
+        assertEquals(blockerSquare, effect.updates().get(staleBlocked.target().id()).position());
+        assertEquals(staleBlocked.actor().withAbilityState(4, 2, null), effect.updates().get(staleBlocked.actor().id()));
+        assertEquals(AbilityRejection.ABILITY_BLOCKED, PudgeAbilities.preview(current.field(),
+                staleBlocked.actor(), staleBlocked.target(), PudgeAbility.HOOK, RULES).result());
+        assertEquals(staleBlocked.target(), current.pieceById(staleBlocked.target().id()));
+
+        Fixture staleVacant = fixture(targetSquare, FigureColor.BLACK, null).withState(0, 2, null);
+        currentPieces = new HashMap<>(staleVacant.context().pieces());
+        currentPieces.put(5L, new PieceState(5, Pawn.class, FigureColor.WHITE, blockerSquare,
+                PieceState.Status.BOARD, HeroType.NONE, 0, 0, staleVacant.target().inventory(), null));
+        current = new HeroActionContext(staleVacant.context().field(), currentPieces, 10);
+        assertEquals(AbilityRejection.ABILITY_BLOCKED, new PudgeHero(RULES).preview(current, request).result());
+        assertEquals(Success.SUCCESS, PudgeAbilities.preview(current.field(), staleVacant.actor(),
+                staleVacant.target(), PudgeAbility.HOOK, RULES).result());
     }
 
     @Test public void swallowSpendsConfiguredChargeAndPreservesCooldownAndOtherState() {

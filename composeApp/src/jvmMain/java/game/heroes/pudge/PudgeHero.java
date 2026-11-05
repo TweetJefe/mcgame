@@ -1,17 +1,27 @@
 package game.heroes.pudge;
 
+import game.heroes.Abilities;
+import game.heroes.AbilityCost;
+import game.heroes.AbilityRequest;
+import game.heroes.AbilityUse;
+import game.heroes.AbstractHero;
+import game.heroes.HeroActionContext;
+import game.heroes.HeroEffect;
+import game.heroes.compat.LegacyPreview;
 import game.moves.AbilityRejection;
+import game.moves.Capture;
+import game.moves.MoveResult;
 import game.moves.MovementRejection;
 import game.moves.StatusRejection;
 import game.moves.Success;
-import game.heroes.AbstractHero;
-import game.heroes.Abilities;
-import game.heroes.HeroActionContext;
-import game.heroes.HeroEffect;
-import game.heroes.AbilityRequest;
-import game.moves.MoveResult;
-import game.moves.Capture;
 import game.state.PieceState;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import model.Field;
 import model.Figure;
 import model.Position;
@@ -19,21 +29,21 @@ import model.figures.Empty;
 import model.figures.King;
 import rules.moba.TerrainGeometry;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.function.UnaryOperator;
-
 /** Pudge's targeting and effects, sharing availability and capture charging with AbstractHero. */
-public final class PudgeHero extends AbstractHero {
+public final class PudgeHero extends AbstractHero implements LegacyPreview {
     private final PudgeRules rules;
 
     public PudgeHero(PudgeRules rules) {
         super(PudgeDefinition.INSTANCE, PudgeAbility.getAbilities(), PudgeAbility.SWALLOW,
                 Objects.requireNonNull(rules, "rules").ultimateCaptures());
         this.rules = rules;
+    }
+
+    /** Совместимость ограниченного статического API; игровой путь использует полный AbilityRequest. */
+    @Override
+    public HeroEffect legacyPreview(Field field, PieceState actor, PieceState target, Position square,
+                                    Abilities ability) {
+        return PudgeAbilities.preview(field, actor, target, ability, rules);
     }
 
     @Override
@@ -56,7 +66,25 @@ public final class PudgeHero extends AbstractHero {
 
     @Override
     protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor, PieceState target,
-                                           Position square, Abilities ability) {
+                                           AbilityRequest request) {
+        return calculateEffect(context, actor, target, request.ability(), square -> context.pieceAt(square) == null);
+    }
+
+    /** Старый публичный расчёт использует занятость Field, даже если переданы только исполнитель и цель. */
+    HeroEffect legacyPreview(Field field, PieceState actor, PieceState target, Abilities ability) {
+        var pieces = new HashMap<Long, PieceState>();
+        if (actor != null) pieces.put(actor.id(), actor);
+        if (target != null) pieces.put(target.id(), target);
+        var context = new HeroActionContext(field, pieces, 0);
+        MoveResult ready = availability(actor, ability);
+        if (!ready.isSuccess()) return HeroEffect.rejected(ready);
+        return calculateEffect(context, actor, target, ability,
+                square -> field.getFigureByPosition(square) instanceof Empty)
+                .applyCost(actor, AbilityUse.of(type(), false));
+    }
+
+    private HeroEffect calculateEffect(HeroActionContext context, PieceState actor, PieceState target,
+                                       Abilities ability, Predicate<Position> vacant) {
         if (target == null || target.status() != PieceState.Status.BOARD || target.id() == actor.id())
             return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
         if (target.type() == King.class) return HeroEffect.rejected(StatusRejection.KING_IMMUNE);
@@ -74,7 +102,7 @@ public final class PudgeHero extends AbstractHero {
             for (int step = 1; step < distance; step++) {
                 Position cell = new Position(actor.position().getRow() + rowStep * step,
                         actor.position().getColumn() + columnStep * step);
-                if (!(context.field().getFigureByPosition(cell) instanceof Empty))
+                if (!vacant.test(cell))
                     return HeroEffect.rejected(AbilityRejection.ABILITY_BLOCKED);
             }
             Position landing = new Position(actor.position().getRow() + rowStep,
@@ -82,35 +110,16 @@ public final class PudgeHero extends AbstractHero {
             if (TerrainGeometry.blocksRay(target.position(), landing,
                     context.terrain().hostileSquares(context.pieces(), target.color())))
                 return HeroEffect.rejected(AbilityRejection.MUD_BLOCKED);
-            return HeroEffect.success(Map.of(target.id(), target.placed(landing, target.type()), actor.id(),
-                    actor.withAbilityState(rules.hookCooldown(), actor.ultimateCharge(), actor.storedPieceId())));
+            return HeroEffect.success(Map.of(target.id(), target.placed(landing, target.type())))
+                    .withCost(AbilityCost.cooldown(rules.hookCooldown()));
         }
 
         if (distance != 1 || (!rules.swallowDiagonals() && Math.abs(dr) + Math.abs(dc) != 1))
             return HeroEffect.rejected(AbilityRejection.ABILITY_OUT_OF_RANGE);
         if (target.color() != actor.color()) return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
         return HeroEffect.success(Map.of(target.id(), target.hidden(PieceState.Status.SWALLOWED), actor.id(),
-                actor.withAbilityState(actor.cooldown(), actor.ultimateCharge() - ultimateCaptures(), target.id())));
-    }
-
-    @Override
-    public HeroEffect onCaptured(HeroActionContext context, PieceState victim, long captorId, Position square) {
-        if (victim.storedPieceId() == null) return HeroEffect.empty();
-        PieceState ally = context.pieceById(victim.storedPieceId());
-        if (ally == null || ally.status() != PieceState.Status.SWALLOWED)
-            return HeroEffect.rejected(MovementRejection.INVALID_BOARD);
-        PieceState returned = ally.placed(square, ally.type());
-        PieceState killer = context.pieceById(captorId);
-        if (killer == null || killer.isRemoved() || killer.isPotted())
-            return HeroEffect.success(Map.of(returned.id(), returned));
-        if (killer.type() == King.class) return HeroEffect.rejected(MovementRejection.KING_IN_CHECK);
-        PieceState killed = killer.hidden(killer.color() == victim.color()
-                ? PieceState.Status.DESTROYED : PieceState.Status.CAPTURED);
-        Position capturedAt = killer.position() == null ? square : killer.position();
-        Capture capture = new Capture(ally.id(), killer.id(), ally.color(),
-                context.field().createFigure(killer.type(), capturedAt, killer.color()),
-                capturedAt, true, Capture.Cause.PUDGE);
-        return new HeroEffect(Success.SUCCESS, Map.of(returned.id(), returned, killed.id(), killed), List.of(capture));
+                actor.withAbilityState(actor.cooldown(), actor.ultimateCharge(), target.id())))
+                .withCost(AbilityCost.ultimate(ultimateCaptures()));
     }
 
     /** Preserves the original standalone callback API; game reactions use onCaptured. */

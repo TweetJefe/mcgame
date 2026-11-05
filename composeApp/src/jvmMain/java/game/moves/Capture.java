@@ -9,7 +9,7 @@ import model.Position;
  */
 public record Capture(long actorId, long victimId, FigureColor creditedSide, Figure victim,
                       Position square, boolean reaction, Cause cause) {
-    public enum Cause {MOVE, PUDGE, BOG, ARES, MINE, BLAST, LIGHTNING }
+    public enum Cause {MOVE, PUDGE, BOG, ARES, MINE, BLAST, LIGHTNING, MECHANIC }
     public boolean rewarded(){return victim.getColor()!=creditedSide && actorId!=victimId;}
 
     public Capture(long actorId, long victimId, FigureColor creditedSide, Figure victim, Position square, boolean reaction) {

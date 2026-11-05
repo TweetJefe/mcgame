@@ -82,7 +82,7 @@ public class ClowngangerTest {
         assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),new AbilityRequest(pos("c2"),ClowngangerAbility.BOX,pos("a1"),null,true)));assertTrue(g.getPieceState(pos("a1")).isBoxed());assertEquals(0,g.getPieceState(pos("c2")).cooldown());AresTest.roundtrip(g);
     }
     @Test public void ninthDraftHeroUsesEitherKnightHomeAndSandboxHasIt()throws Exception{
-        for(String square:List.of("b1","g1")){var d=new Draft();assertEquals(10,d.getSnapshot().rules().catalogVersion());assertEquals(13,HeroCatalog.heroes().size());d.ban(WHITE,HeroType.PUDGE);d.ban(BLACK,HeroType.IZBA);assertEquals(DraftActionResult.SUCCESS,d.pick(WHITE,HeroType.CLOWNGANGER,pos(square)));d.finishPicks(BLACK);d.finishPicks(WHITE);Game g=Game.mobaFromDraft(d.getSnapshot(),HeroRules.prototype(),600,()->0L);assertEquals(HeroType.CLOWNGANGER,g.getPieceState(pos(square)).hero());AresTest.roundtrip(g);}
+        for(String square:List.of("b1","g1")){var d=new Draft();assertEquals(DraftRules.CURRENT_CATALOG,d.getSnapshot().rules().catalogVersion());assertEquals(13,HeroCatalog.heroes().size());d.ban(WHITE,HeroType.PUDGE);d.ban(BLACK,HeroType.IZBA);assertEquals(DraftActionResult.SUCCESS,d.pick(WHITE,HeroType.CLOWNGANGER,pos(square)));d.finishPicks(BLACK);d.finishPicks(WHITE);Game g=Game.mobaFromDraft(d.getSnapshot(),HeroRules.prototype(),600,()->0L);assertEquals(HeroType.CLOWNGANGER,g.getPieceState(pos(square)).hero());AresTest.roundtrip(g);}
         assertEquals(HeroType.CLOWNGANGER,Game.mobaHeroesSandbox(600).getPieceState(pos("c2")).hero());
     }
 

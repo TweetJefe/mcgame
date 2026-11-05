@@ -3,16 +3,18 @@ package game.persistence;
 import game.heroes.Abilities;
 import game.heroes.HeroRegistry;
 import game.history.GameEvent;
+import game.mechanics.MechanicEvent;
+import game.mechanics.compat.HistoricalEvents;
+import java.util.List;
+import java.util.Map;
 import model.FigureColor;
 import model.Position;
 import org.w3c.dom.Element;
 
-import java.util.List;
-import java.util.Map;
-
 /** Generic cast events plus a frozen adapter for historical active-event names. */
 public final class GameEventXml {
     public static final int GENERIC_ABILITY_VERSION = 15;
+    public static final int GENERIC_MECHANIC_VERSION = 16;
 
     private GameEventXml() {}
 
@@ -46,11 +48,30 @@ public final class GameEventXml {
     public static int requiredVersion(List<GameEvent> events) {
         int version = 1;
         for (GameEvent event : events) {
+            if (event.kind() == GameEvent.Kind.CAPTURE) version = Math.max(version, GENERIC_MECHANIC_VERSION);
+            if (event.effect() != null) {
+                var legacy = HistoricalEvents.kind(event.effect());
+                if (legacy == null) version = Math.max(version, GENERIC_MECHANIC_VERSION);
+                else version = Math.max(version, legacyEffectVersion(legacy));
+            }
             if (event.borrowed() || event.copiedAbility() != null) version = Math.max(version, 7);
             if (event.ability() != null) version = Math.max(version, abilityVersion(event.ability()));
             if (event.copiedAbility() != null) version = Math.max(version, abilityVersion(event.copiedAbility()));
         }
         return version;
+    }
+
+    private static int legacyEffectVersion(GameEvent.Kind kind) {
+        return switch (kind) {
+            case YARN_STUN -> 14;
+            case LIGHTNING_HIT, LIGHTNING_RESET, LIGHTNING_DISCHARGE, LIGHTNING_CAPTURE -> 12;
+            case MINE_TRIGGER, MINE_CAPTURE, BLAST_AREA, BLAST_CAPTURE, BLAST_DEATH -> 11;
+            case ILLUSION_HIT -> 10;
+            case STUN, ARES_REVENGE -> 9;
+            case YAGA_BIRTH, YAGA_MATURE, REPLACE -> 6;
+            case BOG_CAPTURE -> 4;
+            default -> 1;
+        };
     }
 
     private static int abilityVersion(Abilities ability) {
@@ -63,7 +84,7 @@ public final class GameEventXml {
         boolean legacy = event.ability() != null && LEGACY_ABILITIES.containsKey(event.abilityId());
         put(entry, "sequence", event.sequence());
         put(entry, "turn", event.turn());
-        put(entry, "kind", legacy ? event.abilityId() : event.kind().name());
+        put(entry, "kind", legacy ? event.abilityId() : event.legacyKind().name());
         if (event.ability() != null && !legacy) put(entry, "abilityId", event.abilityId());
         put(entry, "color", event.color());
         put(entry, "actorId", event.actorId());
@@ -71,6 +92,11 @@ public final class GameEventXml {
         put(entry, "from", cell(event.from()));
         put(entry, "to", cell(event.to()));
         put(entry, "message", event.message());
+        if (event.effect() != null && HistoricalEvents.kind(event.effect()) == null) {
+            put(entry, "effectId", event.effect().id());
+            var data = entry.getOwnerDocument().createElement("data"); entry.appendChild(data);
+            MechanicStateXml.writeFields(data, event.effect().attributes());
+        }
         if (version >= 7) {
             put(entry, "borrowed", event.borrowed());
             put(entry, "copiedAbility", event.copiedAbility() == null ? null : event.copiedAbility().id());
@@ -98,10 +124,29 @@ public final class GameEventXml {
         Abilities copied = entry.hasAttribute("copiedAbility")
                 ? heroes.abilityById(text(entry, "copiedAbility")) : null;
         require(copied == null || version >= abilityVersion(copied), "Copied ability requires a newer format");
+        MechanicEvent<?> effect = null;
+        if (kind == GameEvent.Kind.MECHANIC_EFFECT) {
+            require(version >= GENERIC_MECHANIC_VERSION, "Generic mechanic event requires format 16");
+            var eventType = heroes.mechanics().event(text(entry, "effectId"));
+            Element data = null;
+            for (var node = entry.getFirstChild(); node != null; node = node.getNextSibling())
+                if (node instanceof Element child) {
+                    require(child.getTagName().equals("data") && data == null, "Invalid mechanic event payload"); data = child;
+                }
+            require(data != null, "Missing mechanic event payload");
+            effect = eventType.decode(MechanicStateXml.readFields(data));
+        } else {
+            require(!entry.hasAttribute("effectId"), "Mechanic ID on another event category");
+            for (var node = entry.getFirstChild(); node != null; node = node.getNextSibling())
+                require(!(node instanceof Element), "Unexpected event payload");
+        }
+        require(kind != GameEvent.Kind.CAPTURE || version >= GENERIC_MECHANIC_VERSION, "Generic capture requires format 16");
+        if (HistoricalEvents.isLegacy(kind))
+            require(version >= legacyEffectVersion(kind), "Mechanic event requires a newer format");
         return new GameEvent(number(entry, "sequence"), number(entry, "turn"), kind,
                 FigureColor.valueOf(text(entry, "color")), optionalLong(entry, "actorId"), optionalLong(entry, "targetId"),
                 position(entry, "from"), position(entry, "to"), text(entry, "message"), ability, copied,
-                version >= 7 && bool(entry, "borrowed"));
+                version >= 7 && bool(entry, "borrowed"), effect);
     }
 
     private static void put(Element entry, String name, Object value) {

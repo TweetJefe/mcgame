@@ -29,10 +29,10 @@ public record LightningState(Map<Key,Charge> charges,List<Pulse> pulses){
     public static LightningState fromHistory(List<GameEvent> events,ZeusRules rules){
         LightningState state=empty();
         for(var e:events){
-            Kind kind=switch(e.kind()){case LIGHTNING_HIT->Kind.HIT;case LIGHTNING_RESET->Kind.RESET;case LIGHTNING_DISCHARGE->Kind.DISCHARGE;default->null;};
+            Kind kind=switch(e.legacyKind()){case LIGHTNING_HIT->Kind.HIT;case LIGHTNING_RESET->Kind.RESET;case LIGHTNING_DISCHARGE->Kind.DISCHARGE;default->null;};
             if(kind!=null)state=state.pulse(new Pulse(e.actorId(),e.targetId(),e.turn(),e.to(),kind),rules);
-            if(e.kind()==GameEvent.Kind.END_TURN)state=state.expire(e.turn());
-            if(e.targetId()!=null && (Set.of(GameEvent.Kind.MOVE, GameEvent.Kind.COUNTER_CAPTURE, GameEvent.Kind.BOG_CAPTURE, GameEvent.Kind.ARES_REVENGE, GameEvent.Kind.MINE_CAPTURE, GameEvent.Kind.BLAST_CAPTURE, GameEvent.Kind.BLAST_DEATH, GameEvent.Kind.LIGHTNING_CAPTURE, GameEvent.Kind.REPLACE).contains(e.kind()) || e.isAbility(KikimoraAbility.CLAY_POT))){
+            if(e.legacyKind()==GameEvent.Kind.END_TURN)state=state.expire(e.turn());
+            if(e.targetId()!=null && (Set.of(GameEvent.Kind.CAPTURE, GameEvent.Kind.MOVE, GameEvent.Kind.COUNTER_CAPTURE, GameEvent.Kind.BOG_CAPTURE, GameEvent.Kind.ARES_REVENGE, GameEvent.Kind.MINE_CAPTURE, GameEvent.Kind.BLAST_CAPTURE, GameEvent.Kind.BLAST_DEATH, GameEvent.Kind.LIGHTNING_CAPTURE, GameEvent.Kind.REPLACE).contains(e.legacyKind()) || e.isAbility(KikimoraAbility.CLAY_POT))){
                 var next=new HashMap<>(state.charges());next.keySet().removeIf(k->k.targetId()==e.targetId());state=new LightningState(next,state.pulses());
             }
         }

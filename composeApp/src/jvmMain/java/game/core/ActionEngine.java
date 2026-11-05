@@ -1,81 +1,92 @@
 package game.core;
 
-import game.heroes.bountycrow.BountyCrowAbility;
-import game.heroes.izba.IzbaAbility;
-import game.heroes.ares.AresAbility;
-import game.heroes.chronomlin.ChronomlinAbility;
-import game.heroes.kikimora.KikimoraAbility;
-
-import game.moves.AbilityRejection;
-import game.moves.EconomyRejection;
-import game.moves.MovementRejection;
-import game.moves.StatusRejection;
-import game.moves.Success;
-import game.moves.TurnRejection;
-import game.heroes.zeus.*;
-import game.heroes.clownganger.*;
-import game.heroes.moleminer.*;
+import game.economy.EconomyState;
 import game.heroes.Abilities;
 import game.heroes.AbilityRequest;
-import game.heroes.ginseng.*;
-import game.heroes.faun.*;
-import game.heroes.ares.AresAbilities;
-import game.summoning.*;
-import game.economy.*;
-import game.terrain.*;
-import rules.moba.TerrainGeometry;
 import game.heroes.Hero;
-import game.heroes.HeroRegistry;
 import game.heroes.HeroActionContext;
-import game.heroes.CaptureReactions;
 import game.heroes.HeroEffect;
+import game.heroes.HeroRegistry;
 import game.heroes.HeroRules;
-import rules.moba.AttackRules;
-
-import java.util.Set;
-
+import game.heroes.HeroType;
+import game.heroes.clownganger.ClownState;
+import game.heroes.faun.FaunState;
+import game.heroes.AbilityUse;
+import game.heroes.ginseng.SpellState;
+import game.heroes.moleminer.MineState;
+import game.heroes.zeus.LightningState;
+import game.mechanics.BuiltInStates;
+import game.mechanics.MechanicEventDraft;
+import game.mechanics.MechanicPhase;
+import game.mechanics.MechanicSession;
+import game.mechanics.MechanicStates;
+import game.mechanics.MoveIntent;
+import game.moves.AbilityRejection;
 import game.moves.AvailableMoves;
 import game.moves.Capture;
 import game.moves.MoveResult;
+import game.moves.MovementRejection;
 import game.moves.Promotion;
+import game.moves.StatusRejection;
+import game.moves.Success;
 import game.state.CastlingRights;
 import game.state.GameMode;
 import game.state.PieceState;
-
-import model.*;
-import model.figures.*;
-import rules.standard.MoveValidator;
-
+import game.summoning.SummonState;
+import game.terrain.TerrainState;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Predicate;
+import model.Field;
+import model.Figure;
+import model.FigureColor;
+import model.Position;
+import model.figures.Empty;
+import model.figures.King;
+import model.figures.Pawn;
+import model.figures.Rook;
+import rules.moba.AttackRules;
+import rules.standard.MoveValidator;
 
 /**
  * Pure previews. No live Game, Player, clock, or history is modified here.
  */
 final class ActionEngine {
-    record Context(Field field, Map<Long, PieceState> pieces, CastlingRights rights, Position ep, EconomyState economy,
-                   long turn, TerrainState terrain, SummonState summons, SpellState spells, FaunState faun,
-                   ClownState clown, MineState mines, LightningState lightning, HeroRegistry heroes) {
+    record Context(Field field, Map<Long, PieceState> pieces, CastlingRights rights, Position ep,
+                   long turn, MechanicStates mechanics, HeroRegistry heroes) {
         Context {
             pieces = Map.copyOf(pieces);
-            java.util.Objects.requireNonNull(heroes, "heroes");
+            Objects.requireNonNull(heroes, "heroes");
+            Objects.requireNonNull(mechanics, "mechanics");
         }
-
-        HeroActionContext heroContext() {
-            return new HeroActionContext(field, pieces, turn, terrain, faun, spells, economy);
+        Context(Field field, Map<Long, PieceState> pieces, CastlingRights rights, Position ep, EconomyState economy,
+                long turn, TerrainState terrain, SummonState summons, SpellState spells, FaunState faun,
+                ClownState clown, MineState mines, LightningState lightning, HeroRegistry heroes) {
+            this(field, pieces, rights, ep, turn, BuiltInStates.states(economy, terrain, summons, spells,
+                    faun, clown, mines, lightning), heroes);
         }
-
-        PieceState at(Position square) {
-            return pieces.values().stream().filter(piece -> piece.status() == PieceState.Status.BOARD
-                    && piece.position().equals(square)).findFirst().orElse(null);
-        }
+        HeroActionContext heroContext() { return new HeroActionContext(field, pieces, turn, mechanics); }
+        EconomyState economy() { return heroContext().economy(); }
+        TerrainState terrain() { return heroContext().terrain(); }
+        SummonState summons() { return heroContext().summons(); }
+        SpellState spells() { return heroContext().spells(); }
+        FaunState faun() { return heroContext().faun(); }
+        ClownState clown() { return heroContext().clown(); }
+        MineState mines() { return heroContext().mines(); }
+        LightningState lightning() { return heroContext().lightning(); }
+        PieceState at(Position square) { return heroContext().pieceAt(square); }
     }
 
-    record Preview(MoveResult result, Context next, List<Capture> captures) {
+    record Preview(MoveResult result, Context next, List<Capture> captures,
+                   List<MechanicEventDraft> events) {
+        Preview(MoveResult result, Context next, List<Capture> captures) { this(result, next, captures, List.of()); }
         Preview {
             captures = List.copyOf(captures);
+            events = List.copyOf(events);
         }
 
         static Preview rejected(MoveResult result) {
@@ -91,8 +102,12 @@ final class ActionEngine {
         PieceState source = context.at(from);
         if (source != null && source.color() == side && source.isPotted())
             return Preview.rejected(StatusRejection.POTTED);
-        if (mode == GameMode.MOBA && source != null && context.clown().movementTurn() == context.turn() && !context.clown().canMove(source.id(), context.turn(), true, context.pieces()))
-            return Preview.rejected(TurnRejection.MOVE_ALREADY_USED);
+        var reactions = new MechanicSession(context.heroContext(), context.pieces(), rules, context.heroes(), side, null, List.of());
+        reactions.movement(new MoveIntent(source, from, to, false));
+        if (mode == GameMode.MOBA) {
+            MoveResult started = reactions.run(MechanicPhase.MOVE_START);
+            if (!started.isSuccess()) return Preview.rejected(started);
+        }
         if (source != null && source.color() == side && source.isBoxed())
             return Preview.rejected(StatusRejection.BOXED);
         if (source != null && source.color() == side && source.isStunned())
@@ -107,8 +122,9 @@ final class ActionEngine {
         boolean castle = MoveValidator.isCastling(figure, from, to);
         if (castle && context.at(MoveValidator.rookSource(from, to)).isStunned())
             return Preview.rejected(StatusRejection.STUNNED);
-        if (figure instanceof King && (context.mines().hostile(to, context.pieces(), side) || castle && context.mines().hostile(new Position(from.getRow(), from.getColumn() + Integer.signum(to.getColumn() - from.getColumn())), context.pieces(), side)))
-            return Preview.rejected(StatusRejection.KING_IMMUNE);
+        reactions.movement(new MoveIntent(moving, from, to, castle));
+        MoveResult path = reactions.run(MechanicPhase.MOVE_PATH);
+        if (!path.isSuccess()) return Preview.rejected(path);
         boolean ep = MoveValidator.isEnPassant(oldBoard, side, from, to, context.ep());
         Position captureSquare = ep ? new Position(from.getRow(), to.getColumn()) : to;
         Figure victim = oldBoard.get(captureSquare);
@@ -117,16 +133,17 @@ final class ActionEngine {
         if (castle && context.at(MoveValidator.rookSource(from, to)).isPotted())
             return Preview.rejected(StatusRejection.POTTED);
         if (victimState != null && victimState.isBoxed()) return Preview.rejected(StatusRejection.BOXED);
-        if (moving.hero() == game.heroes.HeroType.ILLUSION && victimState != null)
-            return Preview.rejected(StatusRejection.ILLUSION_CANNOT_CAPTURE);
+        MoveResult attacker = reactions.run(MechanicPhase.MOVE_ATTACKER);
+        if (!attacker.isSuccess()) return Preview.rejected(attacker);
         if (castle && context.at(MoveValidator.rookSource(from, to)).isBoxed())
             return Preview.rejected(StatusRejection.BOXED);
-        if (victimState != null && victimState.hero() == game.heroes.HeroType.ILLUSION) {
-            if (moving.isBlinded()) return Preview.rejected(StatusRejection.BLINDED_CANNOT_CAPTURE);
-            Context hit = new Context(context.field(), context.pieces(), context.rights(), null, context.economy(), context.turn(), context.terrain(), context.summons(), context.spells(), context.faun(), context.clown().hit(victimState.id()), context.mines(), context.lightning(), context.heroes());
+        MoveResult contact = reactions.run(MechanicPhase.MOVE_TARGET);
+        if (!contact.isSuccess()) return Preview.rejected(contact);
+        if (reactions.interceptedMove()) {
+            Context hit = new Context(context.field(), reactions.pieces(), context.rights(), null, context.turn(), reactions.states(), context.heroes());
             if (AttackRules.isInCheck(hit.field().getGameField(), hit.pieces(), side, hit.terrain()))
                 return Preview.rejected(MovementRejection.KING_IN_CHECK);
-            return recordMove(new Preview(Success.SUCCESS, hit, List.of()), moving.id());
+            return recordMove(new Preview(Success.SUCCESS, hit, List.of(), reactions.proposedEvents()), moving.id());
         }
         if (mode == GameMode.MOBA && moving.isBlinded() && victimState != null)
             return Preview.rejected(StatusRejection.BLINDED_CANNOT_CAPTURE);
@@ -145,8 +162,7 @@ final class ActionEngine {
             states.put(moving.id(), context.heroes().get(moving.hero()).afterCapture(states.get(moving.id())));
             if (ep) board.put(captureSquare, field.createFigure(Empty.class, captureSquare, FigureColor.NONE));
             if (mode == GameMode.MOBA) {
-                HeroEffect reaction = CaptureReactions.resolve(new HeroActionContext(field, states, context.turn(), context.terrain(), context.faun()),
-                        victimState, moving.id(), to, context.heroes());
+                HeroEffect reaction = reactions.react(states, victimState, moving.id(), to);
                 if (!reaction.result().isSuccess()) return Preview.rejected(reaction.result());
                 rights = applyEffect(field, board, states, rights, reaction);
                 captures.addAll(reaction.captures());
@@ -161,14 +177,25 @@ final class ActionEngine {
         }
         Position nextEp = figure instanceof Pawn && Math.abs(to.getRow() - from.getRow()) == 2
                 ? new Position((from.getRow() + to.getRow()) / 2, from.getColumn()) : null;
-        var preview = finish(context, states, rights, nextEp, captures, context.terrain(), List.of(), side, mode, rules);
+        reactions.pieces(states);
+        reactions.captures(captures);
+        var preview = finish(context, reactions, rights, nextEp, side, mode);
         return mode == GameMode.MOBA ? recordMove(preview, moving.id()) : preview;
     }
 
-    private static Preview recordMove(Preview preview, long actor) {
+    static Preview recordMove(Preview preview, long actor) {
         if (!preview.result().isSuccess()) return preview;
-        var n = preview.next();
-        return new Preview(preview.result(), new Context(n.field(), n.pieces(), n.rights(), n.ep(), n.economy(), n.turn(), n.terrain(), n.summons(), n.spells(), n.faun(), n.clown().move(actor, n.turn()), n.mines(), n.lightning(), n.heroes()), preview.captures());
+        var next = preview.next();
+        var piece = next.pieces().get(actor);
+        var session = new MechanicSession(next.heroContext(), next.pieces(), next.heroes().rules(),
+                next.heroes(), piece.color(), null, preview.captures());
+        session.movement(new MoveIntent(piece, piece.position(), piece.position(), false));
+        MoveResult result = session.run(MechanicPhase.AFTER_MOVE);
+        if (!result.isSuccess()) return Preview.rejected(result);
+        next.heroes().validateStates(session.pieces());
+        var events = new ArrayList<>(preview.events()); events.addAll(session.proposedEvents());
+        return new Preview(Success.SUCCESS, new Context(next.field(), session.pieces(), next.rights(), next.ep(),
+                next.turn(), session.states(), next.heroes()), session.captures(), events);
     }
 
     static MoveResult abilityReady(Context context, FigureColor side, Position actorSquare, Abilities ability, HeroRules rules) {
@@ -176,6 +203,13 @@ final class ActionEngine {
     }
 
     static MoveResult abilityReady(Context context, FigureColor side, Position actorSquare, Abilities ability, HeroRules rules, boolean borrowed) {
+        return abilityReady(context, side, new AbilityRequest(actorSquare, ability, null, null, borrowed), rules);
+    }
+
+    private static MoveResult abilityReady(Context context, FigureColor side, AbilityRequest request, HeroRules rules) {
+        Position actorSquare = request.actor();
+        Abilities ability = request.ability();
+        boolean borrowed = request.borrowed();
         if (ability == null) return AbilityRejection.INVALID_ABILITY;
         if (!MoveValidator.inside(context.field(), actorSquare)) return MovementRejection.OUT_OF_BOUNDS;
         PieceState actor = context.at(actorSquare);
@@ -188,19 +222,16 @@ final class ActionEngine {
         MoveResult ready;
         if (borrowed) {
             var stored = context.spells().borrowed().get(actor.id());
-            if (actor.hero() != game.heroes.HeroType.GINSENG || stored == null || stored.ability() != ability)
+            if (actor.hero() != HeroType.GINSENG || stored == null || stored.ability() != ability)
                 return AbilityRejection.NO_BORROWED_ABILITY;
             if (!stored.isReady(context.turn())) return AbilityRejection.BORROWED_NOT_READY;
-            ready = BorrowedEffects.availability(actor, ability, rules);
+            Hero owner = context.heroes().ownerOf(ability);
+            ready = owner.availability(actor, ability, AbilityUse.of(owner.type(), true));
         } else ready = context.heroes().get(actor.hero()).availability(actor, ability);
         if (!ready.isSuccess()) return ready;
-        if (ability == ZeusAbility.THUNDERSTORM && ZeusAbilities.charged(context.pieces(), context.lightning(), actor).isEmpty())
-            return AbilityRejection.NO_CHARGED_TARGETS;
-        if ((ability == BountyCrowAbility.BOUNTY || ability == BountyCrowAbility.STEAL) && !context.economy().enabled())
-            return EconomyRejection.ECONOMY_DISABLED;
-        if (ability == BountyCrowAbility.STEAL && context.economy().balanceHalves(MoveValidator.opposite(side)) == 0)
-            return EconomyRejection.NO_GOLD_TO_STEAL;
-        return Success.SUCCESS;
+        var session = new MechanicSession(context.heroContext(), context.pieces(), rules,
+                context.heroes(), side, request, List.of());
+        return session.run(MechanicPhase.ABILITY_GUARD);
     }
 
     static Preview ability(Context context, FigureColor side, Position actorSquare, Position targetSquare,
@@ -210,139 +241,76 @@ final class ActionEngine {
 
     static Preview ability(Context context, FigureColor side, AbilityRequest request, HeroRules rules) {
         if (request == null) return Preview.rejected(AbilityRejection.INVALID_ABILITY);
-        Position actorSquare = request.actor(), targetSquare = request.target();
+        Position actorSquare = request.actor();
         Abilities ability = request.ability();
-        MoveResult ready = abilityReady(context, side, actorSquare, ability, rules, request.borrowed());
+        MoveResult ready = abilityReady(context, side, request, rules);
         if (!ready.isSuccess()) return Preview.rejected(ready);
-        PieceState actor = context.at(actorSquare), target = context.at(targetSquare);
+        PieceState actor = context.at(actorSquare);
         Hero behavior = request.borrowed() ? context.heroes().ownerOf(ability) : context.heroes().get(actor.hero());
         HeroActionContext heroContext = context.heroContext();
-        MoveResult targeting = behavior.targeting(ability).validate(heroContext, actor, request);
-        if (!targeting.isSuccess()) return Preview.rejected(targeting);
-        HeroEffect effect;
-        ZeusAbilities.Result zeus = null;
-        Abilities copied = ability == GinsengAbility.COPY_SPELL && target != null ? context.spells().lastUsed().get(target.id()) : null;
-        if (ability == MoleminerAbility.PLANT_MINE && context.mines().cells().containsKey(actorSquare))
-            return Preview.rejected(AbilityRejection.TERRAIN_OCCUPIED);
-        if (ability == KikimoraAbility.YARN || ability == KikimoraAbility.CLAY_POT)
-            effect = game.heroes.kikimora.KikimoraAbilities.preview(context.pieces(), actor, target, ability, context.turn(), rules.kikimora(), request.borrowed());
-        else if (ability == ZeusAbility.CHAIN_LIGHTNING || ability == ZeusAbility.THUNDERSTORM) {
-            zeus = ZeusAbilities.cast(context.field(), context.pieces(), actor, target, ability, context.lightning(), context.summons(), context.turn(), rules, request.borrowed());
-            effect = zeus.effect();
-        } else if (ability == MoleminerAbility.PLANT_MINE || ability == MoleminerAbility.DETONATE)
-            effect = MoleminerAbilities.preview(actor, targetSquare, ability, rules.moleminer(), request.borrowed());
-        else if (ability == ClowngangerAbility.BOX || ability == ClowngangerAbility.ILLUSION)
-            effect = ClowngangerAbilities.preview(context.field(), actor, target, targetSquare, ability, context.turn(), rules.clownganger(), request.borrowed());
-        else if (ability == AresAbility.SPEAR)
-            effect = AresAbilities.spear(context.field(), context.pieces(), actor, targetSquare, context.turn(), rules.ares(), context.terrain(), request.borrowed());
-        else if (ability == GinsengAbility.DISPLACE)
-            effect = GinsengAbilities.displace(context.field(), actor, target, request.destination(), rules.ginseng(), request.borrowed());
-        else if (ability == GinsengAbility.COPY_SPELL)
-            effect = GinsengAbilities.copy(actor, target, copied, rules.ginseng(), request.borrowed());
-        else
-            effect = request.borrowed() ? BorrowedEffects.preview(heroContext, actor, target, targetSquare, ability, rules) : behavior.preview(heroContext, actor, target, targetSquare, ability);
+        HeroEffect effect = behavior.preview(heroContext, request);
         if (!effect.result().isSuccess()) return Preview.rejected(effect.result());
-        Field field = context.field();
-        var board = new HashMap<>(field.getGameField());
         var states = new HashMap<>(context.pieces());
-        CastlingRights rights = applyEffect(field, board, states, context.rights(), effect);
-        if (ability == ChronomlinAbility.GRAPPLE && TerrainGeometry.blocksRay(actor.position(), effect.updates().get(actor.id()).position(), context.terrain().hostileSquares(context.pieces(), actor.color())))
-            return Preview.rejected(AbilityRejection.MUD_BLOCKED);
-        TerrainResolver.Placement placement = TerrainResolver.place(context.terrain(), context.pieces(), actor, targetSquare, ability, context.turn(), rules);
-        if (!placement.result().isSuccess()) return Preview.rejected(placement.result());
-        SummonState summons = zeus == null ? context.summons() : zeus.summons();
-        if (ability == IzbaAbility.SUMMON_YAGA) {
-            var summoned = SummonResolver.cast(states, summons, actor, context.turn(), side, rules, placement.terrain());
-            if (!summoned.result().isSuccess()) return Preview.rejected(summoned.result());
-            states = new HashMap<>(summoned.pieces());
-            summons = summoned.summons();
-        }
-        ClownState clown = context.clown();
-        if (zeus != null) for (long id : zeus.illusionHits()) clown = clown.hit(id);
-        if (ability == ClowngangerAbility.ILLUSION) {
-            if (states.size() >= SummonState.MAX_IDENTITIES)
-                return Preview.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
-            for (var i : clown.illusions().values())
-                if (i.sourceId() == actor.id() && !states.get(i.id()).isRemoved())
-                    return Preview.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
-            long id = Math.addExact(states.keySet().stream().mapToLong(Long::longValue).max().orElse(0), 1);
-            var choice = summons.choose(2);
-            summons = new SummonState(true, choice.nextState(), summons.records());
-            Position bornAt = choice.index() == 0 ? actor.position() : targetSquare;
-            if (choice.index() == 0) states.put(actor.id(), states.get(actor.id()).placed(targetSquare, actor.type()));
-            states.put(id, new PieceState(id, actor.type(), actor.color(), bornAt, PieceState.Status.BOARD, game.heroes.HeroType.ILLUSION, 0, 0, java.util.List.of(game.state.ItemSlot.empty(), game.state.ItemSlot.empty(), game.state.ItemSlot.empty()), null, actor.blindTurns(), null));
-            clown = clown.create(id, actor.id(), bornAt, context.turn(), rules.clownganger());
-        }
-        SpellState spells = context.spells().cast(actor.id(), ability, request.borrowed(), context.turn(), target == null ? null : target.id(), copied);
-        MineState mines = context.mines();
-        if (ability == MoleminerAbility.PLANT_MINE) mines = mines.plant(actor.id(), actorSquare, context.turn());
-        Context preparedContext = new Context(context.field(), context.pieces(), context.rights(), context.ep(), context.economy(), context.turn(), context.terrain(), summons, spells, context.faun().cast(actor.id(), ability, targetSquare, context.turn(), rules.faun()), clown, mines, zeus == null ? context.lightning() : zeus.lightning(), context.heroes());
-        Preview preview = finish(preparedContext, states, rights, context.ep(), effect.captures(), placement.terrain(), placement.immediateEntries(), side, GameMode.MOBA, rules, ability == MoleminerAbility.DETONATE ? actor.id() : null, targetSquare);
-        if (!preview.result().isSuccess()) return preview;
-        EconomyState economy = preview.next().economy();
-        if (ability == BountyCrowAbility.BOUNTY) economy = assignBounty(context, actor, target, rules);
-        if (ability == BountyCrowAbility.STEAL)
-            economy = economy.apply(new GoldChange(context.turn(), GoldChange.Kind.STEAL, side, actor.id(), null,
-                    Math.min(4, economy.balanceHalves(MoveValidator.opposite(side))), 0, 0));
-        Context next = preview.next();
-        return new Preview(Success.SUCCESS, new Context(next.field(), next.pieces(), next.rights(), next.ep(), economy, context.turn(), next.terrain(), next.summons(), next.spells(), next.faun(), next.clown(), next.mines(), next.lightning(), next.heroes()), preview.captures());
+        var board = new HashMap<>(context.field().getGameField());
+        CastlingRights rights = applyEffect(context.field(), board, states, context.rights(), effect);
+        var session = new MechanicSession(heroContext, states, rules, context.heroes(), side, request, effect.captures());
+        session.enqueue(effect.operations());
+        MoveResult prepared = session.run(MechanicPhase.ABILITY_PREPARE);
+        if (!prepared.isSuccess()) return Preview.rejected(prepared);
+        return finish(context, session, rights, context.ep(), side, GameMode.MOBA);
     }
 
-    private static EconomyState assignBounty(Context context, PieceState actor, PieceState target, HeroRules rules) {
-        // Exclude the casting turn; each following owner turn is two individual player turns later.
-        return context.economy().withMark(new BountyMark(actor.id(), target.id(),
-                Math.addExact(context.turn(), 2L * rules.crow().bountyTurns())));
-    }
-
-    private static Preview finish(Context before, Map<Long, PieceState> states, CastlingRights rights, Position ep,
-                                  List<Capture> captures, TerrainState terrain, List<Long> immediate, FigureColor side, GameMode mode, HeroRules rules) {
-        return finish(before, states, rights, ep, captures, terrain, immediate, side, mode, rules, null, null);
-    }
-
-    private static Preview finish(Context before, Map<Long, PieceState> states, CastlingRights rights, Position ep, List<Capture> captures, TerrainState terrain, List<Long> immediate, FigureColor side, GameMode mode, HeroRules rules, Long bomber, Position landing) {
-        var resolved = EffectResolver.resolve(before.field(), before.pieces(), states, terrain, before.summons(), before.mines(), captures, immediate, before.turn(), side, rules, bomber, landing);
-        if (!resolved.result().isSuccess()) return Preview.rejected(resolved.result());
-        ClownState clown = before.clown();
-        for (long id : resolved.illusionHits()) clown = clown.hit(id);
-        var cleaned = clown.clean(resolved.pieces(), 0);
+    private static Preview finish(Context before, MechanicSession session,
+                                  CastlingRights rights, Position ep, FigureColor side, GameMode mode) {
+        MoveResult resolved = session.settle();
+        if (!resolved.isSuccess()) return Preview.rejected(resolved);
+        MoveResult settled = session.run(MechanicPhase.SETTLED);
+        if (!settled.isSuccess()) return Preview.rejected(settled);
         var board = new HashMap<Position, Figure>();
         for (Position square : before.field().getGameField().keySet())
             board.put(square, before.field().createFigure(Empty.class, square, FigureColor.NONE));
-        for (PieceState piece : cleaned.values())
+        for (PieceState piece : session.pieces().values())
             if (piece.status() == PieceState.Status.BOARD)
                 board.put(piece.position(), before.field().createFigure(piece.type(), piece.position(), piece.color()));
         for (PieceState old : before.pieces().values()) {
-            PieceState next = resolved.pieces().get(old.id());
+            PieceState next = session.pieces().get(old.id());
             if (old.position() != null && (next.position() == null || !old.position().equals(next.position()) || next.isPotted()))
                 rights = removedRookRights(rights, old, old.position());
         }
-        var kings = cleaned.values().stream().filter(p -> p.position() != null && p.type() == King.class).toList();
+        var kings = session.pieces().values().stream().filter(p -> p.position() != null && p.type() == King.class).toList();
         if (kings.size() == 2 && Math.max(Math.abs(kings.get(0).position().getRow() - kings.get(1).position().getRow()), Math.abs(kings.get(0).position().getColumn() - kings.get(1).position().getColumn())) <= 1)
             return Preview.rejected(MovementRejection.KING_IN_CHECK);
-        if (AttackRules.isInCheck(board, cleaned, side, resolved.terrain()))
+        if (AttackRules.isInCheck(board, session.pieces(), side, session.context().terrain()))
             return Preview.rejected(MovementRejection.KING_IN_CHECK);
         Field next = mode == GameMode.MOBA ? Field.fromMobaPosition(board) : Field.fromPosition(board);
-        EconomyState economy = GoldEngine.captures(before.economy(), resolved.captures(), before.pieces(), resolved.pieces(), rules.gold(), before.turn());
-        for (PieceState p : cleaned.values())
-            if (p.isRemoved()) economy = economy.removeMark(p.id());
-        return new Preview(Success.SUCCESS, new Context(next, cleaned, rights, validEp(board, ep, cleaned), economy, before.turn(), resolved.terrain(), resolved.summons(), before.spells(), before.faun().afterCaptures(resolved.captures(), cleaned), clown, resolved.mines(), before.lightning().clean(cleaned), before.heroes()), resolved.captures());
+        MoveResult rewarded = session.run(MechanicPhase.AFTER_SAFETY);
+        if (!rewarded.isSuccess()) return Preview.rejected(rewarded);
+        MoveResult action = session.run(MechanicPhase.AFTER_ACTION);
+        if (!action.isSuccess()) return Preview.rejected(action);
+        session.requireComplete();
+        before.heroes().validateStates(session.pieces());
+        return new Preview(Success.SUCCESS, new Context(next, session.pieces(), rights,
+                validEp(board, ep, session.pieces()), before.turn(), session.states(), before.heroes()), session.captures(), session.proposedEvents());
     }
 
     static boolean canEnd(Context context, FigureColor side) {
-        var pieces = AttackRules.expireStuns(context.clown().clean(context.pieces(), context.turn()), context.turn());
+        var session = new MechanicSession(context.heroContext(), context.pieces(),
+                context.heroes().rules(), context.heroes(), side, null, List.of());
+        if (!session.run(MechanicPhase.CAN_END).isSuccess()) return false;
+        var pieces = session.pieces();
         var board = new HashMap<>(context.field().getGameField());
         for (var old : context.pieces().values())
             if (old.position() != null && pieces.get(old.id()).position() == null)
                 board.put(old.position(), context.field().createFigure(Empty.class, old.position(), FigureColor.NONE));
-        return !AttackRules.isInCheck(board, pieces, side, context.terrain().expire(context.turn()));
+        return !AttackRules.isInCheck(board, pieces, side, session.context().terrain());
     }
 
     static boolean canFinishAfterMove(Context context, FigureColor side, boolean abilityRemaining, HeroRules rules) {
         if (canEnd(context, side)) return true;
         if (abilityRemaining && anyAbility(context, side, rules, next -> canFinishAfterMove(next, side, false, rules)))
             return true;
-        if (context.clown().movementTurn() == context.turn()) for (var piece : context.pieces().values()) {
-            if (piece.position() == null || piece.color() != side || !context.clown().canMove(piece.id(), context.turn(), true, context.pieces()))
+        for (var piece : context.pieces().values()) {
+            if (piece.position() == null || piece.color() != side || !context.heroes().mechanics().allowsExtraMove(context.heroContext(), piece))
                 continue;
             var candidates = MoveValidator.candidates(context.field(), context.field().getFigureByPosition(piece.position()), context.rights(), context.ep());
             for (var targets : List.of(candidates.getCanMove(), candidates.getCanAttack()))
@@ -359,7 +327,7 @@ final class ActionEngine {
         return anyMove(context, side, mode, rules, next -> canFinishAfterMove(next, side, false, rules));
     }
 
-    private static boolean anyMove(Context context, FigureColor side, GameMode mode, HeroRules rules, java.util.function.Predicate<Context> continuation) {
+    private static boolean anyMove(Context context, FigureColor side, GameMode mode, HeroRules rules, Predicate<Context> continuation) {
         for (var entry : context.field().getGameField().entrySet()) {
             Figure piece = entry.getValue();
             if (piece.getColor() != side) continue;
@@ -381,7 +349,7 @@ final class ActionEngine {
         return behavior.requests(context.heroContext(), actor, ability, borrowed);
     }
 
-    private static boolean anyAbility(Context context, FigureColor side, HeroRules rules, java.util.function.Predicate<Context> continuation) {
+    private static boolean anyAbility(Context context, FigureColor side, HeroRules rules, Predicate<Context> continuation) {
         for (PieceState piece : context.pieces().values()) {
             if (piece.position() == null || piece.color() != side) continue;
             for (boolean borrowed : List.of(false, true)) {

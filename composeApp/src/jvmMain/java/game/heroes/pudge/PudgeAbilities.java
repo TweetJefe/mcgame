@@ -1,14 +1,12 @@
 package game.heroes.pudge;
 
 import game.heroes.Abilities;
-import game.heroes.HeroActionContext;
 import game.heroes.HeroEffect;
 import game.moves.MoveResult;
 import game.state.PieceState;
 import model.Field;
 import model.Position;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.UnaryOperator;
@@ -26,11 +24,7 @@ public final class PudgeAbilities {
     }
 
     public static HeroEffect preview(Field field, PieceState actor, PieceState target, Abilities ability, PudgeRules rules) {
-        var pieces = new HashMap<Long, PieceState>();
-        if (actor != null) pieces.put(actor.id(), actor);
-        if (target != null) pieces.put(target.id(), target);
-        return new PudgeHero(rules).preview(new HeroActionContext(field, pieces, 0), actor, target,
-                target == null ? null : target.position(), ability);
+        return new PudgeHero(rules).legacyPreview(field, actor, target, ability);
     }
 
     public static PieceState afterCapture(PieceState actor, PudgeRules rules) {

@@ -24,6 +24,29 @@ import java.nio.file.Path
 import javax.swing.SwingUtilities
 
 class GinsengUiTest {
+    @Test fun copiedDisplacementUsesTheSameTwoSelectionStages() {
+        SwingUtilities.invokeAndWait {
+            val game = GinsengFixtures.readyDisplacement()
+            val actor = game.getPieceState(pos("c2"))
+            val target = game.getPieceState(pos("f5"))
+            ImageComposeScene(1200, 800) {
+                MaterialTheme { Surface(Modifier.fillMaxSize()) { ChessBoard(game) } }
+            }.use { scene ->
+                scene.render().close()
+                click(scene, 226f, 522f)
+                click(scene, 720f, 432f)
+                click(scene, 406f, 342f)
+                assertFalse(game.snapshot.turn().abilityUsed())
+                assertEquals(target, game.getPieceState(pos("f5")))
+                click(scene, 466f, 342f)
+                assertEquals(target.id(), game.getPieceState(pos("g5")).id())
+                assertEquals(actor.cooldown(), game.getPieceState(pos("c2")).cooldown())
+                assertTrue(game.spells.borrowed().isEmpty())
+                assertTrue(game.snapshot.turn().abilityUsed())
+            }
+        }
+    }
+
     @Test fun renderSixHeroCatalogAndGinsengControls() {
         SwingUtilities.invokeAndWait {
             val draft=Draft(game.draft.DraftRules(1,6,3))

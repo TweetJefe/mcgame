@@ -45,7 +45,8 @@ fun CellView(
     isBoxed: Boolean = false,
     isStunned: Boolean = false,
     lightningLabel: String? = null,
-    isPotted: Boolean = false
+    isPotted: Boolean = false,
+    heroDecoration: @Composable () -> Unit = {}
 ) {
     val isDark = (x + y) % 2 == 0
     val baseColor = if (isDark) Color(0xFF769656) else Color(0xFFEEEED2)
@@ -111,6 +112,7 @@ fun CellView(
             if (isStunned) Text("Стан",color=Color.Black,fontSize=11.sp,modifier=Modifier.align(Alignment.BottomStart).background(Color(0xFFFFBD59)).padding(horizontal=2.dp))
             if (isBlinded) Text("Осл", color = Color.White, fontSize = 11.sp,
                 modifier = Modifier.align(Alignment.TopStart).background(Color(0xFFC65D00)).padding(horizontal = 2.dp))
+            heroDecoration()
         } else if (isMoveTarget) {
             // Если клетка пустая, но туда можно сходить — рисуем маленькую точку
             Box(

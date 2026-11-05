@@ -73,7 +73,7 @@ public class AbilitiesTest {
     private static Hero strategy(Abilities ability) {
         return new AbstractHero(HeroType.ZEUS, List.of(ability), null, 0) {
             @Override protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor,
-                                                            PieceState target, Position square, Abilities selected) {
+                                                            PieceState target, AbilityRequest request) {
                 return HeroEffect.empty();
             }
         };

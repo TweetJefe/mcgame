@@ -82,7 +82,8 @@ public class DraftTest {
         assertThrows(IllegalArgumentException.class,()->Draft.replay(s.rules(),illegal));
     }
     @Test public void rulesCannotBanTheWholeCatalogOrRequireInvalidRosterSize() {
-        assertThrows(IllegalArgumentException.class,()->new DraftRules(6,6));
+        assertThrows(IllegalArgumentException.class,()->new Draft(new DraftRules(6,6)));
+        assertThrows(IllegalArgumentException.class,()->new DraftRules(6,6,10));
         assertThrows(IllegalArgumentException.class,()->new DraftRules(-1,6));
         assertThrows(IllegalArgumentException.class,()->new DraftRules(0,0));
         assertThrows(IllegalArgumentException.class,()->new DraftRules(0,15));

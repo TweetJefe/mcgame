@@ -21,14 +21,14 @@ public final class ClownValidator {
                 boxes.put(target.id(),Math.addExact(e.turn(),2L*s.heroRules().clownganger().boxTurns()));
             }
             if(e.isAbility(ClowngangerAbility.ILLUSION)){require(e.targetId()!=null && born.add(e.targetId()) && Math.max(Math.abs(e.from().getRow()-e.to().getRow()),Math.abs(e.from().getColumn()-e.to().getColumn()))<=1,"Invalid illusion birth");}
-            if(e.kind()==GameEvent.Kind.END_TURN)boxes.values().removeIf(t->t<=e.turn());
-            if(e.kind()==GameEvent.Kind.MOVE){
+            if(e.legacyKind()==GameEvent.Kind.END_TURN)boxes.values().removeIf(t->t<=e.turn());
+            if(e.legacyKind()==GameEvent.Kind.MOVE){
                 var ids=moved.computeIfAbsent(e.turn(),k->new HashSet<>());require(ids.add(e.actorId()) && ids.size()<=2,"Piece moved twice or too many moves");
                 if(ids.size()==2){var it=ids.iterator();long a=it.next(),b=it.next();long group=s.clown().group(a);require(group==s.clown().group(b) && (a==group || b==group) && (born.contains(a) || born.contains(b)),"Two unrelated moves in one turn");}
             }
             if(e.isAbility(GinsengAbility.COPY_SPELL) && e.copiedAbility()==null)require(s.pieces().get(e.targetId()).hero()==HeroType.ILLUSION,"Empty copy from a real hero");
-            if(e.kind()==GameEvent.Kind.ILLUSION_HIT){
-                require(born.contains(e.targetId()) && (s.events().stream().anyMatch(t->t.turn()==e.turn() && java.util.Objects.equals(t.actorId(),e.actorId()) && ((t.kind()==GameEvent.Kind.MINE_TRIGGER || t.kind()==GameEvent.Kind.LIGHTNING_DISCHARGE) && java.util.Objects.equals(t.targetId(),e.targetId()) || t.kind()==GameEvent.Kind.BLAST_AREA)) || s.events().stream().anyMatch(m->m.turn()==e.turn() && m.kind()==GameEvent.Kind.MOVE && Objects.equals(m.actorId(),e.actorId()) && m.to().equals(e.to())) || ((s.pieces().get(e.actorId()).hero()==HeroType.BOLOTNIK || s.pieces().get(e.actorId()).hero()==HeroType.GINSENG) && s.events().stream().anyMatch(t->t.sequence()<e.sequence() && java.util.Objects.equals(t.actorId(),e.actorId()) && (t.isAbility(BolotnikAbility.MUD) || t.isAbility(BolotnikAbility.AMBUSH))))),"Illusion hit without a move or trap");
+            if(e.legacyKind()==GameEvent.Kind.ILLUSION_HIT){
+                require(born.contains(e.targetId()) && (s.events().stream().anyMatch(t->t.turn()==e.turn() && java.util.Objects.equals(t.actorId(),e.actorId()) && ((t.legacyKind()==GameEvent.Kind.MINE_TRIGGER || t.legacyKind()==GameEvent.Kind.LIGHTNING_DISCHARGE) && java.util.Objects.equals(t.targetId(),e.targetId()) || t.legacyKind()==GameEvent.Kind.BLAST_AREA)) || s.events().stream().anyMatch(m->m.turn()==e.turn() && m.legacyKind()==GameEvent.Kind.MOVE && Objects.equals(m.actorId(),e.actorId()) && m.to().equals(e.to())) || ((s.pieces().get(e.actorId()).hero()==HeroType.BOLOTNIK || s.pieces().get(e.actorId()).hero()==HeroType.GINSENG) && s.events().stream().anyMatch(t->t.sequence()<e.sequence() && java.util.Objects.equals(t.actorId(),e.actorId()) && (t.isAbility(BolotnikAbility.MUD) || t.isAbility(BolotnikAbility.AMBUSH))))),"Illusion hit without a move or trap");
             }
         }
         for(var i:s.clown().illusions().values()){

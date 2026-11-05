@@ -56,18 +56,21 @@ public class HeroDefinitionsTest {
             this.rules = rules;
         }
         @Override protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor,
-                                                        PieceState target, Position square, Abilities ability) {
+                                                        PieceState target, AbilityRequest request) {
             return HeroEffect.success(Map.of(actor.id(), actor.withAbilityState(rules.cooldown(), 0, null)));
         }
     }
 
     @Test public void descriptionsCoverAllIdentitiesAndPreserveInitialBodies() {
         Set<HeroType> registered = new HashSet<>();
+        HeroRegistry heroes = HeroRegistry.standard();
         for (HeroDefinition<?> definition : HeroDefinitions.all()) {
             assertTrue(registered.add(definition.type()));
             assertSame(definition, HeroDefinitions.get(definition.type()));
             assertFalse(definition.displayName().isBlank());
             assertFalse(definition.supports(null));
+            assertTrue("Native strategy required for " + definition.type(),
+                    heroes.get(definition.type()) instanceof AbstractHero);
         }
         assertEquals(Set.of(HeroType.values()), registered);
         assertEquals("Пудж-Ладья", PudgeDefinition.INSTANCE.displayName());

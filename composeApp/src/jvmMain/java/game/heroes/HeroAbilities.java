@@ -1,6 +1,7 @@
 package game.heroes;
 
 import game.moves.AbilityRejection;
+import game.heroes.compat.LegacyPreview;
 import game.heroes.pudge.PudgeRules;
 import game.moves.MoveResult;
 import game.state.PieceState;
@@ -28,11 +29,13 @@ public final class HeroAbilities {
 
     public static HeroEffect preview(Field field, PieceState actor, PieceState target, Position square,
                                      Abilities ability, HeroRules rules) {
+        Hero behavior = HeroRegistry.fromRules(rules).get(actor.hero());
+        if (behavior instanceof LegacyPreview legacy)
+            return legacy.legacyPreview(field, actor, target, square, ability);
         var pieces = new HashMap<Long, PieceState>();
         pieces.put(actor.id(), actor);
         if (target != null) pieces.put(target.id(), target);
-        return HeroRegistry.fromRules(rules).get(actor.hero())
-                .preview(new HeroActionContext(field, pieces, 0), actor, target, square, ability);
+        return behavior.preview(new HeroActionContext(field, pieces, 0), actor, target, square, ability);
     }
 
     public static HeroEffect preview(Field field, PieceState actor, PieceState target, Abilities ability, PudgeRules rules) {

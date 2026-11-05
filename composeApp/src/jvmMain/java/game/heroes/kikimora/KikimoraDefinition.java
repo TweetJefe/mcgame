@@ -1,11 +1,12 @@
 package game.heroes.kikimora;
 
 import game.heroes.HeroDefinition;
+import game.heroes.DraftProfile;
 import game.heroes.HeroType;
-import game.heroes.LegacyHeroes;
-import model.figures.Bishop;
-
+import game.mechanics.compat.HistoricalMechanics;
+import java.util.List;
 import java.util.Set;
+import model.figures.Bishop;
 
 /** Registration metadata; behavior is created separately for each game's rules. */
 public final class KikimoraDefinition {
@@ -14,5 +15,7 @@ public final class KikimoraDefinition {
     public static final HeroDefinition<KikimoraRules> INSTANCE = new HeroDefinition<>(
             HeroType.KIKIMORA, "Kikimora-Слон", Set.of(Bishop.class),
             KikimoraRules.class, KikimoraRules.prototype(), new KikimoraRulesCodec(),
-            (parameters, configuration) -> LegacyHeroes.create(HeroType.KIKIMORA, configuration));
+            KikimoraHero::new, List.of(HistoricalMechanics.INSTANCE))
+            .withStatePolicy(new KikimoraStatePolicy())
+            .withDraftProfile(DraftProfile.pickable(13));
 }

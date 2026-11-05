@@ -15,9 +15,17 @@ import java.util.Objects;
  */
 public record DraftSnapshot(long version, DraftRules rules, DraftPhase phase, FigureColor active,
                             List<HeroType> bans, Map<FigureColor, List<HeroPick>> picks,
-                            Set<FigureColor> finished, List<DraftEvent> events) {
+                            Set<FigureColor> finished, List<DraftEvent> events, DraftCatalog catalog) {
+    public DraftSnapshot(long version, DraftRules rules, DraftPhase phase, FigureColor active,
+                         List<HeroType> bans, Map<FigureColor, List<HeroPick>> picks,
+                         Set<FigureColor> finished, List<DraftEvent> events) {
+        this(version, rules, phase, active, bans, picks, finished, events, HeroCatalog.catalog(rules.catalogVersion()));
+    }
     public DraftSnapshot {
         Objects.requireNonNull(rules);
+        Objects.requireNonNull(catalog);
+        if (2 * rules.bansPerSide() + 2 > catalog.heroes().size())
+            throw new IllegalArgumentException("Bans must leave at least two heroes available");
         Objects.requireNonNull(phase);
         Objects.requireNonNull(active);
         bans = List.copyOf(bans);

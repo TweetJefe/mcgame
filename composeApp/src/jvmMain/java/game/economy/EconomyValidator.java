@@ -38,7 +38,7 @@ public final class EconomyValidator {
         var thefts = new HashSet<ActionKey>();
         var bounties = new HashMap<Long, ArrayList<GameEvent>>();
         for (GameEvent event : s.events()) {
-            if ((event.kind() == GameEvent.Kind.MOVE || event.kind() == GameEvent.Kind.COUNTER_CAPTURE || event.kind() == GameEvent.Kind.BOG_CAPTURE || event.kind() == GameEvent.Kind.ARES_REVENGE || event.kind()==GameEvent.Kind.MINE_CAPTURE || (event.kind()==GameEvent.Kind.BLAST_CAPTURE || event.kind()==GameEvent.Kind.LIGHTNING_CAPTURE)) && event.targetId() != null)
+            if ((event.legacyKind() == GameEvent.Kind.MOVE || (event.legacyKind() == GameEvent.Kind.COUNTER_CAPTURE || event.legacyKind() == GameEvent.Kind.CAPTURE) || event.legacyKind() == GameEvent.Kind.BOG_CAPTURE || event.legacyKind() == GameEvent.Kind.ARES_REVENGE || event.legacyKind()==GameEvent.Kind.MINE_CAPTURE || (event.legacyKind()==GameEvent.Kind.BLAST_CAPTURE || event.legacyKind()==GameEvent.Kind.LIGHTNING_CAPTURE)) && event.targetId() != null)
                 captures.put(new ActionKey(event.turn(), event.actorId(), event.targetId()), event);
             if (event.isAbility(BountyCrowAbility.STEAL)) thefts.add(new ActionKey(event.turn(), event.actorId(), null));
             if (event.isAbility(BountyCrowAbility.BOUNTY)) {

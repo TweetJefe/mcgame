@@ -1,16 +1,32 @@
 package game.summoning;
 
+import game.heroes.HeroPieceFactory;
+import game.heroes.HeroRegistry;
+import game.heroes.HeroRules;
+import game.heroes.HeroType;
+import game.heroes.PieceCreationContext;
+import game.mechanics.MechanicSession;
 import game.moves.AbilityRejection;
+import game.moves.Capture;
+import game.moves.MoveResult;
 import game.moves.MovementRejection;
 import game.moves.Success;
-import game.heroes.*;
-import game.moves.*;
-import game.state.*;
-import game.terrain.*;
-import model.*;
-import model.figures.*;
-
-import java.util.*;
+import game.state.ItemSlot;
+import game.state.PieceState;
+import game.terrain.TerrainResolver;
+import game.terrain.TerrainState;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import model.Field;
+import model.FigureColor;
+import model.Position;
+import model.figures.King;
+import model.figures.Pawn;
+import model.figures.Rook;
 
 /**
  * Pure creation, removal without a capture, and reactions after the ordinary capture chain.
@@ -30,6 +46,11 @@ public final class SummonResolver {
 
     public static Result cast(Map<Long, PieceState> prepared, SummonState summons, PieceState actor, long turn,
                               FigureColor actingSide, HeroRules rules, TerrainState terrain) {
+        return cast(prepared, summons, actor, turn, actingSide, rules, terrain, HeroRegistry.fromRules(rules));
+    }
+
+    public static Result cast(Map<Long, PieceState> prepared, SummonState summons, PieceState actor, long turn,
+                              FigureColor actingSide, HeroRules rules, TerrainState terrain, HeroRegistry heroes) {
         var cells = new ArrayList<Position>();
         int first = actor.color() == FigureColor.WHITE ? 0 : 6;
         for (int row = first; row < first + 2; row++)
@@ -42,11 +63,11 @@ public final class SummonResolver {
                 Position p = new Position(row, col);
                 if (at(prepared, p).type() != King.class && !at(prepared,p).isBoxed() && !at(prepared,p).isPotted()) cells.add(p);
             }
-        return spawn(prepared, summons, actor, turn, actingSide, rules, terrain, cells, SummonRecord.Cause.ULTIMATE);
+        return spawn(prepared, summons, actor, turn, actingSide, rules, terrain, cells, SummonRecord.Cause.ULTIMATE, heroes);
     }
 
     private static Result spawn(Map<Long, PieceState> prepared, SummonState summons, PieceState source, long turn,
-                                FigureColor actingSide, HeroRules rules, TerrainState terrain, List<Position> cells, SummonRecord.Cause cause) {
+                                FigureColor actingSide, HeroRules rules, TerrainState terrain, List<Position> cells, SummonRecord.Cause cause, HeroRegistry heroes) {
         if (cells.isEmpty()) return new Result(cause==SummonRecord.Cause.ULTIMATE?AbilityRejection.NO_SUMMON_SPACE:Success.SUCCESS, prepared, summons, terrain, List.of());
         if (prepared.size() >= SummonState.MAX_IDENTITIES)
             return new Result(MovementRejection.INVALID_BOARD, prepared, summons, terrain, List.of());
@@ -56,8 +77,9 @@ public final class SummonResolver {
         PieceState occupant = at(states, square);
         if (occupant != null) remove(states, occupant); // Replacement is neither a capture nor a death reaction.
         long id = Math.addExact(states.keySet().stream().mapToLong(Long::longValue).max().orElse(0), 1);
-        Field factory = new Field(8);
-        PieceState baby = PieceState.initial(id, factory.createFigure(Pawn.class, square, source.color()), HeroType.BABA_YAGA);
+        PieceState base = new PieceState(id, Pawn.class, source.color(), square, PieceState.Status.BOARD,
+                HeroType.BABA_YAGA, 0, 0, List.of(ItemSlot.empty(), ItemSlot.empty(), ItemSlot.empty()), null);
+        PieceState baby = new HeroPieceFactory(heroes).create(base, new PieceCreationContext(square, source));
         states.put(id, baby);
         var records = new HashMap<>(summons.records());
         long deadline = Math.addExact(turn, 2L * rules.izba().lifetimeTurns() - (source.color() == actingSide ? 0 : 1));
@@ -76,6 +98,10 @@ public final class SummonResolver {
         return resolve(factory,prepared,summons,terrain,captures,turn,actingSide,rules,new HashSet<>());
     }
     public static Result resolve(Field factory,Map<Long,PieceState> prepared,SummonState summons,TerrainState terrain,List<Capture> captures,long turn,FigureColor actingSide,HeroRules rules,Set<Long> handled){
+        return resolve(factory,prepared,summons,terrain,captures,turn,actingSide,rules,handled,null);
+    }
+    public static Result resolve(Field factory,Map<Long,PieceState> prepared,SummonState summons,TerrainState terrain,List<Capture> captures,long turn,FigureColor actingSide,HeroRules rules,Set<Long> handled,MechanicSession session){
+        HeroRegistry heroes = session == null ? HeroRegistry.fromRules(rules) : session.heroes();
         var illusionHits=new ArrayList<Long>();
         var states = prepared;
         var all = new ArrayList<>(captures);
@@ -91,16 +117,17 @@ public final class SummonResolver {
                     Position p = new Position(row, col);
                     if (!p.equals(center) && at(states, p) == null) cells.add(p);
                 }
-            var spawned = spawn(states, summons, source, turn, actingSide, rules, terrain, cells, SummonRecord.Cause.DEATH);
+            var spawned = spawn(states, summons, source, turn, actingSide, rules, terrain, cells, SummonRecord.Cause.DEATH, heroes);
             if (!spawned.result().isSuccess()) return spawned;
-            var resolved = TerrainResolver.resolve(factory, states, spawned.pieces(), terrain, all, List.of(), rules);
+            if (session != null) session.state(game.mechanics.BuiltInStates.SUMMONS, spawned.summons());
+            var resolved = TerrainResolver.resolve(factory, states, spawned.pieces(), terrain, all, List.of(), rules, session);
             if (!resolved.result().isSuccess())
                 return new Result(resolved.result(), prepared, summons, terrain, captures);
             illusionHits.addAll(resolved.illusionHits());
             states = resolved.pieces();
             terrain = resolved.terrain();
             all = new ArrayList<>(resolved.captures());
-            summons = spawned.summons();
+            summons = session == null ? spawned.summons() : session.state(game.mechanics.BuiltInStates.SUMMONS);
         }
         return new Result(Success.SUCCESS, states, summons, terrain, all,illusionHits);
     }
@@ -110,12 +137,21 @@ public final class SummonResolver {
     }
 
     public static Result mature(Map<Long, PieceState> pieces, SummonState summons, long endedTurn, FigureColor owner, TerrainState terrain) {
+        return mature(pieces, summons, endedTurn, owner, terrain, HeroRegistry.standard());
+    }
+
+    public static Result mature(Map<Long, PieceState> pieces, SummonState summons, long endedTurn,
+                                FigureColor owner, TerrainState terrain, HeroRegistry heroes) {
+        var factory = new HeroPieceFactory(heroes);
         var states = new HashMap<>(pieces);
         var records = new HashMap<>(summons.records());
         for (var record : summons.records().values()) {
             PieceState p = states.get(record.id());
             if (!record.transformed() && record.transformsAfterTurn() <= endedTurn && p.color() == owner && !p.isRemoved() && !p.isPotted()) {
-                states.put(p.id(), new PieceState(p.id(), Rook.class, p.color(), p.position(), p.status(), HeroType.IZBA, 0, 0, p.inventory(), null, p.blindTurns(), null, p.stunnedThroughTurn(),p.boxedThroughTurn()));
+                PieceState base = new PieceState(p.id(), Rook.class, p.color(), p.position(), p.status(),
+                        HeroType.IZBA, 0, 0, p.inventory(), null, p.blindTurns(), null,
+                        p.stunnedThroughTurn(), p.boxedThroughTurn());
+                states.put(p.id(), factory.create(base, new PieceCreationContext(p.position(), p)));
                 records.put(record.id(), record.mature());
             }
         }

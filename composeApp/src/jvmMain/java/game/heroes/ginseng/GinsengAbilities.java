@@ -1,68 +1,60 @@
 package game.heroes.ginseng;
 
+import game.heroes.Abilities;
+import game.heroes.AbilityUse;
+import game.heroes.HeroEffect;
+import game.heroes.HeroType;
 import game.moves.AbilityRejection;
-import game.moves.MovementRejection;
-import game.moves.StatusRejection;
-import game.moves.Success;
-import game.heroes.*;
 import game.moves.MoveResult;
+import game.moves.MovementRejection;
+import game.moves.Success;
 import game.state.PieceState;
-import model.*;
-import model.figures.*;
+import java.util.List;
+import model.Field;
+import model.Position;
+import model.figures.Empty;
 
-import java.util.*;
-
+/** Совместимый фасад; единственная реализация сдвига и получения копии находится в GinsengHero. */
 public final class GinsengAbilities {
-    private GinsengAbilities() {
-    }
+    private GinsengAbilities() {}
 
     public static List<Abilities> abilities() {
         return GinsengAbility.getAbilities();
     }
 
     public static MoveResult availability(PieceState actor, Abilities ability, GinsengRules rules, boolean borrowed) {
+        // Сырой исторический API не проверял горшок и разрешал только настоящего Ginseng.
         if (ability == null) return AbilityRejection.INVALID_ABILITY;
         if (actor == null || actor.status() != PieceState.Status.BOARD) return MovementRejection.EMPTY_SOURCE;
         if (actor.hero() != HeroType.GINSENG || !abilities().contains(ability)) return AbilityRejection.NO_ABILITY;
-        if (!borrowed && ability == GinsengAbility.DISPLACE && actor.cooldown() > 0) return AbilityRejection.ABILITY_COOLDOWN;
+        if (!borrowed && ability == GinsengAbility.DISPLACE && actor.cooldown() > 0)
+            return AbilityRejection.ABILITY_COOLDOWN;
         if (!borrowed && ability == GinsengAbility.COPY_SPELL && actor.ultimateCharge() < rules.ultimateCaptures())
             return AbilityRejection.ULTIMATE_NOT_READY;
         return Success.SUCCESS;
     }
 
-    public static HeroEffect displace(Field field, PieceState actor, PieceState target, Position destination, GinsengRules rules, boolean borrowed) {
+    public static HeroEffect displace(Field field, PieceState actor, PieceState target, Position destination,
+                                      GinsengRules rules, boolean borrowed) {
+        var hero = new GinsengHero(rules);
+        var use = AbilityUse.of(HeroType.GINSENG, borrowed);
         MoveResult ready = availability(actor, GinsengAbility.DISPLACE, rules, borrowed);
         if (!ready.isSuccess()) return HeroEffect.rejected(ready);
-        if (target == null) return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
-        if (target.type() == King.class) return HeroEffect.rejected(StatusRejection.KING_IMMUNE);
-        if (distance(actor.position(), target.position()) > 3)
-            return HeroEffect.rejected(AbilityRejection.ABILITY_OUT_OF_RANGE);
-        if (destination == null || destination.getRow() < 0 || destination.getRow() > 7 || destination.getColumn() < 0 || destination.getColumn() > 7)
-            return HeroEffect.rejected(MovementRejection.OUT_OF_BOUNDS);
-        if (distance(target.position(), destination) != 1 || !(field.getFigureByPosition(destination) instanceof Empty))
-            return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
-        var updates = new HashMap<Long, PieceState>();
-        PieceState next = actor.withAbilityState(borrowed ? actor.cooldown() : rules.displacementCooldown(), actor.ultimateCharge(), actor.storedPieceId());
-        updates.put(actor.id(), next);
-        updates.put(target.id(), (target.id() == actor.id() ? next : target).placed(destination, target.type()));
-        return HeroEffect.success(updates);
+        return hero.displaceAvailable(actor, target, destination,
+                square -> field.getFigureByPosition(square) instanceof Empty).applyCost(actor, use);
     }
 
     public static HeroEffect copy(PieceState actor, PieceState source, Abilities last, GinsengRules rules, boolean borrowed) {
+        var hero = new GinsengHero(rules);
+        var use = AbilityUse.of(HeroType.GINSENG, borrowed);
         MoveResult ready = availability(actor, GinsengAbility.COPY_SPELL, rules, borrowed);
         if (!ready.isSuccess()) return HeroEffect.rejected(ready);
-        if (source == null || source.hero() == HeroType.NONE || source.type() == King.class)
-            return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
-        if (last == null && source.hero()!=HeroType.ILLUSION) return HeroEffect.rejected(AbilityRejection.NO_USED_ABILITY);
-        return HeroEffect.success(Map.of(actor.id(), actor.withAbilityState(actor.cooldown(),
-                borrowed ? actor.ultimateCharge() : actor.ultimateCharge() - rules.ultimateCaptures(), actor.storedPieceId())));
+        return hero.copyAvailable(actor, source, last).applyCost(actor, use);
     }
 
     public static PieceState afterCapture(PieceState actor, GinsengRules rules) {
-        return actor.withAbilityState(actor.cooldown(), Math.min(rules.ultimateCaptures(), actor.ultimateCharge() + 1), actor.storedPieceId());
-    }
-
-    private static int distance(Position a, Position b) {
-        return Math.max(Math.abs(a.getRow() - b.getRow()), Math.abs(a.getColumn() - b.getColumn()));
+        // Старый отдельный callback начислял заряд без проверки личности и горшка.
+        return actor.withAbilityState(actor.cooldown(), Math.min(rules.ultimateCaptures(), actor.ultimateCharge() + 1),
+                actor.storedPieceId());
     }
 }

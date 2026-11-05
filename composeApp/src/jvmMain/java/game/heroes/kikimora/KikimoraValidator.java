@@ -10,15 +10,15 @@ public final class KikimoraValidator{
     public static void validate(GameSnapshot s){
         var pots=new HashSet<Long>();
         for(var e:s.events()){
-            if(SpellState.activeAbility(e)!=null || e.kind()==GameEvent.Kind.MOVE)require(!pots.contains(e.actorId()),"A pot cannot act");
-            if(e.targetId()!=null && Set.of(GameEvent.Kind.MOVE,GameEvent.Kind.COUNTER_CAPTURE,GameEvent.Kind.BOG_CAPTURE,GameEvent.Kind.ARES_REVENGE,GameEvent.Kind.MINE_CAPTURE,GameEvent.Kind.LIGHTNING_CAPTURE,GameEvent.Kind.BLAST_CAPTURE,GameEvent.Kind.BLAST_DEATH,GameEvent.Kind.REPLACE,GameEvent.Kind.YARN_STUN).contains(e.kind()))require(!pots.contains(e.targetId()),"A pot cannot be captured, replaced or stunned");
+            if(SpellState.activeAbility(e)!=null || e.legacyKind()==GameEvent.Kind.MOVE)require(!pots.contains(e.actorId()),"A pot cannot act");
+            if(e.targetId()!=null && Set.of(GameEvent.Kind.CAPTURE,GameEvent.Kind.MOVE,GameEvent.Kind.COUNTER_CAPTURE,GameEvent.Kind.BOG_CAPTURE,GameEvent.Kind.ARES_REVENGE,GameEvent.Kind.MINE_CAPTURE,GameEvent.Kind.LIGHTNING_CAPTURE,GameEvent.Kind.BLAST_CAPTURE,GameEvent.Kind.BLAST_DEATH,GameEvent.Kind.REPLACE,GameEvent.Kind.YARN_STUN).contains(e.legacyKind()))require(!pots.contains(e.targetId()),"A pot cannot be captured, replaced or stunned");
             if(e.isAbility(KikimoraAbility.CLAY_POT)){
                 require(e.targetId()!=null && !Objects.equals(e.actorId(),e.targetId()) && pots.add(e.targetId()) && s.pieces().get(e.targetId()).type()!=King.class && distance(e.from(),e.to())==1,"Invalid clay pot conversion");
             }
             if(e.isAbility(KikimoraAbility.YARN)){
                 var target=s.pieces().get(e.targetId());var actor=s.pieces().get(e.actorId());
                 require(target!=null && target.type()!=King.class && target.color()!=actor.color() && distance(e.from(),e.to())<=2 && distance(e.from(),e.to())>0 && !pots.contains(target.id()),"Invalid yarn target");
-                var effects=s.events().stream().filter(p->p.kind()==GameEvent.Kind.YARN_STUN && p.turn()==e.turn() && Objects.equals(p.actorId(),e.actorId())).toList();
+                var effects=s.events().stream().filter(p->p.legacyKind()==GameEvent.Kind.YARN_STUN && p.turn()==e.turn() && Objects.equals(p.actorId(),e.actorId())).toList();
                 require(effects.size()>=1 && effects.size()<=2 && Objects.equals(effects.getFirst().targetId(),e.targetId()) && effects.getFirst().to().equals(e.to()),"Yarn without matching first stun");
                 if(effects.size()==2){
                     var second=effects.get(1);int ar=e.to().getRow()-e.from().getRow(),ac=e.to().getColumn()-e.from().getColumn();int br=second.to().getRow()-e.to().getRow(),bc=second.to().getColumn()-e.to().getColumn();

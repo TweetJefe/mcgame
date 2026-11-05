@@ -67,13 +67,13 @@ public record FaunState(List<Cloud> clouds, Map<Long, Invisibility> invisible) {
                 if (a == FaunAbility.INVISIBILITY && (e.from() == null || !e.from().equals(e.to())))
                     throw new IllegalArgumentException("Invisibility changes square");
                 state = state.cast(e.actorId(), a, e.to(), e.turn(), rules);
-            } else if (e.kind() == GameEvent.Kind.END_TURN) state = state.expire(e.turn());
-            if ((e.kind() == GameEvent.Kind.MOVE || e.kind() == GameEvent.Kind.COUNTER_CAPTURE || e.kind() == GameEvent.Kind.BOG_CAPTURE || e.kind() == GameEvent.Kind.ARES_REVENGE || e.kind()==GameEvent.Kind.MINE_CAPTURE || (e.kind()==GameEvent.Kind.BLAST_CAPTURE || e.kind()==GameEvent.Kind.LIGHTNING_CAPTURE) || e.kind()==GameEvent.Kind.BLAST_DEATH) && e.targetId() != null) {
+            } else if (e.legacyKind() == GameEvent.Kind.END_TURN) state = state.expire(e.turn());
+            if ((e.legacyKind() == GameEvent.Kind.MOVE || (e.legacyKind() == GameEvent.Kind.COUNTER_CAPTURE || e.legacyKind() == GameEvent.Kind.CAPTURE) || e.legacyKind() == GameEvent.Kind.BOG_CAPTURE || e.legacyKind() == GameEvent.Kind.ARES_REVENGE || e.legacyKind()==GameEvent.Kind.MINE_CAPTURE || (e.legacyKind()==GameEvent.Kind.BLAST_CAPTURE || e.legacyKind()==GameEvent.Kind.LIGHTNING_CAPTURE) || e.legacyKind()==GameEvent.Kind.BLAST_DEATH) && e.targetId() != null) {
                 var next = new HashMap<>(state.invisible());
                 next.remove(e.actorId());
                 next.remove(e.targetId());
                 state = new FaunState(state.clouds(), next);
-            } else if (e.kind() == GameEvent.Kind.REPLACE || e.isAbility(KikimoraAbility.CLAY_POT)) {
+            } else if (e.legacyKind() == GameEvent.Kind.REPLACE || e.isAbility(KikimoraAbility.CLAY_POT)) {
                 var next = new HashMap<>(state.invisible());
                 next.remove(e.targetId());
                 state = new FaunState(state.clouds(), next);

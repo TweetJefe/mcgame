@@ -146,8 +146,8 @@ public class IzbaTest {
         Game g=charge(create(b,Map.of(pos("e2"),HeroType.IZBA,pos("g4"),HeroType.BOLOTNIK),BLACK,seedFor(empty.size(),empty.indexOf(pos("c2")))),"e2");
         assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("g4"),pos("c2"),BolotnikAbility.MUD));waitTurn(g,"g8","f6");summon(g,"e2");
         assertEquals(HeroType.BOLOTNIK,g.getPieceState(pos("c2")).hero());assertEquals(PieceState.Status.CAPTURED,baby(g).status());
-        var born=g.getEvents().stream().filter(e->e.kind()==game.history.GameEvent.Kind.YAGA_BIRTH).findFirst().orElseThrow();
-        var killed=g.getEvents().stream().filter(e->e.kind()==game.history.GameEvent.Kind.BOG_CAPTURE).findFirst().orElseThrow();
+        var born=g.getEvents().stream().filter(e->e.legacyKind()==game.history.GameEvent.Kind.YAGA_BIRTH).findFirst().orElseThrow();
+        var killed=g.getEvents().stream().filter(e->e.legacyKind()==game.history.GameEvent.Kind.BOG_CAPTURE).findFirst().orElseThrow();
         assertTrue(born.sequence()<killed.sequence());
         assertEquals(4,g.getEconomy().blackHalves());assertTrue(g.getTerrain().cells().isEmpty());assertArrayEquals(GameSaveFile.encode(g.getSnapshot()),GameSaveFile.encode(reload(g).getSnapshot()));
     }

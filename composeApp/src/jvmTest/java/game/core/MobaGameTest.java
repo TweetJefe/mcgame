@@ -222,7 +222,7 @@ public class MobaGameTest {
         assertEquals(PieceState.Status.CAPTURED, game.getPieceState(attacker).status());
         assertEquals(1, game.getBlackPlayer().getAttackedFigures().size()); assertEquals(1, game.getWhitePlayer().getAttackedFigures().size());
         assertEquals(3, game.getBlackPlayer().getPoints()); assertEquals(3, game.getWhitePlayer().getPoints());
-        assertEquals(GameEvent.Kind.COUNTER_CAPTURE, game.getEvents().getLast().kind());
+        assertEquals(GameEvent.Kind.COUNTER_CAPTURE, game.getEvents().getLast().legacyKind());
         assertTrue(game.getTurnState().moveUsed()); assertConsistent(game);
     }
     @Test public void unloadedPudgeIsCapturedNormally() {
@@ -308,7 +308,7 @@ public class MobaGameTest {
         assertEquals(blackPassenger, game.getPieceState(pos("f2")).id());
         assertEquals(PieceState.Status.CAPTURED, game.getPieceState(whitePassenger).status());
         assertEquals(2, game.getBlackPlayer().getAttackedFigures().size()); assertEquals(1, game.getWhitePlayer().getAttackedFigures().size());
-        assertEquals(2, game.getEvents().stream().filter(event -> event.kind() == GameEvent.Kind.COUNTER_CAPTURE).count());
+        assertEquals(2, game.getEvents().stream().filter(event -> event.legacyKind() == GameEvent.Kind.COUNTER_CAPTURE).count());
         assertConsistent(game);
     }
     @Test public void hookCooldownTicksOnlyAtOwnersTurnStart() {

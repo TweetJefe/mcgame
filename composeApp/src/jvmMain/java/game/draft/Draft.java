@@ -1,27 +1,65 @@
 package game.draft;
 
 import game.heroes.HeroType;
+import game.heroes.HeroRules;
+import game.heroes.HeroDefinition;
+import game.heroes.HeroDefinitions;
 import model.FigureColor;
 import model.Position;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
-import static model.FigureColor.*;
+import static model.FigureColor.BLACK;
+import static model.FigureColor.NONE;
+import static model.FigureColor.WHITE;
 
 /**
  * Authoritative local draft commands. Rejections preserve the entire immutable snapshot.
  */
 public final class Draft {
     private DraftSnapshot state;
+    private final HeroRules heroRules;
 
     public Draft() {
         this(DraftRules.prototype());
     }
 
     public Draft(DraftRules rules) {
-        state = new DraftSnapshot(0, rules, rules.bansPerSide() == 0 ? DraftPhase.PICKS : DraftPhase.BANS, WHITE,
-                List.of(), Map.of(WHITE, List.of(), BLACK, List.of()), Set.of(), List.of());
+        this(rules, HeroRules.defaults());
     }
+
+    public Draft(DraftRules rules, HeroRules configuration) {
+        this(rules, rules.catalogVersion() == DraftRules.CURRENT_CATALOG
+                ? DraftCatalog.current(configuration.definitions())
+                : DraftCatalog.restore(HeroCatalog.heroes(rules.catalogVersion()), configuration.definitions()), configuration);
+    }
+
+    public Draft(DraftRules rules, DraftCatalog catalog) {
+        this(rules, catalog, configurationFor(catalog));
+    }
+
+    private static HeroRules configurationFor(DraftCatalog catalog) {
+        var definitions = new LinkedHashMap<HeroType, HeroDefinition<?>>();
+        for (var definition : HeroDefinitions.all()) definitions.put(definition.type(), definition);
+        for (var definition : catalog.definitions()) definitions.put(definition.type(), definition);
+        return HeroRules.defaults(List.copyOf(definitions.values()));
+    }
+
+    public Draft(DraftRules rules, DraftCatalog catalog, HeroRules configuration) {
+        heroRules = Objects.requireNonNull(configuration, "configuration");
+        if (!DraftCatalog.restore(catalog.heroes(), configuration.definitions()).equals(catalog))
+            throw new IllegalArgumentException("Draft catalog differs from registered definitions");
+        state = new DraftSnapshot(0, rules, rules.bansPerSide() == 0 ? DraftPhase.PICKS : DraftPhase.BANS, WHITE,
+                List.of(), Map.of(WHITE, List.of(), BLACK, List.of()), Set.of(), List.of(), catalog);
+    }
+
+    public HeroRules getHeroRules() { return heroRules; }
 
     public synchronized DraftSnapshot getSnapshot() {
         return state;
@@ -29,7 +67,7 @@ public final class Draft {
 
     public synchronized List<HeroType> getAvailableHeroes(FigureColor side) {
         if (side != WHITE && side != BLACK || state.isComplete() || state.finished().contains(side)) return List.of();
-        return HeroCatalog.heroes(state.rules().catalogVersion()).stream().filter(h -> !state.bans().contains(h) && !state.isPicked(h))
+        return state.catalog().heroes().stream().filter(h -> !state.bans().contains(h) && !state.isPicked(h))
                 .filter(h -> state.phase() == DraftPhase.BANS || !getPlacementTargets(side, h).isEmpty()).toList();
     }
 
@@ -38,7 +76,7 @@ public final class Draft {
             return List.of();
         Set<Position> occupied = new HashSet<>();
         state.picksFor(side).forEach(p -> occupied.add(p.square()));
-        return HeroCatalog.startingSquares(hero, side).stream().filter(p -> !occupied.contains(p)).toList();
+        return state.catalog().startingSquares(hero, side).stream().filter(p -> !occupied.contains(p)).toList();
     }
 
     public synchronized DraftActionResult ban(FigureColor side, HeroType hero) {
@@ -55,7 +93,7 @@ public final class Draft {
         DraftActionResult target = heroGuard(hero);
         if (!target.isSuccess()) return target;
         if (state.picksFor(side).size() >= state.rules().maxPicksPerSide()) return DraftActionResult.PICK_LIMIT;
-        if (square == null || !HeroCatalog.startingSquares(hero, side).contains(square))
+        if (square == null || !state.catalog().startingSquares(hero, side).contains(square))
             return DraftActionResult.INVALID_SQUARE;
         if (state.picksFor(side).stream().anyMatch(p -> p.square().equals(square)))
             return DraftActionResult.SQUARE_OCCUPIED;
@@ -75,7 +113,7 @@ public final class Draft {
     }
 
     private DraftActionResult heroGuard(HeroType hero) {
-        if (hero == null || !HeroCatalog.heroes(state.rules().catalogVersion()).contains(hero))
+        if (hero == null || !state.catalog().heroes().contains(hero))
             return DraftActionResult.INVALID_HERO;
         if (state.bans().contains(hero)) return DraftActionResult.HERO_BANNED;
         return state.isPicked(hero) ? DraftActionResult.HERO_PICKED : DraftActionResult.SUCCESS;
@@ -106,9 +144,9 @@ public final class Draft {
         if (phase == DraftPhase.PICKS) {
             for (FigureColor side : List.of(WHITE, BLACK)) {
                 var roster = rosters.get(side);
-                boolean noCandidate = HeroCatalog.heroes(state.rules().catalogVersion()).stream().filter(h -> !bans.contains(h))
+                boolean noCandidate = state.catalog().heroes().stream().filter(h -> !bans.contains(h))
                         .filter(h -> rosters.values().stream().flatMap(List::stream).noneMatch(p -> p.hero() == h))
-                        .noneMatch(h -> HeroCatalog.startingSquares(h, side).stream().anyMatch(p -> roster.stream().noneMatch(pick -> pick.square().equals(p))));
+                        .noneMatch(h -> state.catalog().startingSquares(h, side).stream().anyMatch(p -> roster.stream().noneMatch(pick -> pick.square().equals(p))));
                 if (roster.size() >= state.rules().maxPicksPerSide() || noCandidate) finished.add(side);
             }
             if (finished.contains(WHITE) && finished.contains(BLACK)) {
@@ -116,7 +154,7 @@ public final class Draft {
                 next = NONE;
             } else if (finished.contains(next)) next = opposite(next);
         }
-        state = new DraftSnapshot(state.version() + 1, state.rules(), phase, next, bans, rosters, finished, events);
+        state = new DraftSnapshot(state.version() + 1, state.rules(), phase, next, bans, rosters, finished, events, state.catalog());
         return DraftActionResult.SUCCESS;
     }
 
@@ -126,15 +164,34 @@ public final class Draft {
 
     public static Draft fromSnapshot(DraftSnapshot saved) {
         Objects.requireNonNull(saved, "Missing draft");
-        Draft restored = replay(saved.rules(), saved.events());
+        Draft restored = replay(saved.rules(), saved.events(), saved.catalog());
+        if (!restored.getSnapshot().equals(saved))
+            throw new IllegalArgumentException("Draft snapshot differs from its action history");
+        return restored;
+    }
+
+    public static Draft fromSnapshot(DraftSnapshot saved, HeroRules configuration) {
+        Objects.requireNonNull(saved, "Missing draft");
+        var bound = DraftCatalog.restore(saved.catalog().heroes(), configuration.definitions());
+        if (!bound.equals(saved.catalog()))
+            throw new IllegalArgumentException("Draft catalog differs from registered definitions");
+        Draft restored = replay(saved.rules(), saved.events(), bound, configuration);
         if (!restored.getSnapshot().equals(saved))
             throw new IllegalArgumentException("Draft snapshot differs from its action history");
         return restored;
     }
 
     public static Draft replay(DraftRules rules, List<DraftEvent> events) {
+        return replay(rules, events, HeroCatalog.catalog(rules.catalogVersion()));
+    }
+
+    public static Draft replay(DraftRules rules, List<DraftEvent> events, DraftCatalog catalog) {
+        return replay(rules, events, catalog, configurationFor(catalog));
+    }
+
+    private static Draft replay(DraftRules rules, List<DraftEvent> events, DraftCatalog catalog, HeroRules configuration) {
         if (events == null || events.size() > 100) throw new IllegalArgumentException("Invalid draft history");
-        Draft restored = new Draft(rules);
+        Draft restored = new Draft(rules, catalog, configuration);
         for (int i = 0; i < events.size(); i++) {
             DraftEvent e = events.get(i);
             if (e == null || e.sequence() != i + 1L) throw new IllegalArgumentException("Invalid draft event sequence");

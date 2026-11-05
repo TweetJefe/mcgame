@@ -68,6 +68,11 @@ public final class TerrainResolver {
 
     public static Result resolve(Field factory, Map<Long, PieceState> before, Map<Long, PieceState> prepared,
                                  TerrainState terrain, List<Capture> initialCaptures, List<Long> immediateEntries, HeroRules rules) {
+        return resolve(factory, before, prepared, terrain, initialCaptures, immediateEntries, rules, null);
+    }
+    public static Result resolve(Field factory, Map<Long, PieceState> before, Map<Long, PieceState> prepared,
+            TerrainState terrain, List<Capture> initialCaptures, List<Long> immediateEntries, HeroRules rules,
+            game.mechanics.MechanicSession session) {
         var states = new HashMap<>(prepared);
         var cells = new HashMap<>(terrain.cells());
         var illusionHits=new ArrayList<Long>();
@@ -102,10 +107,15 @@ public final class TerrainResolver {
                         states.put(holder.id(), holder.withAbilityState(holder.cooldown(), holder.ultimateCharge(), null));
             }
             states.put(entrant.id(), entrant.hidden(PieceState.Status.CAPTURED));
-            states.put(owner.id(), HeroAbilities.afterCapture(owner.placed(square, owner.type()), rules));
+            PieceState emerged = owner.placed(square, owner.type());
+            states.put(owner.id(), session == null ? HeroAbilities.afterCapture(emerged, rules)
+                    : session.heroes().get(owner.hero()).afterCapture(emerged));
             captures.add(new Capture(owner.id(), entrant.id(), owner.color(), factory.createFigure(entrant.type(), square, entrant.color()),
                     square, true, Capture.Cause.BOG));
-            HeroEffect reaction = HeroAbilities.captureReaction(factory, states, entrant, owner.id(), square, rules);
+            if (session != null) session.state(game.mechanics.BuiltInStates.TERRAIN, new TerrainState(cells));
+            HeroEffect reaction = session == null ? HeroAbilities.captureReaction(factory, states, entrant, owner.id(), square, rules)
+                    : session.react(states, entrant, owner.id(), square);
+            if (session != null) cells = new HashMap<>(session.state(game.mechanics.BuiltInStates.TERRAIN).cells());
             if (!reaction.result().isSuccess()) return new Result(reaction.result(), before, terrain, initialCaptures);
             states.putAll(reaction.updates());
             captures.addAll(reaction.captures());

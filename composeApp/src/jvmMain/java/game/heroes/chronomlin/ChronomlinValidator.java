@@ -22,7 +22,7 @@ public final class ChronomlinValidator {
         }
         int moveIndex=0;
         for(var e:s.events()){
-            if(e.kind()==GameEvent.Kind.MOVE){
+            if(e.legacyKind()==GameEvent.Kind.MOVE){
                 var move=s.moves().get(moveIndex++);
                 if(forms.containsKey(e.actorId()) && move.getPromotion()!=null){
                     require(forms.get(e.actorId())==Pawn.class,"Only a pawn can promote on the last rank");

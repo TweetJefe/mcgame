@@ -99,7 +99,7 @@ public class AbstractHeroTest {
     @Test public void heroesWithoutActiveUltimatesCanStillChargePassives() {
         Hero passive = new AbstractHero(HeroType.PUDGE, List.of(PudgeAbility.HOOK), null, 2) {
             @Override protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor,
-                                                             PieceState target, Position square, Abilities ability) {
+                                                             PieceState target, AbilityRequest request) {
                 throw new AssertionError("Unavailable abilities must not reach the effect hook");
             }
         };
@@ -139,8 +139,8 @@ public class AbstractHeroTest {
         }
 
         @Override protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor,
-                                                         PieceState target, Position square, Abilities ability) {
-            return PudgeAbilities.preview(context.field(), actor, target, ability, rules);
+                                                         PieceState target, AbilityRequest request) {
+            return PudgeAbilities.preview(context.field(), actor, target, request.ability(), rules);
         }
     }
 }

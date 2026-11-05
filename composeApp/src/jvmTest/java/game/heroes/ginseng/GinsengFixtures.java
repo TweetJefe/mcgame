@@ -41,6 +41,20 @@ public final class GinsengFixtures {
         play(g,"b1","a3");play(g,"g8","f6");ok(g.useAbility(g.getCurrentPlayer(),pos("c2"),pos("e2"),GinsengAbility.COPY_SPELL));
         play(g,"a3","b1");play(g,"f6","g8");return g;
     }
+    public static Game readyDisplacement() {
+        var b = board();
+        put(b, Bishop.class, WHITE, "f2");
+        put(b, Pawn.class, BLACK, "f4");
+        Game g = charged(create(b, Map.of(pos("f2"), HeroType.GINSENG)), "c2");
+        ok(g.useAbility(g.getCurrentPlayer(), new AbilityRequest(pos("f2"), GinsengAbility.DISPLACE,
+                pos("f4"), pos("f5"), false)));
+        play(g, "b1", "a3");
+        play(g, "g8", "f6");
+        ok(g.useAbility(g.getCurrentPlayer(), pos("c2"), pos("f2"), GinsengAbility.COPY_SPELL));
+        play(g, "a3", "b1");
+        play(g, "f6", "g8");
+        return g;
+    }
     private static void play(Game g,String a,String b){ok(g.moveFigure(g.getCurrentPlayer(),pos(a),pos(b)));ok(g.endTurn(g.getCurrentPlayer()));}
     private static void ok(game.moves.MoveResult result){if(!result.isSuccess())throw new AssertionError(result);}
 }

@@ -53,7 +53,7 @@ public final class TerrainValidator {
             require(footprint.equals(actual), "Incomplete or misplaced ambush footprint");
         }
         for (GameEvent event : s.events())
-            if (event.kind() == GameEvent.Kind.BOG_CAPTURE || event.isAbility(BolotnikAbility.MUD) || event.isAbility(BolotnikAbility.AMBUSH))
+            if (event.legacyKind() == GameEvent.Kind.BOG_CAPTURE || event.isAbility(BolotnikAbility.MUD) || event.isAbility(BolotnikAbility.AMBUSH))
                 require(s.mode() == GameMode.MOBA && event.actorId() != null && (s.pieces().get(event.actorId()).hero() == HeroType.BOLOTNIK || s.pieces().get(event.actorId()).hero() == HeroType.GINSENG)
                         && s.pieces().get(event.actorId()).color() == event.color(), "Invalid Bolotnik event source");
     }

@@ -55,7 +55,7 @@ public class HeroRegistryTest {
         assertThrows(NullPointerException.class, () -> registered.register(null));
         Hero conflicting = new AbstractHero(HeroType.ZEUS, List.of(PudgeAbility.HOOK), null, 0) {
             @Override protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor,
-                                                            PieceState target, Position square, Abilities ability) {
+                                                            PieceState target, AbilityRequest request) {
                 return HeroEffect.empty();
             }
         };

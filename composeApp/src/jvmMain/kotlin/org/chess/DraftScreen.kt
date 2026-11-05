@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import game.draft.*
 import game.heroes.HeroType
+import org.chess.heroes.HeroPresentations
+import org.chess.heroes.HeroPresentationRegistry
 import kotlinx.coroutines.delay
 import model.Field
 import model.FigureColor
@@ -25,19 +27,18 @@ import model.figures.*
 
 private fun draftSide(side: FigureColor) = if (side == FigureColor.WHITE) "Белые" else "Чёрные"
 private fun draftCell(square: Position) = "${'a' + square.column}${square.row + 1}"
-private fun heroBadge(hero: HeroType) = when (hero) {
-    HeroType.KIKIMORA -> "Ки"; HeroType.CHRONOMLIN -> "Ch"; HeroType.ZEUS -> "Z"; HeroType.MOLEMINER -> "M"; HeroType.CLOWNGANGER -> "Кл"; HeroType.PUDGE -> "П"; HeroType.LUMESHARD -> "L"
-    HeroType.BOUNTY_CROW -> "C"; HeroType.BOLOTNIK -> "Б"; HeroType.IZBA -> "И"; HeroType.FAUN -> "F"; HeroType.ARES -> "A"; HeroType.GINSENG -> "G"; else -> ""
-}
 
 @Composable
-fun DraftScreen(draft: Draft, onStart: (DraftSnapshot) -> Unit, onBack: () -> Unit) {
+fun DraftScreen(draft: Draft, onStart: (DraftSnapshot) -> Unit, onBack: () -> Unit,
+                presentations: HeroPresentationRegistry = HeroPresentations.standard) {
     var snapshot by remember(draft) { mutableStateOf(draft.snapshot) }
     var selectedHero by remember(draft, snapshot.version()) { mutableStateOf<HeroType?>(null) }
     var selectedSquare by remember(draft, snapshot.version(), selectedHero) { mutableStateOf<Position?>(null) }
     var error by remember(draft) { mutableStateOf<String?>(null) }
     val board = remember { Field(8) }
     val placements = snapshot.assignments()
+    val layoutVersion = if (snapshot.rules().catalogVersion() == DraftRules.CURRENT_CATALOG) Int.MAX_VALUE else snapshot.rules().catalogVersion()
+    remember(draft, presentations) { presentations.validate(snapshot.catalog().definitions()) }
     val targets = if (snapshot.phase() == DraftPhase.PICKS && selectedHero != null)
         draft.getPlacementTargets(snapshot.active(), selectedHero) else emptyList()
     fun update(result: DraftActionResult) {
@@ -61,33 +62,34 @@ fun DraftScreen(draft: Draft, onStart: (DraftSnapshot) -> Unit, onBack: () -> Un
         }, fontSize = 13.sp)
         Spacer(Modifier.height(12.dp))
         Row(Modifier.weight(1f)) {
-            Column(Modifier.weight(1f).then(if(snapshot.rules().catalogVersion()<5) Modifier.verticalScroll(rememberScrollState()) else Modifier)) {
-                Column(if(snapshot.rules().catalogVersion()>=5) Modifier.weight(1f).verticalScroll(rememberScrollState()) else Modifier) {
-                for (hero in HeroCatalog.heroes(snapshot.rules().catalogVersion())) {
+            Column(Modifier.weight(1f).then(if(layoutVersion<5) Modifier.verticalScroll(rememberScrollState()) else Modifier)) {
+                Column(if(layoutVersion>=5) Modifier.weight(1f).verticalScroll(rememberScrollState()) else Modifier) {
+                for (hero in snapshot.catalog().heroes()) {
                     val ban = snapshot.events().firstOrNull { it.kind() == DraftEvent.Kind.BAN && it.hero() == hero }
                     val pick = snapshot.events().firstOrNull { it.kind() == DraftEvent.Kind.PICK && it.hero() == hero }
                     val available = !snapshot.isComplete && ban == null && pick == null
-                    Column(Modifier.fillMaxWidth().height(if (snapshot.rules().catalogVersion() >= 4) 76.dp else if (snapshot.rules().catalogVersion() >= 3) 84.dp else 102.dp).padding(bottom = 8.dp)
+                    Column(Modifier.fillMaxWidth().height(if (layoutVersion >= 4) 76.dp else if (layoutVersion >= 3) 84.dp else 102.dp).padding(bottom = 8.dp)
                         .background(if (ban != null) Color(0xFFE9E3E3) else if (pick != null) Color(0xFFE2EAE0) else Color.White)
                         .border(if (selectedHero == hero) 3.dp else 1.dp, if (selectedHero == hero) Color(0xFF6A5ACD) else Color(0xFFCECECE))
                         .clickable(enabled = available) { selectedHero = hero; error = null }
-                        .padding(if (snapshot.rules().catalogVersion() >= 4) 4.dp else if (snapshot.rules().catalogVersion() >= 3) 8.dp else 12.dp)) {
-                        Text(hero.getName(), fontWeight = FontWeight.Bold, fontSize = 17.sp,
-                            lineHeight = if (snapshot.rules().catalogVersion() >= 3) 20.sp else 24.sp)
-                        Text(HeroCatalog.summary(hero), fontSize = 12.sp,
-                            lineHeight = if (snapshot.rules().catalogVersion() >= 3) 16.sp else 24.sp)
+                        .padding(if (layoutVersion >= 4) 4.dp else if (layoutVersion >= 3) 8.dp else 12.dp)) {
+                        Text(snapshot.catalog().definition(hero).displayName(), fontWeight = FontWeight.Bold, fontSize = 17.sp,
+                            lineHeight = if (layoutVersion >= 3) 20.sp else 24.sp)
+                        presentations[hero].Portrait()
+                        Text(presentations[hero].draftSummary(draft.heroRules), fontSize = 12.sp,
+                            lineHeight = if (layoutVersion >= 3) 16.sp else 24.sp)
                         Text(when {
                             ban != null -> "Забанен: ${draftSide(ban.side())}"
                             pick != null -> "Выбран: ${draftSide(pick.side())} • ${draftCell(pick.square())}"
                             else -> "Доступен"
                         }, fontSize = 12.sp, color = Color.Gray,
-                            lineHeight = if (snapshot.rules().catalogVersion() >= 3) 16.sp else 24.sp)
+                            lineHeight = if (layoutVersion >= 3) 16.sp else 24.sp)
                     }
                 }
                 }
                 if (snapshot.phase() == DraftPhase.PICKS) {
                     Text(if (selectedHero == null) "Сначала выберите героя" else
-                        "${selectedHero!!.getName()}: ${selectedSquare?.let(::draftCell) ?: "выберите зелёную клетку"}", fontWeight = FontWeight.Bold)
+                        "${snapshot.catalog().definition(selectedHero!!).displayName()}: ${selectedSquare?.let(::draftCell) ?: "выберите зелёную клетку"}", fontWeight = FontWeight.Bold)
                 }
                 Row {
                     if (snapshot.phase() == DraftPhase.BANS) Button(enabled = selectedHero != null,
@@ -101,7 +103,8 @@ fun DraftScreen(draft: Draft, onStart: (DraftSnapshot) -> Unit, onBack: () -> Un
                     if (snapshot.isComplete) Button(onClick = { onStart(snapshot) }) { Text("Начать партию") }
                 }
                 error?.let { Text(it, color = Color.Red) }
-                Text(if(snapshot.rules().catalogVersion()>=9) "Ульты: Ares, Clownganger, Chronomlin — 1 взятие; остальные — 2. Пешки считаются." else if(snapshot.rules().catalogVersion()>=5) "Остальные фигуры обычные. Ульты: Ares и Clownganger — 1 взятие, остальные — 2. Пешки считаются." else "Остальные фигуры остаются обычными. Ульты заряжаются за 2 собственных взятия, включая пешки.", fontSize = 12.sp, color = Color.Gray)
+                Text(if (snapshot.rules().catalogVersion() == DraftRules.CURRENT_CATALOG) draftChargeSummary(draft, presentations)
+                    else if(layoutVersion>=9) "Ульты: Ares, Clownganger, Chronomlin — 1 взятие; остальные — 2. Пешки считаются." else if(layoutVersion>=5) "Остальные фигуры обычные. Ульты: Ares и Clownganger — 1 взятие, остальные — 2. Пешки считаются." else "Остальные фигуры остаются обычными. Ульты заряжаются за 2 собственных взятия, включая пешки.", fontSize = 12.sp, color = Color.Gray)
             }
             Spacer(Modifier.width(24.dp))
             Column(Modifier.width(440.dp).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -132,7 +135,7 @@ fun DraftScreen(draft: Draft, onStart: (DraftSnapshot) -> Unit, onBack: () -> Un
                         }).border(0.5.dp, Color.Black.copy(alpha = 0.15f))
                             .clickable(enabled = square in targets) { selectedSquare = square }, contentAlignment = Alignment.Center) {
                             Text(symbol, fontSize = 26.sp)
-                            placements[square]?.let { Text(heroBadge(it), fontSize = 10.sp, color = Color.White,
+                            placements[square]?.let { Text(presentations[it].badge ?: "", fontSize = 10.sp, color = Color.White,
                                 modifier = Modifier.align(Alignment.BottomEnd).background(Color(0xFF6A5ACD)).padding(horizontal = 2.dp)) }
                         }
                     }
@@ -164,4 +167,21 @@ fun DraftScreen(draft: Draft, onStart: (DraftSnapshot) -> Unit, onBack: () -> Un
             Text("Драфт без таймера • партия 10 минут на сторону", fontSize = 13.sp, color = Color.Gray)
         }
     }
+}
+
+private fun draftChargeSummary(draft: Draft, presentations: HeroPresentationRegistry): String {
+    val groups = draft.snapshot.catalog().heroes().mapNotNull { hero ->
+        presentations[hero].ultimateCaptures(draft.heroRules)?.let { it to presentations[hero].shortName }
+    }.groupBy({ it.first }, { it.second }).toSortedMap()
+    if (groups.isEmpty()) return "Остальные фигуры остаются обычными."
+    return "Ульты: " + groups.entries.mapIndexed { index, (charge, names) ->
+        val label = if (index > 0 && index == groups.size - 1) "остальные" else names.joinToString()
+        val unit = when {
+            charge % 100 in 11..14 -> "взятий"
+            charge % 10 == 1 -> "взятие"
+            charge % 10 in 2..4 -> "взятия"
+            else -> "взятий"
+        }
+        "$label — $charge" + if (groups.size > 1 && index == groups.size - 1) "" else " $unit"
+    }.joinToString("; ") + ". Пешки считаются."
 }

@@ -1,15 +1,21 @@
 package game.heroes;
 
-import model.Figure;
-
+import game.mechanics.MechanicDefinition;
+import game.state.PieceState;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import model.Figure;
+import model.Position;
 
 /** Immutable identity, initial bodies, typed parameters, wire codec and strategy factory. */
 public final class HeroDefinition<R> {
+    private final List<MechanicDefinition<?>> mechanics;
+    private final DraftProfile draftProfile;
+    private final HeroStatePolicy<R> statePolicy;
     private final HeroType type;
     private final String displayName;
     private final Set<Class<? extends Figure>> bodies;
@@ -28,6 +34,27 @@ public final class HeroDefinition<R> {
     public HeroDefinition(HeroType type, String displayName, Set<Class<? extends Figure>> bodies,
                           Class<R> rulesType, R defaults, HeroRulesCodec<R> codec,
                           BiFunction<R, HeroRules, Hero> factory) {
+        this(type, displayName, bodies, rulesType, defaults, codec, factory, List.of());
+    }
+
+    public HeroDefinition(HeroType type, String displayName, Set<Class<? extends Figure>> bodies,
+                          Class<R> rulesType, R defaults, HeroRulesCodec<R> codec, Function<R, Hero> factory,
+                          List<MechanicDefinition<?>> mechanics) {
+        this(type, displayName, bodies, rulesType, defaults, codec, adapt(factory), mechanics);
+    }
+
+    public HeroDefinition(HeroType type, String displayName, Set<Class<? extends Figure>> bodies,
+                          Class<R> rulesType, R defaults, HeroRulesCodec<R> codec, BiFunction<R, HeroRules, Hero> factory,
+                          List<MechanicDefinition<?>> mechanics) {
+        this(type, displayName, bodies, rulesType, defaults, codec, factory, mechanics, DraftProfile.EXCLUDED, HeroStatePolicy.basic());
+    }
+
+    private HeroDefinition(HeroType type, String displayName, Set<Class<? extends Figure>> bodies,
+                           Class<R> rulesType, R defaults, HeroRulesCodec<R> codec, BiFunction<R, HeroRules, Hero> factory,
+                           List<MechanicDefinition<?>> mechanics, DraftProfile draftProfile, HeroStatePolicy<R> statePolicy) {
+        this.statePolicy = Objects.requireNonNull(statePolicy, "statePolicy");
+        this.draftProfile = Objects.requireNonNull(draftProfile, "draftProfile");
+        this.mechanics = List.copyOf(mechanics);
         this.type = Objects.requireNonNull(type, "type");
         this.displayName = Objects.requireNonNull(displayName, "displayName");
         if (displayName.isBlank()) throw new IllegalArgumentException("Blank hero name");
@@ -44,6 +71,33 @@ public final class HeroDefinition<R> {
 
     private static <R> BiFunction<R, HeroRules, Hero> adapt(Function<R, Hero> factory) {
         return (parameters, configuration) -> factory.apply(parameters);
+    }
+
+    public List<MechanicDefinition<?>> mechanics() { return mechanics; }
+
+    public DraftProfile draftProfile() { return draftProfile; }
+
+    public HeroDefinition<R> withDraftProfile(DraftProfile profile) {
+        return new HeroDefinition<>(type, displayName, bodies, rulesType, defaults, codec, factory, mechanics, profile, statePolicy);
+    }
+
+    public HeroStatePolicy<R> statePolicy() { return statePolicy; }
+
+    public HeroDefinition<R> withStatePolicy(HeroStatePolicy<R> policy) {
+        return new HeroDefinition<>(type, displayName, bodies, rulesType, defaults, codec, factory, mechanics,
+                draftProfile, policy);
+    }
+
+    PieceState initializeState(PieceState base, PieceCreationContext origin, HeroRules configuration) {
+        return Objects.requireNonNull(statePolicy.initialize(base, origin, configuration.get(this)), "initial state");
+    }
+
+    void validateState(PieceState piece, HeroRules configuration) {
+        statePolicy.validate(piece, configuration.get(this));
+    }
+
+    void validateOrigin(PieceState piece, Position origin, HeroRules configuration) {
+        statePolicy.validateOrigin(piece, origin, configuration.get(this));
     }
 
     public HeroType type() { return type; }

@@ -56,7 +56,7 @@ import java.util.function.LongSupplier;
  * Versioned XML data, never Java object deserialization. No arbitrary class names are loaded.
  */
 public final class GameSaveFile {
-    public static final int FORMAT_VERSION = Math.max(GameEventXml.GENERIC_ABILITY_VERSION, HeroRulesXml.latestVersion());
+    public static final int FORMAT_VERSION = Math.max(17, Math.max(MechanicStateXml.FORMAT_VERSION, HeroRulesXml.latestVersion()));
     public static final int MAX_BYTES = 16 * 1024 * 1024;
 
     private GameSaveFile() {
@@ -100,13 +100,13 @@ public final class GameSaveFile {
             SnapshotValidator.validate(s);
             boolean extended = s.pieces().values().stream()
                     .anyMatch(piece -> piece.hero() == HeroType.LUMESHARD || piece.isBlinded());
-            boolean kikiExtension=s.pieces().values().stream().anyMatch(p->p.hero()==HeroType.KIKIMORA || p.isPotted()) || s.events().stream().anyMatch(e->(Set.of(GameEvent.Kind.YARN_STUN).contains(e.kind()) || e.isAbility(KikimoraAbility.YARN) || e.isAbility(KikimoraAbility.CLAY_POT)) || e.copiedAbility()==KikimoraAbility.YARN || e.copiedAbility()==KikimoraAbility.CLAY_POT) || (s.draft()!=null && s.draft().rules().catalogVersion()>9);
+            boolean kikiExtension=s.pieces().values().stream().anyMatch(p->p.hero()==HeroType.KIKIMORA || p.isPotted()) || s.events().stream().anyMatch(e->(Set.of(GameEvent.Kind.YARN_STUN).contains(e.legacyKind()) || e.isAbility(KikimoraAbility.YARN) || e.isAbility(KikimoraAbility.CLAY_POT)) || e.copiedAbility()==KikimoraAbility.YARN || e.copiedAbility()==KikimoraAbility.CLAY_POT) || (s.draft()!=null && s.draft().rules().catalogVersion()>9);
             boolean chronoExtension=kikiExtension || s.pieces().values().stream().anyMatch(p->p.hero()==HeroType.CHRONOMLIN) || s.events().stream().anyMatch(e->e.isAbility(ChronomlinAbility.GRAPPLE) || e.isAbility(ChronomlinAbility.EVOLVE) || e.copiedAbility()==ChronomlinAbility.GRAPPLE || e.copiedAbility()==ChronomlinAbility.EVOLVE) || (s.draft()!=null && s.draft().rules().catalogVersion()>8);
             boolean zeusExtension=chronoExtension || s.pieces().values().stream().anyMatch(p->p.hero()==HeroType.ZEUS) || !s.lightning().equals(game.heroes.zeus.LightningState.empty()) || s.events().stream().anyMatch(e->e.copiedAbility()==ZeusAbility.CHAIN_LIGHTNING || e.copiedAbility()==ZeusAbility.THUNDERSTORM || e.isAbility(ZeusAbility.CHAIN_LIGHTNING) || e.isAbility(ZeusAbility.THUNDERSTORM)) || (s.draft()!=null && s.draft().rules().catalogVersion()>7);
             boolean minerExtension=zeusExtension || s.pieces().values().stream().anyMatch(p->p.hero()==HeroType.MOLEMINER || p.status()==PieceState.Status.DESTROYED) || !s.mines().equals(game.heroes.moleminer.MineState.empty()) || (s.draft()!=null && s.draft().rules().catalogVersion()>6);
-            boolean clownExtension=minerExtension || s.pieces().values().stream().anyMatch(p->p.hero()==HeroType.CLOWNGANGER || p.hero()==HeroType.ILLUSION || p.isBoxed()) || s.events().stream().anyMatch(e->(Set.of(GameEvent.Kind.ILLUSION_HIT).contains(e.kind()) || e.isAbility(ClowngangerAbility.BOX) || e.isAbility(ClowngangerAbility.ILLUSION))) || (s.draft()!=null && s.draft().rules().catalogVersion()>5);
+            boolean clownExtension=minerExtension || s.pieces().values().stream().anyMatch(p->p.hero()==HeroType.CLOWNGANGER || p.hero()==HeroType.ILLUSION || p.isBoxed()) || s.events().stream().anyMatch(e->(Set.of(GameEvent.Kind.ILLUSION_HIT).contains(e.legacyKind()) || e.isAbility(ClowngangerAbility.BOX) || e.isAbility(ClowngangerAbility.ILLUSION))) || (s.draft()!=null && s.draft().rules().catalogVersion()>5);
             boolean aresExtension =clownExtension || s.pieces().values().stream().anyMatch(p -> p.hero() == HeroType.ARES || p.isStunned())
-                    || s.events().stream().anyMatch(e -> e.isAbility(AresAbility.SPEAR) || e.kind() == GameEvent.Kind.STUN || e.kind() == GameEvent.Kind.ARES_REVENGE) || (s.draft() != null && s.draft().rules().catalogVersion() > 4);
+                    || s.events().stream().anyMatch(e -> e.isAbility(AresAbility.SPEAR) || e.legacyKind() == GameEvent.Kind.STUN || e.legacyKind() == GameEvent.Kind.ARES_REVENGE) || (s.draft() != null && s.draft().rules().catalogVersion() > 4);
             boolean faunExtension = aresExtension || s.pieces().values().stream().anyMatch(p -> p.hero() == HeroType.FAUN)
                     || s.events().stream().anyMatch(e -> e.isAbility(FaunAbility.CLOUD) || e.isAbility(FaunAbility.INVISIBILITY)) || (s.draft() != null && s.draft().rules().catalogVersion() > 3);
             boolean spellExtension = faunExtension || s.pieces().values().stream().anyMatch(p -> p.hero() == HeroType.GINSENG)
@@ -120,6 +120,9 @@ public final class GameSaveFile {
             int formatVersion = kikiExtension ? 14 : chronoExtension ? 13 : zeusExtension ? 12 : minerExtension ? 11 : clownExtension ? 10 : aresExtension ? 9 : faunExtension ? 8 : spellExtension ? 7 : summonExtension ? 6 : draftExtension ? 5 : terrainExtension ? 4 : economyExtension ? 3 : extended ? 2 : 1;
             formatVersion = Math.max(formatVersion, HeroRulesXml.requiredVersion(s.heroRules(), s.pieces().values()));
             formatVersion = Math.max(formatVersion, GameEventXml.requiredVersion(s.events()));
+            formatVersion = Math.max(formatVersion, MechanicStateXml.requiredVersion(s));
+            if (s.draft() != null && s.draft().rules().catalogVersion() == DraftRules.CURRENT_CATALOG)
+                formatVersion = Math.max(formatVersion, 17);
             economyExtension = formatVersion >= 3;
             terrainExtension = formatVersion >= 4;
             summonExtension = formatVersion >= 6;
@@ -146,6 +149,10 @@ public final class GameSaveFile {
             }
             if (draftExtension) {
                 Element draft = child(root, "draft", "bansPerSide", s.draft().rules().bansPerSide(), "maxPicksPerSide", s.draft().rules().maxPicksPerSide(), "catalogVersion", s.draft().rules().catalogVersion() == 1 ? null : s.draft().rules().catalogVersion());
+                if (s.draft().rules().catalogVersion() == DraftRules.CURRENT_CATALOG) {
+                    Element catalog = child(draft, "catalog");
+                    for (HeroType hero : s.draft().catalog().heroes()) child(catalog, "hero", "id", hero.name());
+                }
                 for (DraftEvent event : s.draft().events())
                     child(draft, "action", "sequence", event.sequence(), "kind", event.kind(),
                             "side", event.side(), "hero", event.hero(), "square", cell(event.square()));
@@ -188,6 +195,7 @@ public final class GameSaveFile {
             writeCaptures(child(root, "whiteCaptures", "points", s.whitePoints()), s.whiteCaptures());
             writeCaptures(child(root, "blackCaptures", "points", s.blackPoints()), s.blackCaptures());
             HeroRulesXml.write(root, s.heroRules(), formatVersion);
+            MechanicStateXml.write(root, s);
             TransformerFactory tf = TransformerFactory.newInstance();
             tf.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
             tf.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
@@ -253,7 +261,7 @@ public final class GameSaveFile {
                 Element cfg = one(root, "draft");
                 DraftRules draftRules = new DraftRules(integer(cfg, "bansPerSide"), integer(cfg, "maxPicksPerSide"), cfg.hasAttribute("catalogVersion") ? integer(cfg, "catalogVersion") : 1);
                 var draftEvents = new ArrayList<DraftEvent>();
-                for (Element action : children(cfg, "action", 100))
+                for (Element action : children(cfg, "action", 100, Set.of("catalog")))
                     draftEvents.add(new DraftEvent(number(action, "sequence"), enumeration(action, "kind", DraftEvent.Kind.class),
                             enumeration(action, "side", FigureColor.class), action.hasAttribute("hero") ? HeroTypeCodec.decode(text(action, "hero")) : null, position(action, "square")));
                 require(formatVersion >=14 || draftRules.catalogVersion()<=9,"Kikimora catalog requires format 14");
@@ -265,7 +273,19 @@ public final class GameSaveFile {
                 require(formatVersion >= 8 || draftRules.catalogVersion() <= 3, "Faun catalog requires format 8");
                 require(formatVersion >= 7 || draftRules.catalogVersion() <= 2, "Ginseng catalog requires format 7");
                 require(formatVersion >= 6 || draftRules.catalogVersion() == 1, "New hero catalog requires format 6");
-                draft = Draft.replay(draftRules, draftEvents).getSnapshot();
+                require(draftRules.catalogVersion() != DraftRules.CURRENT_CATALOG || formatVersion >= 17,
+                        "Explicit draft catalog requires format 17");
+                DraftCatalog catalog;
+                if (draftRules.catalogVersion() == DraftRules.CURRENT_CATALOG) {
+                    var ids = new ArrayList<HeroType>();
+                    for (Element entry : children(one(cfg, "catalog"), "hero", 1000))
+                        ids.add(enumeration(entry, "id", HeroType.class));
+                    catalog = DraftCatalog.restore(ids, heroRules.definitions());
+                } else {
+                    require(cfg.getElementsByTagName("catalog").getLength() == 0, "Unexpected explicit catalog");
+                    catalog = DraftCatalog.restore(HeroCatalog.heroes(draftRules.catalogVersion()), heroRules.definitions());
+                }
+                draft = Draft.replay(draftRules, draftEvents, catalog).getSnapshot();
                 require(draft.isComplete(), "Game save contains an unfinished draft");
             }
             SummonState summons = SummonState.empty();
@@ -327,20 +347,20 @@ public final class GameSaveFile {
             var events = new ArrayList<GameEvent>();
             for (Element entry : children(one(root, "events"), "event", 100_000)) {
                 GameEvent event = GameEventXml.read(entry, formatVersion, heroes);
-                require(formatVersion >= 4 || !(Set.of(GameEvent.Kind.BOG_CAPTURE).contains(event.kind()) || event.isAbility(BolotnikAbility.MUD) || event.isAbility(BolotnikAbility.AMBUSH)), "Bolotnik events require format 4");
-                require(formatVersion >= 6 || !(Set.of(GameEvent.Kind.YAGA_BIRTH, GameEvent.Kind.YAGA_MATURE, GameEvent.Kind.REPLACE).contains(event.kind()) || event.isAbility(IzbaAbility.SUMMON_YAGA)), "Summoning events require format 6");
+                require(formatVersion >= 4 || !(Set.of(GameEvent.Kind.BOG_CAPTURE).contains(event.legacyKind()) || event.isAbility(BolotnikAbility.MUD) || event.isAbility(BolotnikAbility.AMBUSH)), "Bolotnik events require format 4");
+                require(formatVersion >= 6 || !(Set.of(GameEvent.Kind.YAGA_BIRTH, GameEvent.Kind.YAGA_MATURE, GameEvent.Kind.REPLACE).contains(event.legacyKind()) || event.isAbility(IzbaAbility.SUMMON_YAGA)), "Summoning events require format 6");
                 require(formatVersion >= 7 || (!entry.hasAttribute("borrowed") && !entry.hasAttribute("copiedAbility") && !event.isAbility(GinsengAbility.DISPLACE) && !event.isAbility(GinsengAbility.COPY_SPELL)), "Ginseng events require format 7");
                 require(formatVersion >= 8 || (!event.isAbility(FaunAbility.CLOUD) && !event.isAbility(FaunAbility.INVISIBILITY) && event.copiedAbility() != FaunAbility.CLOUD && event.copiedAbility() != FaunAbility.INVISIBILITY), "Faun events require format 8");
-                require(formatVersion >=14 || (!(Set.of(GameEvent.Kind.YARN_STUN).contains(event.kind()) || event.isAbility(KikimoraAbility.YARN) || event.isAbility(KikimoraAbility.CLAY_POT)) && event.copiedAbility()!=KikimoraAbility.YARN && event.copiedAbility()!=KikimoraAbility.CLAY_POT),"Kikimora events require format 14");
+                require(formatVersion >=14 || (!(Set.of(GameEvent.Kind.YARN_STUN).contains(event.legacyKind()) || event.isAbility(KikimoraAbility.YARN) || event.isAbility(KikimoraAbility.CLAY_POT)) && event.copiedAbility()!=KikimoraAbility.YARN && event.copiedAbility()!=KikimoraAbility.CLAY_POT),"Kikimora events require format 14");
                 require(formatVersion>=13 || (!event.isAbility(ChronomlinAbility.GRAPPLE) && !event.isAbility(ChronomlinAbility.EVOLVE) && event.copiedAbility()!=ChronomlinAbility.GRAPPLE && event.copiedAbility()!=ChronomlinAbility.EVOLVE),"Chronomlin events require format 13");
-                require(formatVersion>=12 || (!(Set.of(GameEvent.Kind.LIGHTNING_HIT, GameEvent.Kind.LIGHTNING_RESET, GameEvent.Kind.LIGHTNING_DISCHARGE, GameEvent.Kind.LIGHTNING_CAPTURE).contains(event.kind()) || event.isAbility(ZeusAbility.CHAIN_LIGHTNING) || event.isAbility(ZeusAbility.THUNDERSTORM)) && event.copiedAbility()!=ZeusAbility.CHAIN_LIGHTNING && event.copiedAbility()!=ZeusAbility.THUNDERSTORM),"Zeus events require format 12");
-                require(formatVersion>=11 || (!(Set.of(GameEvent.Kind.MINE_TRIGGER, GameEvent.Kind.MINE_CAPTURE, GameEvent.Kind.BLAST_AREA, GameEvent.Kind.BLAST_CAPTURE, GameEvent.Kind.BLAST_DEATH).contains(event.kind()) || event.isAbility(MoleminerAbility.PLANT_MINE) || event.isAbility(MoleminerAbility.DETONATE)) && event.copiedAbility()!=MoleminerAbility.PLANT_MINE && event.copiedAbility()!=MoleminerAbility.DETONATE),"Moleminer events require format 11");
-                require(formatVersion>=10 || (!(Set.of(GameEvent.Kind.ILLUSION_HIT).contains(event.kind()) || event.isAbility(ClowngangerAbility.BOX) || event.isAbility(ClowngangerAbility.ILLUSION)) && event.copiedAbility()!=ClowngangerAbility.BOX && event.copiedAbility()!=ClowngangerAbility.ILLUSION),"Clownganger events require format 10");
-                require(formatVersion>=9 || (!(Set.of(GameEvent.Kind.STUN, GameEvent.Kind.ARES_REVENGE).contains(event.kind()) || event.isAbility(AresAbility.SPEAR)) && event.copiedAbility() != AresAbility.SPEAR), "Ares events require format 9");
+                require(formatVersion>=12 || (!(Set.of(GameEvent.Kind.LIGHTNING_HIT, GameEvent.Kind.LIGHTNING_RESET, GameEvent.Kind.LIGHTNING_DISCHARGE, GameEvent.Kind.LIGHTNING_CAPTURE).contains(event.legacyKind()) || event.isAbility(ZeusAbility.CHAIN_LIGHTNING) || event.isAbility(ZeusAbility.THUNDERSTORM)) && event.copiedAbility()!=ZeusAbility.CHAIN_LIGHTNING && event.copiedAbility()!=ZeusAbility.THUNDERSTORM),"Zeus events require format 12");
+                require(formatVersion>=11 || (!(Set.of(GameEvent.Kind.MINE_TRIGGER, GameEvent.Kind.MINE_CAPTURE, GameEvent.Kind.BLAST_AREA, GameEvent.Kind.BLAST_CAPTURE, GameEvent.Kind.BLAST_DEATH).contains(event.legacyKind()) || event.isAbility(MoleminerAbility.PLANT_MINE) || event.isAbility(MoleminerAbility.DETONATE)) && event.copiedAbility()!=MoleminerAbility.PLANT_MINE && event.copiedAbility()!=MoleminerAbility.DETONATE),"Moleminer events require format 11");
+                require(formatVersion>=10 || (!(Set.of(GameEvent.Kind.ILLUSION_HIT).contains(event.legacyKind()) || event.isAbility(ClowngangerAbility.BOX) || event.isAbility(ClowngangerAbility.ILLUSION)) && event.copiedAbility()!=ClowngangerAbility.BOX && event.copiedAbility()!=ClowngangerAbility.ILLUSION),"Clownganger events require format 10");
+                require(formatVersion>=9 || (!(Set.of(GameEvent.Kind.STUN, GameEvent.Kind.ARES_REVENGE).contains(event.legacyKind()) || event.isAbility(AresAbility.SPEAR)) && event.copiedAbility() != AresAbility.SPEAR), "Ares events require format 9");
                 events.add(event);
             }
             Element white = one(root, "whiteCaptures"), black = one(root, "blackCaptures");
-            Set<String> sections = Set.of("castling", "clock", "outcome", "pieces", "repetitions", "moves", "events", "whiteCaptures", "blackCaptures", "goldRules", "economy", "terrain", "draft", "summons");
+            Set<String> sections = Set.of("castling", "clock", "outcome", "pieces", "repetitions", "moves", "events", "whiteCaptures", "blackCaptures", "goldRules", "economy", "terrain", "draft", "summons", "mechanics");
             Set<String> ruleSections = HeroRulesXml.sections(heroRules);
             for (Node node = root.getFirstChild(); node != null; node = node.getNextSibling())
                 if (node instanceof Element entry)
@@ -358,6 +378,7 @@ public final class GameSaveFile {
                     new GameOutcome(enumeration(outcome, "reason", Termination.class), enumeration(outcome, "winner", FigureColor.class)), moves, events,
                     number(white, "points"), number(black, "points"), readCaptures(white, factory), readCaptures(black, factory),
                     enumeration(root, "drawOffer", FigureColor.class), heroRules.withGold(gold), economy, terrain, draft, summons);
+            s = MechanicStateXml.read(root, formatVersion, s, heroes);
             SnapshotValidator.validate(s);
             return s;
         } catch (Exception ex) {
@@ -434,9 +455,14 @@ public final class GameSaveFile {
     }
 
     private static List<Element> children(Element parent, String name, int maximum) {
+        return children(parent, name, maximum, Set.of());
+    }
+
+    private static List<Element> children(Element parent, String name, int maximum, Set<String> siblings) {
         var result = new ArrayList<Element>();
         for (Node node = parent.getFirstChild(); node != null; node = node.getNextSibling())
             if (node instanceof Element entry) {
+                if (siblings.contains(entry.getTagName())) continue;
                 require(entry.getTagName().equals(name), "Unexpected element: " + entry.getTagName());
                 result.add(entry);
                 require(result.size() <= maximum, "Too many " + name + " elements");

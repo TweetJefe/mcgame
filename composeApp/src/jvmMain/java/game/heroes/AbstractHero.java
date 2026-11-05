@@ -7,6 +7,7 @@ import game.moves.Success;
 import game.moves.MoveResult;
 import game.state.PieceState;
 import model.Position;
+import rules.standard.MoveValidator;
 
 import java.util.List;
 import java.util.Objects;
@@ -72,14 +73,22 @@ public abstract class AbstractHero implements Hero {
 
     @Override
     public final MoveResult availability(PieceState actor, Abilities ability) {
+        return availability(actor, ability, AbilityUse.of(type, false));
+    }
+
+    @Override
+    public final MoveResult availability(PieceState actor, Abilities ability, AbilityUse use) {
+        Objects.requireNonNull(use, "use");
         if (ability == null) return AbilityRejection.INVALID_ABILITY;
         if (actor != null && actor.isPotted()) return StatusRejection.POTTED;
         if (actor == null || actor.status() != PieceState.Status.BOARD) return MovementRejection.EMPTY_SOURCE;
-        if (actor.hero() != type || !abilities.contains(ability)) return AbilityRejection.NO_ABILITY;
-        if (ability != ultimateAbility && actor.cooldown() > 0) return AbilityRejection.ABILITY_COOLDOWN;
-        MoveResult specific = availabilitySpecific(actor, ability);
+        if (use.owner() != type || !abilities.contains(ability)
+                || !use.borrowed() && actor.hero() != type) return AbilityRejection.NO_ABILITY;
+        if (!use.borrowed() && ability != ultimateAbility && actor.cooldown() > 0)
+            return AbilityRejection.ABILITY_COOLDOWN;
+        MoveResult specific = availabilitySpecific(actor, ability, use);
         if (!specific.isSuccess()) return specific;
-        if (ability == ultimateAbility && actor.ultimateCharge() < ultimateCaptures)
+        if (!use.borrowed() && ability == ultimateAbility && actor.ultimateCharge() < ultimateCaptures)
             return AbilityRejection.ULTIMATE_NOT_READY;
         return Success.SUCCESS;
     }
@@ -89,21 +98,50 @@ public abstract class AbstractHero implements Hero {
         return Success.SUCCESS;
     }
 
+    protected MoveResult availabilitySpecific(PieceState actor, Abilities ability, AbilityUse use) {
+        return availabilitySpecific(actor, ability);
+    }
+
+    @Override
+    public final HeroEffect preview(HeroActionContext context, AbilityRequest request) {
+        Objects.requireNonNull(context, "context");
+        if (request == null || request.ability() == null)
+            return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY);
+        if (!MoveValidator.inside(context.field(), request.actor()))
+            return HeroEffect.rejected(MovementRejection.OUT_OF_BOUNDS);
+        PieceState actor = context.pieceAt(request.actor());
+        AbilityUse use = AbilityUse.of(type, request.borrowed());
+        MoveResult ready = availability(actor, request.ability(), use);
+        if (!ready.isSuccess()) return HeroEffect.rejected(ready);
+        MoveResult targeting = targeting(request.ability()).validate(context, actor, request);
+        if (!targeting.isSuccess()) return HeroEffect.rejected(targeting);
+        return previewAvailable(context, actor, context.pieceAt(request.target()), request).applyCost(actor, use);
+    }
+
+    /** Keeps the historical detached-state entry's validation order and target semantics. */
     @Override
     public final HeroEffect preview(HeroActionContext context, PieceState actor, PieceState target,
                                     Position square, Abilities ability) {
+        return previewRequest(context, actor, target,
+                new AbilityRequest(actor == null ? null : actor.position(), ability, square));
+    }
+
+    @Override
+    public final HeroEffect previewRequest(HeroActionContext context, PieceState actor, PieceState target,
+                                           AbilityRequest request) {
         Objects.requireNonNull(context, "context");
-        MoveResult ready = availability(actor, ability);
+        AbilityUse use = AbilityUse.of(type, request.borrowed());
+        MoveResult ready = availability(actor, request.ability(), use);
         if (!ready.isSuccess()) return HeroEffect.rejected(ready);
-        return previewAvailable(context, actor, target, square, ability);
+        return previewAvailable(context, actor, target, request).applyCost(actor, use);
     }
 
     /**
      * Validates targeting and calculates an effect for an available ability. The subclass
-     * includes cooldown and charge costs in the proposed updates only when targeting succeeds.
+     * declares activation costs separately with HeroEffect.withCost after targeting succeeds.
      */
     protected abstract HeroEffect previewAvailable(HeroActionContext context, PieceState actor,
-                                                   PieceState target, Position square, Abilities ability);
+                                                   PieceState target, AbilityRequest request);
 
     /**
      * Default capture charging preserves cooldown, stored pieces and all other actor state.

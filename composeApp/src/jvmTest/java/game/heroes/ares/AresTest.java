@@ -84,7 +84,7 @@ public class AresTest {
     }
     @Test public void chargedRevengeConsumesItsChargeAndPaysEachCaptureExactlyOnce()throws Exception {
         var b=board();put(b,Rook.class,BLACK,"c8");Game g=charge(create(b,Map.of(pos("c2"),HeroType.ARES)),"c2",1);long id=g.getPieceState(pos("c2")).id();move(g,"b1","a3");end(g);move(g,"c8","c2");
-        assertNull(g.getPieceState(pos("c2")));assertEquals(0,g.getSnapshot().pieces().get(id).ultimateCharge());assertEquals(10,g.getEconomy().whiteHalves());assertEquals(6,g.getEconomy().blackHalves());assertEquals(1,g.getSnapshot().events().stream().filter(e->e.kind()==game.history.GameEvent.Kind.ARES_REVENGE).count());roundtrip(g);
+        assertNull(g.getPieceState(pos("c2")));assertEquals(0,g.getSnapshot().pieces().get(id).ultimateCharge());assertEquals(10,g.getEconomy().whiteHalves());assertEquals(6,g.getEconomy().blackHalves());assertEquals(1,g.getSnapshot().events().stream().filter(e->e.legacyKind()==game.history.GameEvent.Kind.ARES_REVENGE).count());roundtrip(g);
     }
     @Test public void aKingCanCaptureUnchargedAresButCannotCaptureChargedAres()throws Exception {
         for(int charge:new int[]{0,1}){
@@ -117,7 +117,7 @@ public class AresTest {
     }
     @Test public void aresIsEighthDraftHeroAndCanReplaceEitherBishop()throws Exception {
         for(String square:List.of("c1","f1")){
-            Draft d=new Draft();assertEquals(10,d.getSnapshot().rules().catalogVersion());assertEquals(13,HeroCatalog.heroes().size());d.ban(WHITE,HeroType.PUDGE);d.ban(BLACK,HeroType.IZBA);assertEquals(DraftActionResult.SUCCESS,d.pick(WHITE,HeroType.ARES,pos(square)));d.finishPicks(BLACK);d.finishPicks(WHITE);Game g=Game.mobaFromDraft(d.getSnapshot(),HeroRules.prototype(),600,()->0L);assertEquals(HeroType.ARES,g.getPieceState(pos(square)).hero());roundtrip(g);
+            Draft d=new Draft();assertEquals(DraftRules.CURRENT_CATALOG,d.getSnapshot().rules().catalogVersion());assertEquals(13,HeroCatalog.heroes().size());d.ban(WHITE,HeroType.PUDGE);d.ban(BLACK,HeroType.IZBA);assertEquals(DraftActionResult.SUCCESS,d.pick(WHITE,HeroType.ARES,pos(square)));d.finishPicks(BLACK);d.finishPicks(WHITE);Game g=Game.mobaFromDraft(d.getSnapshot(),HeroRules.prototype(),600,()->0L);assertEquals(HeroType.ARES,g.getPieceState(pos(square)).hero());roundtrip(g);
         }
         Game sandbox=Game.mobaHeroesSandbox(600);assertEquals(HeroType.ARES,sandbox.getPieceState(pos("d2")).hero());assertEquals(HeroType.ARES,sandbox.getPieceState(pos("d7")).hero());roundtrip(sandbox);
     }

@@ -1,5 +1,7 @@
 package game.persistence;
 
+import game.heroes.AbilityRequest;
+
 import game.core.Game;
 import game.heroes.Abilities;
 import game.heroes.AbstractHero;
@@ -65,7 +67,7 @@ public class GameEventXmlTest {
     private static final class ExtensionHero extends AbstractHero {
         ExtensionHero(ExtensionRules rules) { super(DEFINITION, List.of(Extension.values()), null, 0); }
         @Override protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor,
-                                                        PieceState target, Position square, Abilities ability) {
+                                                        PieceState target, AbilityRequest request) {
             return HeroEffect.empty();
         }
     }

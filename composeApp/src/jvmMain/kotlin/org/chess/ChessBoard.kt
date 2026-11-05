@@ -1,18 +1,5 @@
 package org.chess
 
-import game.heroes.pudge.PudgeAbility
-import game.heroes.lumeshard.LumeshardAbility
-import game.heroes.bountycrow.BountyCrowAbility
-import game.heroes.bolotnik.BolotnikAbility
-import game.heroes.izba.IzbaAbility
-import game.heroes.ginseng.GinsengAbility
-import game.heroes.faun.FaunAbility
-import game.heroes.ares.AresAbility
-import game.heroes.clownganger.ClowngangerAbility
-import game.heroes.moleminer.MoleminerAbility
-import game.heroes.zeus.ZeusAbility
-import game.heroes.chronomlin.ChronomlinAbility
-import game.heroes.kikimora.KikimoraAbility
 
 import game.moves.MovementRejection
 import game.moves.TurnRejection
@@ -23,7 +10,12 @@ import game.heroes.faun.FaunView
 import game.heroes.clownganger.ClownView
 import game.heroes.AbilityRequest
 import game.heroes.Abilities
-import game.heroes.HeroType
+import game.draft.DraftCatalog
+import org.chess.heroes.HeroPresentationRegistry
+import org.chess.heroes.HeroPresentations
+import org.chess.heroes.HeroViewContext
+import org.chess.heroes.HeroPanelControls
+import org.chess.heroes.HeroPanel
 import game.moves.AvailableMoves
 import game.moves.MoveResult
 import game.moves.Promotion
@@ -57,12 +49,12 @@ fun CoordinateText(text: String) {
 @Composable
 fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> Unit = {},
                onSave: (() -> Unit)? = null, onLoad: (() -> Unit)? = null, fileMessage: String? = null,
-               onNewGame: () -> Unit = {}) {
+               onNewGame: () -> Unit = {}, presentations: HeroPresentationRegistry = HeroPresentations.standard) {
     var snapshot by remember(game) { mutableStateOf(game.snapshot) }
     var selectedId by remember(game) { mutableStateOf<Long?>(null) }
     var selectedAbility by remember(game) { mutableStateOf<Abilities?>(null) }
     var selectedBorrowed by remember(game) { mutableStateOf(false) }
-    var displacementTargetId by remember(game) { mutableStateOf<Long?>(null) }
+    var selectedTarget by remember(game) { mutableStateOf<Position?>(null) }
     var moveError by remember(game) { mutableStateOf<String?>(null) }
     var pendingPromotion by remember(game) { mutableStateOf<Pair<Position, Position>?>(null) }
     var showDraft by remember(game) { mutableStateOf(false) }
@@ -74,20 +66,25 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
     val selected = selectedId?.let { snapshot.pieces()[it] }?.takeIf {
         it.status() == PieceState.Status.BOARD && !it.isPotted && it.color() == snapshot.active()
     }
+    val catalogHeroes = remember(game) { DraftCatalog.current(game.heroRules.definitions()).heroes() }
+    val heroes = remember(game) { game.heroRegistry }
+    remember(game, presentations) { presentations.validate(heroes, game.heroRules.definitions()) }
+    val selectedPresentation = selected?.let { presentations[it.hero()] }
+    val heroContext = selected?.let { HeroViewContext(snapshot, it, selectedAbility, heroes) }
     val selectedPos = selected?.position()
     val legal = remember(snapshot.version(), selectedId, selectedAbility) {
         if (selectedPos != null && selectedAbility == null) if (FaunView.hasHiddenEnemy(snapshot)) FaunView.moves(snapshot,selectedPos) else game.getLegalMoves(selectedPos)
         else AvailableMoves(emptyList(), emptyList())
     }
-    val displaced = displacementTargetId?.let { snapshot.pieces()[it] }?.takeIf { it.position() != null }
-    val abilityTargets = remember(snapshot.version(), selectedId, selectedAbility, selectedBorrowed, displacementTargetId) {
+    val requiresDestination = selectedAbility?.targeting()?.requiresDestination() == true
+    val abilityTargets = remember(snapshot.version(), selectedId, selectedAbility, selectedBorrowed, selectedTarget) {
         if (selectedPos != null && selectedAbility != null) {
-            if (selectedAbility == GinsengAbility.DISPLACE && displaced != null) game.getDisplacementDestinations(selectedPos, displaced.position(), selectedBorrowed)
+            if (requiresDestination && selectedTarget != null) game.getAbilityDestinations(selectedPos, selectedAbility, selectedTarget, selectedBorrowed)
             else game.getAbilityTargets(selectedPos, selectedAbility, selectedBorrowed)
         } else emptyList()
     }
 
-    fun clearSelection() { selectedId = null; selectedAbility = null; selectedBorrowed = false; displacementTargetId = null }
+    fun clearSelection() { selectedId = null; selectedAbility = null; selectedBorrowed = false; selectedTarget = null }
     fun updateView(result: MoveResult) {
         moveError = if (result.isSuccess) null else result.message
         snapshot = game.snapshot
@@ -105,9 +102,17 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
         updateView(result)
     }
     fun chooseAbility(ability: Abilities, borrowed: Boolean = false) {
+        if (!ability.targeting().requiresTarget()) {
+            val request = AbilityRequest(selectedPos, ability, null, null, borrowed)
+            if (!borrowed && selectedPresentation?.retainSelection(ability) == true) {
+                selectedAbility = null; selectedBorrowed = false; selectedTarget = null
+            } else clearSelection()
+            updateView(game.useAbility(currentPlayer, request))
+            return
+        }
         val same = selectedAbility == ability && selectedBorrowed == borrowed
         selectedAbility = if (same) null else ability
-        selectedBorrowed = borrowed; displacementTargetId = null
+        selectedBorrowed = borrowed; selectedTarget = null
         moveError = if (selectedAbility != null && game.getAbilityTargets(selectedPos, ability, borrowed).isEmpty())
             "Нет допустимых целей. Выберите другую фигуру или завершите ход." else null
     }
@@ -161,27 +166,11 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                             val isCapture = legal.canAttack.contains(square)
                             val isAbilityTarget = abilityTargets.contains(square)
                             CellView(column, row, figure, square == selectedPos, isMove, isCapture,
-                                heroLabel = when (piece?.hero()) {
-                                    HeroType.PUDGE -> if (piece.storedPieceId() != null) "П●" else "П"
-                                    HeroType.LUMESHARD -> "L"
-                                    HeroType.BOUNTY_CROW -> "C"
-                                    HeroType.KIKIMORA -> "Ки"
-                                    HeroType.CHRONOMLIN -> "Ch"
-                                    HeroType.ZEUS -> "Z"
-                                    HeroType.MOLEMINER -> "M"
-                                    HeroType.CLOWNGANGER -> "Кл"
-                                    HeroType.ILLUSION -> "Коп"
-                                    HeroType.FAUN -> "F"
-                                    HeroType.ARES -> if (piece.ultimateCharge() >= snapshot.heroRules().ares().revengeCaptures()) "A●" else "A"
-                                    HeroType.GINSENG -> if (piece.storedPieceId() != null) "G●" else "G"
-                                    HeroType.IZBA -> "И"
-                                        HeroType.BABA_YAGA -> "Я"
-                                        HeroType.BOLOTNIK -> "Б"
-                                    else -> null
-                                },
+                                heroLabel = piece?.let { presentations[it.hero()].boardBadge(HeroViewContext(snapshot, it, null, heroes)) },
+                                heroDecoration = { piece?.let { presentations[it.hero()].CellDecoration(HeroViewContext(snapshot, it, null, heroes)) } },
                                 lightningLabel = if (visible && actualPiece != null) snapshot.lightning().charges().entries
                                     .filter { it.key.targetId() == actualPiece.id() }.sortedBy { it.key.casterId() }
-                                    .joinToString(" ") { (if (snapshot.pieces()[it.key.casterId()]?.hero() == HeroType.ZEUS) "Z" else "G") + it.value.count() }.ifEmpty { null } else null,
+                                    .joinToString(" ") { (snapshot.pieces()[it.key.casterId()]?.let { caster -> presentations[caster.hero()].badge } ?: "") + it.value.count() }.ifEmpty { null } else null,
                                 isPotted = actualPiece?.isPotted == true,
                                 isBlinded = piece?.isBlinded == true,
                                 isStunned = piece?.isStunned == true,
@@ -196,14 +185,14 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                                 onClick = {
                                     if (outcome.isFinished || pendingPromotion != null) return@CellView
                                     if (selectedAbility != null && isAbilityTarget && selectedPos != null) {
-                                        if (selectedAbility == GinsengAbility.DISPLACE && displaced == null) {
-                                            displacementTargetId = piece?.id(); moveError = null
+                                        if (requiresDestination && selectedTarget == null) {
+                                            selectedTarget = square; moveError = null
                                         } else {
                                             val request = AbilityRequest(selectedPos, selectedAbility,
-                                                if (selectedAbility == GinsengAbility.DISPLACE) displaced!!.position() else square,
-                                                if (selectedAbility == GinsengAbility.DISPLACE) square else null, selectedBorrowed)
+                                                if (requiresDestination) selectedTarget else square,
+                                                if (requiresDestination) square else null, selectedBorrowed)
                                             val result = game.useAbility(currentPlayer, request)
-                                            selectedAbility = null; selectedBorrowed = false; displacementTargetId = null
+                                            selectedAbility = null; selectedBorrowed = false; selectedTarget = null
                                             updateView(result)
                                         }
                                     } else if (selectedAbility == null && selectedPos != null && (isMove || isCapture)) {
@@ -212,7 +201,7 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                                     else if (selectedAbility == null && selectedPos != null && !own && FaunView.hasHiddenEnemy(snapshot)) {
                                         submitMove(selectedPos,square) // Blind capture attempts use the real board.
                                     } else if (own) {
-                                        selectedId = piece?.id(); selectedAbility = null; selectedBorrowed = false; displacementTargetId = null; moveError = null
+                                        selectedId = piece?.id(); selectedAbility = null; selectedBorrowed = false; selectedTarget = null; moveError = null
                                     } else clearSelection()
                                 })
                         }
@@ -280,44 +269,10 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                 }
                 if (moba && selected != null) {
                     Spacer(Modifier.height(8.dp))
-                    Text(if (selected.hero() == HeroType.NONE) selected.type().simpleName else selected.hero().getName(),
-                        fontWeight = FontWeight.Bold)
+                    Text(selectedPresentation!!.title(heroContext!!), fontWeight = FontWeight.Bold)
                     if (selected.isBlinded) Text("Ослепление: ${selected.blindTurns()} ход владельца. Взятия недоступны.", fontSize = 12.sp, color = Color(0xFFC65D00))
-                    if (selected.hero() == HeroType.BABA_YAGA) {
-                        val origin = snapshot.summons().records()[selected.id()]!!
-                        val remaining = if (origin.bornTurn() == snapshot.turn().number() && selected.color() == snapshot.active())
-                            snapshot.heroRules().izba().lifetimeTurns().toLong()
-                            else ((origin.transformsAfterTurn() - snapshot.turn().number()) / 2 + 1).coerceAtLeast(1)
-                        Text("Станет Избой: осталось завершить своих ходов — $remaining", fontSize = 13.sp)
-                    }
-                    if (selected.hero() != HeroType.NONE && selected.hero() != HeroType.BABA_YAGA && selected.hero() != HeroType.IZBA && selected.hero() != HeroType.GINSENG && selected.hero() != HeroType.FAUN && selected.hero() != HeroType.ARES && selected.hero() != HeroType.CLOWNGANGER && selected.hero() != HeroType.ILLUSION && selected.hero() != HeroType.MOLEMINER && selected.hero() != HeroType.ZEUS && selected.hero() != HeroType.CHRONOMLIN && selected.hero() != HeroType.KIKIMORA) {
-                        val pudge = selected.hero() == HeroType.PUDGE
-                        val lume = selected.hero() == HeroType.LUMESHARD
-                        val crow = selected.hero() == HeroType.BOUNTY_CROW
-                        val skill = if (pudge) PudgeAbility.HOOK else if (lume) LumeshardAbility.LASER else if (crow) BountyCrowAbility.BOUNTY else BolotnikAbility.MUD
-                        val ult = if (pudge) PudgeAbility.SWALLOW else if (lume) LumeshardAbility.TELEPORT else if (crow) BountyCrowAbility.STEAL else BolotnikAbility.AMBUSH
-                        val skillName = if (pudge) "Хук" else if (lume) "Лазер" else if (crow) "Награда" else "Грязь"
-                        val ultName = if (pudge) "Проглотить" else if (lume) "Телепорт" else if (crow) "Украсть" else "Засада"
-                        val skillReady = game.getAbilityAvailability(selectedPos, skill)
-                        val ultReady = game.getAbilityAvailability(selectedPos, ult)
-                        val threshold = if (pudge) snapshot.pudgeRules().ultimateCaptures() else if (lume) snapshot.lumeshardRules().ultimateCaptures() else if (crow) snapshot.crowRules().ultimateCaptures() else snapshot.bolotnikRules().ultimateCaptures()
-                        Text("$skillName: ${if (selected.cooldown() == 0) "готов" else "КД ${selected.cooldown()}"} • ${if (pudge || lume) "радиус 3" else if (crow) "вся доска, +1,5 золота" else "радиус 4"}", fontSize = 13.sp)
-                        Text("Ульта: ${if (threshold == 0) "без заряда" else "${selected.ultimateCharge()} / $threshold"} • ${if (pudge) "радиус 1 вокруг" else if (lume) "свободная клетка своего цвета" else if (crow) "украсть до 2 золота" else "клетка и соседи слева/справа"}", fontSize = 13.sp)
-                        if (lume) Text("Исходный цвет: ${if (selected.startingColor() == SquareColor.DARK) "чёрный" else "белый"}", fontSize = 13.sp)
-                        if (crow) Text("Пассивка: +0,5 золота за собственное взятие", fontSize = 13.sp)
-                        if (!pudge && !lume && !crow) Text("Враг входит в болото — Bolotnik выходит и берёт его", fontSize = 12.sp)
-                        selected.storedPieceId()?.let { passenger ->
-                            Text("Внутри: ${snapshot.pieces()[passenger]?.type()?.simpleName}", color = Color(0xFF6A5ACD))
-                        }
-                        Row {
-                            Button(enabled = skillReady.isSuccess, onClick = { chooseAbility(skill) }) { Text(skillName) }
-                            Spacer(Modifier.width(8.dp))
-                            Button(enabled = ultReady.isSuccess, onClick = { if (ult == BountyCrowAbility.STEAL || ult == BolotnikAbility.AMBUSH) { selectedAbility = null; updateView(game.useAbility(currentPlayer, selectedPos, null, ult)) } else chooseAbility(ult) }) { Text(ultName) }
-                        }
-                        if (selectedAbility != null) Text("Выберите подсвеченную цель", color = Color(0xFF6A5ACD))
-                        if (!skillReady.isSuccess && skillReady != TurnRejection.ABILITY_ALREADY_USED) Text(skillReady.message, fontSize = 12.sp, color = Color.Gray)
-                        if (!ultReady.isSuccess && ultReady != TurnRejection.ABILITY_ALREADY_USED) Text(ultReady.message, fontSize = 12.sp, color = Color.Gray)
-                    }
+                    if (selectedPresentation.beforeInventory) HeroPanel(selectedPresentation, heroContext,
+                        HeroPanelControls(game, selectedPos!!) { ability, borrowed -> chooseAbility(ability, borrowed) })
                     Row {
                         selected.inventory().forEachIndexed { slot, item ->
                             Button(enabled = !item.isEmpty, onClick = { updateView(game.useItem(currentPlayer, selected.id(), slot)) },
@@ -326,111 +281,21 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                             }
                         }
                     }
-                } else if (moba) Text("Выберите свою фигуру. Пудж — П, Lumeshard — L, Crow — C, Bolotnik — Б, Изба — И, Ginseng — G, Faun — F, Ares — A, Clownganger — Кл, Moleminer — M, Zeus — Z, Chronomlin — Ch, Kikimora — Ки.", fontSize = 13.sp, color = Color.Gray)
+                } else if (moba) Text("Выберите свою фигуру. " + catalogHeroes
+                    .joinToString { type -> "${presentations[type].shortName} — ${presentations[type].badge}" } + ".", fontSize = 13.sp, color = Color.Gray)
             }
             val hidden = snapshot.pieces().values.filter { it.status() == PieceState.Status.HIDDEN_BOG }
-            if (hidden.isNotEmpty()) Text("В болоте: " + hidden.joinToString { if (it.color() == FigureColor.WHITE) if (it.hero() == HeroType.GINSENG) "белый Ginseng" else "белый Bolotnik" else if (it.hero() == HeroType.GINSENG) "чёрный Ginseng" else "чёрный Bolotnik" } + ". Выход только при срабатывании.", fontSize = 12.sp, color = Color(0xFF275D38))
-            if(moba && selected?.hero()==HeroType.KIKIMORA){
-                Text("Пряжа: КД ${selected.cooldown()}. Горшок: ${selected.ultimateCharge()} / ${snapshot.heroRules().kikimora().ultimateCaptures()}",fontSize=13.sp)
-                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                    Button(enabled=game.getAbilityAvailability(selectedPos,KikimoraAbility.YARN).isSuccess,onClick={chooseAbility(KikimoraAbility.YARN)}){Text("Связать пряжей")}
-                    Button(enabled=game.getAbilityAvailability(selectedPos,KikimoraAbility.CLAY_POT).isSuccess,onClick={chooseAbility(KikimoraAbility.CLAY_POT)}){Text("Глиняный горшок")}
-                }
-                if(selectedAbility==KikimoraAbility.YARN)Text("Враг в радиусе 2. Другая фигура за целью по направлению броска усиливает стан до 2 ходов.",fontSize=13.sp)
-                if(selectedAbility==KikimoraAbility.CLAY_POT)Text("Любая соседняя фигура, кроме короля: вечное неуязвимое препятствие. Можно сдвинуть способностью.",fontSize=13.sp)
-            }
-            if(moba && selected?.hero()==HeroType.CHRONOMLIN){
-                Text("Притяжение: КД ${selected.cooldown()}. Улучшение: ${selected.ultimateCharge()} / ${snapshot.heroRules().chronomlin().ultimateCaptures()}",fontSize=13.sp)
-                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                    Button(enabled=game.getAbilityAvailability(selectedPos,ChronomlinAbility.GRAPPLE).isSuccess,onClick={chooseAbility(ChronomlinAbility.GRAPPLE)}){Text("Притянуться")}
-                    Button(enabled=game.getAbilityAvailability(selectedPos,ChronomlinAbility.EVOLVE).isSuccess,onClick={val actor=selectedPos;clearSelection();updateView(game.useAbility(currentPlayer,actor,null,ChronomlinAbility.EVOLVE))}){Text("Улучшиться")}
-                }
-                Text("Пешка → слон → конь → ладья. Способности сохраняются.",fontSize=13.sp)
-                if(selectedAbility==ChronomlinAbility.GRAPPLE)Text("Выберите первую фигуру по прямой, включая короля. Приземление перед ней, без взятия.",fontSize=13.sp)
-            }
-            if(moba && selected?.hero()==HeroType.ZEUS){
-                Text("Молния: КД ${selected.cooldown()}. Ульта: ${selected.ultimateCharge()} / ${snapshot.heroRules().zeus().ultimateCaptures()}",fontSize=13.sp)
-                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                    Button(enabled=game.getAbilityAvailability(selectedPos,ZeusAbility.CHAIN_LIGHTNING).isSuccess,onClick={chooseAbility(ZeusAbility.CHAIN_LIGHTNING)}){Text("Цепная молния")}
-                    Button(enabled=game.getAbilityAvailability(selectedPos,ZeusAbility.THUNDERSTORM).isSuccess,onClick={val actor=selectedPos;clearSelection();updateView(game.useAbility(currentPlayer,actor,null,ZeusAbility.THUNDERSTORM))}){Text("Разряд")}
-                }
-                Text("Третий заряд убивает. Разряд выбирает случайного врага с зарядом этого героя. Z и G — разные заряды.",fontSize=13.sp)
-                if(selectedAbility==ZeusAbility.CHAIN_LIGHTNING)Text("Выберите врага в радиусе 3; цепь поразит до 3 целей.",fontSize=13.sp)
-            }
-            if(moba && selected?.hero()==HeroType.MOLEMINER){
-                Text("Мина: КД ${selected.cooldown()}. Ульта: ${selected.ultimateCharge()} / ${snapshot.heroRules().moleminer().ultimateCaptures()}",fontSize=13.sp)
-                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                    Button(enabled=game.getAbilityAvailability(selectedPos,MoleminerAbility.PLANT_MINE).isSuccess,onClick={val actor=selectedPos;clearSelection();updateView(game.useAbility(currentPlayer,actor,null,MoleminerAbility.PLANT_MINE))}){Text("Заложить мину")}
-                    Button(enabled=game.getAbilityAvailability(selectedPos,MoleminerAbility.DETONATE).isSuccess,onClick={chooseAbility(MoleminerAbility.DETONATE)}){Text("Прыжок и взрыв")}
-                }
-                if(selectedAbility==MoleminerAbility.DETONATE)Text("Клетка в радиусе 3. Случайный квадрат 2×2: погибнут герой и все внутри, кроме королей и фигур в коробках.",fontSize=13.sp)
-            }
-            if(moba && selected?.hero()==HeroType.CLOWNGANGER){
-                Text("Коробка: радиус 3, КД ${selected.cooldown()}. Ульта: ${selected.ultimateCharge()} / ${snapshot.heroRules().clownganger().ultimateCaptures()}",fontSize=13.sp)
-                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                    Button(enabled=game.getAbilityAvailability(selectedPos,ClowngangerAbility.BOX).isSuccess,onClick={chooseAbility(ClowngangerAbility.BOX)}){Text("Спрятать в коробку")}
-                    Button(enabled=game.getAbilityAvailability(selectedPos,ClowngangerAbility.ILLUSION).isSuccess,onClick={chooseAbility(ClowngangerAbility.ILLUSION)}){Text("Создать иллюзию")}
-                }
-                if(selectedAbility==ClowngangerAbility.BOX)Text("Выберите союзника, себя или иллюзию в радиусе 3",fontSize=13.sp)
-                if(selectedAbility==ClowngangerAbility.ILLUSION)Text("Выберите свободную соседнюю клетку",fontSize=13.sp)
-            }
-            if(moba && selected?.hero()==HeroType.ILLUSION)Text("Иллюзия: не берёт фигуры. Может сходить вместе с оригиналом.",fontSize=13.sp)
-            if(moba && selected?.isBoxed==true)Text("В коробке: защищена и не действует до конца следующего собственного хода",fontSize=13.sp)
-            if (moba && selected?.hero() == HeroType.ARES) {
-                Text("Копьё: 3 прямо / 2 по диагонали • КД ${selected.cooldown()}",fontSize=13.sp)
-                Text("Пассивная ульта: ${selected.ultimateCharge()} / ${snapshot.heroRules().ares().revengeCaptures()} • заберёт взявшую его фигуру",fontSize=13.sp)
-                val ready=game.getAbilityAvailability(selectedPos,AresAbility.SPEAR)
-                Button(enabled=ready.isSuccess,onClick={chooseAbility(AresAbility.SPEAR)}){Text("Бросить копьё")}
-                if(selectedAbility==AresAbility.SPEAR)Text("Выберите подсвеченное направление: первая фигура летит до конца, столкновение оглушает обе",fontSize=13.sp)
-                if(!ready.isSuccess)Text(ready.message,fontSize=12.sp,color=Color.Gray)
-            }
-            if (moba && selected?.isStunned == true) Text("Оглушён до конца следующего хода соперника источника",fontSize=12.sp,color=Color(0xFF8A4F00))
-            if (moba && selected?.hero() == HeroType.FAUN) {
-                Text("Туча 3×3 • дальность 4 • КД ${selected.cooldown()}",fontSize=13.sp)
-                Text("Невидимость: ${selected.ultimateCharge()} / ${snapshot.heroRules().faun().ultimateCaptures()} • 2 следующих своих хода",fontSize=13.sp)
-                val cloudReady=game.getAbilityAvailability(selectedPos,FaunAbility.CLOUD)
-                val invisReady=game.getAbilityAvailability(selectedPos,FaunAbility.INVISIBILITY)
-                Row {
-                    Button(enabled=cloudReady.isSuccess,onClick={chooseAbility(FaunAbility.CLOUD)}){Text("Бросить тучу")}
-                    Spacer(Modifier.width(8.dp))
-                    Button(enabled=invisReady.isSuccess,onClick={val actor=selectedPos;clearSelection();updateView(game.useAbility(currentPlayer,actor,null,FaunAbility.INVISIBILITY))}){Text("Невидимость")}
-                }
-                if(snapshot.faun().silenced(selectedPos))Text("В туче: скилл и ульта недоступны",fontSize=12.sp,color=Color.Gray)
-            }
-            if (moba && selected?.hero() == HeroType.IZBA) {
-                Text("Пассивка: при взятии призовёт Бабу-ягу на свободную клетку рядом", fontSize = 13.sp)
-                Text("Ульта: ${selected.ultimateCharge()} / ${snapshot.heroRules().izba().ultimateCaptures()}", fontSize = 13.sp)
-                val ready=game.getAbilityAvailability(selectedPos,IzbaAbility.SUMMON_YAGA)
-                Button(enabled=ready.isSuccess,onClick={clearSelection();updateView(game.useAbility(currentPlayer,selectedPos,null,IzbaAbility.SUMMON_YAGA))}) { Text("Призвать Бабу-ягу") }
-                if(!ready.isSuccess)Text(ready.message,fontSize=12.sp,color=Color.Gray)
-            }
-            if (moba && selected?.hero() == HeroType.GINSENG) {
-                val normal = game.getAbilityAvailability(selectedPos, GinsengAbility.DISPLACE)
-                val ultimate = game.getAbilityAvailability(selectedPos, GinsengAbility.COPY_SPELL)
-                Text("Сдвиг: радиус 3 • КД ${selected.cooldown()} • новая клетка рядом с целью", fontSize = 13.sp)
-                Text("Ульта: ${selected.ultimateCharge()} / ${snapshot.heroRules().ginseng().ultimateCaptures()} • последняя активная способность цели", fontSize = 13.sp)
-                Row {
-                    Button(enabled = normal.isSuccess, onClick = { chooseAbility(GinsengAbility.DISPLACE) }) { Text("Переместить фигуру") }
-                    Spacer(Modifier.width(8.dp))
-                    Button(enabled = ultimate.isSuccess, onClick = { chooseAbility(GinsengAbility.COPY_SPELL) }) { Text("Копировать последнее") }
-                }
-                val copy = snapshot.spells().borrowed()[selected.id()]
-                if (copy != null) {
-                    val ready = game.getAbilityAvailability(selectedPos, copy.ability(), true)
-                    Text("Копия: ${copy.ability().displayName} • одно применение", fontSize = 13.sp)
-                    Button(enabled = ready.isSuccess, onClick = {
-                        if (copy.ability() in listOf(BountyCrowAbility.STEAL, BolotnikAbility.AMBUSH, IzbaAbility.SUMMON_YAGA, FaunAbility.INVISIBILITY, MoleminerAbility.PLANT_MINE, ZeusAbility.THUNDERSTORM, ChronomlinAbility.EVOLVE)) {
-                            val request = AbilityRequest(selectedPos, copy.ability(), null, null, true)
-                            clearSelection(); updateView(game.useAbility(currentPlayer, request))
-                        } else chooseAbility(copy.ability(), true)
-                    }) { Text("Использовать: ${copy.ability().displayName}") }
-                    if (!ready.isSuccess) Text(ready.message, fontSize = 12.sp, color = Color.Gray)
-                } else Text("Украденной способности нет", fontSize = 12.sp, color = Color.Gray)
-                if (selectedAbility == GinsengAbility.DISPLACE) {
-                    Text(if (displaced == null) "Выберите подсвеченную фигуру" else "Выберите свободную клетку рядом с выбранной фигурой", fontSize = 13.sp)
-                    if (displaced != null) Button(onClick = { displacementTargetId = null }) { Text("Выбрать другую цель") }
-                }
-                if (selectedAbility == GinsengAbility.COPY_SPELL) Text("Выберите героя: скопируется последняя успешно применённая им способность", fontSize = 13.sp)
+            if (hidden.isNotEmpty()) Text("В болоте: " + hidden.joinToString {
+                (if (it.color() == FigureColor.WHITE) "белый " else "чёрный ") + presentations[it.hero()].shortName
+            } + ". Выход только при срабатывании.", fontSize = 12.sp, color = Color(0xFF275D38))
+            if (moba && heroContext != null && selectedPresentation != null && !selectedPresentation.beforeInventory)
+                HeroPanel(selectedPresentation, heroContext,
+                    HeroPanelControls(game, selectedPos!!) { ability, borrowed -> chooseAbility(ability, borrowed) })
+            if (moba && selected?.isBoxed == true) Text("В коробке: защищена и не действует до конца следующего собственного хода", fontSize = 13.sp)
+            if (moba && selected?.isStunned == true) Text("Оглушён до конца следующего хода соперника источника", fontSize = 12.sp, color = Color(0xFF8A4F00))
+            if (requiresDestination) {
+                Text(if (selectedTarget == null) "Выберите подсвеченную цель" else "Выберите подсвеченную клетку назначения", fontSize = 13.sp)
+                if (selectedTarget != null) Button(onClick = { selectedTarget = null }) { Text("Выбрать другую цель") }
             }
             moveError?.let { Text(it, color = Color.Red) }
             Spacer(Modifier.height(8.dp))

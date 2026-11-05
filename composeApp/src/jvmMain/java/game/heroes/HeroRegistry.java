@@ -1,5 +1,8 @@
 package game.heroes;
 
+import game.mechanics.MechanicRegistry;
+import game.state.PieceState;
+import model.Position;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
@@ -7,16 +10,25 @@ import java.util.Objects;
 
 /** Immutable registry of reusable strategies, built once for a game's rules. */
 public final class HeroRegistry {
+    private final HeroRules rules;
+    private final MechanicRegistry mechanics;
     private final Map<HeroType, Hero> heroes;
     private final Map<String, Abilities> abilitiesById;
     private final Map<String, Hero> ownersById;
 
     public HeroRegistry() {
-        this(Map.of());
+        this(HeroRules.defaults());
     }
 
-    private HeroRegistry(Map<HeroType, Hero> heroes) {
+    public HeroRegistry(HeroRules rules) {
+        this(Map.of(), Objects.requireNonNull(rules, "rules"));
+    }
+
+    private HeroRegistry(Map<HeroType, Hero> heroes, HeroRules rules) {
+        this.rules = rules;
         this.heroes = Map.copyOf(heroes);
+        mechanics = new MechanicRegistry(heroes.values().stream()
+                .flatMap(hero -> hero.definition().mechanics().stream()).toList());
         var abilities = new HashMap<String, Abilities>();
         var owners = new HashMap<String, Hero>();
         for (Hero hero : heroes.values())
@@ -31,10 +43,30 @@ public final class HeroRegistry {
         ownersById = Map.copyOf(owners);
     }
 
+    public HeroRules rules() { return rules; }
+
+    public MechanicRegistry mechanics() { return mechanics; }
+
     public Hero get(HeroType type) {
         Hero hero = heroes.get(Objects.requireNonNull(type, "type"));
         if (hero == null) throw new IllegalArgumentException("Unregistered hero: " + type);
         return hero;
+    }
+
+    public void validateState(PieceState piece) {
+        get(piece.hero()).definition().validateState(piece, rules);
+    }
+
+    public void validateStates(Map<Long, PieceState> pieces) {
+        for (var entry : pieces.entrySet()) {
+            if (entry.getKey() != entry.getValue().id())
+                throw new IllegalArgumentException("Piece key differs from its identity");
+            validateState(entry.getValue());
+        }
+    }
+
+    public void validateOrigin(PieceState piece, Position origin) {
+        get(piece.hero()).definition().validateOrigin(piece, origin, rules);
     }
 
     /** Returns a new registry; existing registries and running games stay unchanged. */
@@ -44,7 +76,7 @@ public final class HeroRegistry {
         next.putAll(heroes);
         if (next.putIfAbsent(hero.type(), hero) != null)
             throw new IllegalArgumentException("Duplicate hero: " + hero.type());
-        return new HeroRegistry(next);
+        return new HeroRegistry(next, rules);
     }
 
     /** Source strategy for a copied spell's targeting and candidate requests. */
@@ -78,7 +110,7 @@ public final class HeroRegistry {
 
     public static HeroRegistry fromRules(HeroRules rules) {
         Objects.requireNonNull(rules, "rules");
-        HeroRegistry registry = new HeroRegistry();
+        HeroRegistry registry = new HeroRegistry(Map.of(), rules);
         for (HeroDefinition<?> definition : rules.definitions())
             registry = registry.register(definition.create(rules));
         return registry;
