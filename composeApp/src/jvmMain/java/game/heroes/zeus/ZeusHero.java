@@ -1,5 +1,9 @@
 package game.heroes.zeus;
 
+import game.moves.StatusRejection;
+
+import game.mechanics.PieceRestriction;
+
 import game.heroes.Abilities;
 import game.heroes.AbilityCost;
 import game.heroes.AbilityRequest;
@@ -37,6 +41,8 @@ public final class ZeusHero extends AbstractHero {
 
     @Override protected HeroEffect previewAvailable(HeroActionContext context, PieceState actor, PieceState target,
                                                     AbilityRequest request) {
+        if (target != null && context.blocks(target, PieceRestriction.CAPTURE))
+            return HeroEffect.rejected(StatusRejection.PROTECTED_OBSTACLE);
         MoveResult result = validateFirst(actor, target, request.ability());
         if (!result.isSuccess()) return HeroEffect.rejected(result);
         return HeroEffect.empty().withCost(cost(request.ability()))
@@ -80,7 +86,8 @@ public final class ZeusHero extends AbstractHero {
         updates.put(actor.id(), actor);
         PieceState target = first;
         if (ability == ZeusAbility.THUNDERSTORM) {
-            var candidates = charged(states, lightning, actor);
+            var candidates = charged(states, lightning, actor).stream()
+                    .filter(p -> !session.context().blocks(p, PieceRestriction.CAPTURE)).toList();
             if (candidates.isEmpty()) return rejected(AbilityRejection.NO_CHARGED_TARGETS, lightning, summons);
             int pick = 0;
             if (candidates.size() > 1) {
@@ -128,7 +135,7 @@ public final class ZeusHero extends AbstractHero {
             }
             if (ability == ZeusAbility.THUNDERSTORM || jump == 2) break;
             Position previous = square;
-            var candidates = states.values().stream().filter(piece -> eligible(piece, actor)
+            var candidates = states.values().stream().filter(piece -> eligible(piece, actor) && !session.context().blocks(piece, PieceRestriction.CAPTURE)
                     && !seen.contains(piece.id()) && distance(previous, piece.position()) <= 2).toList();
             if (candidates.isEmpty()) break;
             int nearest = candidates.stream().mapToInt(piece -> distance(previous, piece.position())).min().orElseThrow();
