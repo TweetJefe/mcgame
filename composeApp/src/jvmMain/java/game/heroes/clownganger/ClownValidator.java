@@ -1,8 +1,13 @@
 package game.heroes.clownganger;
 
+import game.mechanics.PieceRestriction;
+
 import game.heroes.bolotnik.BolotnikAbility;
 import game.heroes.ginseng.GinsengAbility;
 import game.heroes.*;
+import game.mechanics.PieceBodyHistory;
+import model.Figure;
+import java.util.stream.Collectors;
 import game.history.GameEvent;
 import game.state.*;
 import model.figures.*;
@@ -11,8 +16,15 @@ public final class ClownValidator {
     private ClownValidator(){}
     private static void require(boolean ok,String msg){if(!ok)throw new IllegalArgumentException(msg);}
     public static void validate(GameSnapshot s){
+        var restrictions = new HeroActionContext(s.field(), s.pieces(), s.turn().number(), s.mechanics(), HeroRegistry.fromRules(s.heroRules()).mechanics());
+        var identities = game.mechanics.PieceHeroHistory.replay(s);
         require(s.clown().equals(ClownState.fromHistory(s.events(),s.heroRules().clownganger())),"Clownganger state differs from history");
-        var bodies=game.heroes.chronomlin.ChronomlinValidator.illusionBodies(s);
+        var sources = s.clown().illusions().values().stream().map(i -> i.sourceId())
+                .collect(Collectors.toUnmodifiableSet());
+        var history = PieceBodyHistory.forPieces(s, sources);
+        var bodies = new HashMap<Long, Class<? extends Figure>>();
+        for (var event : s.events()) if (event.isAbility(ClowngangerAbility.ILLUSION))
+            bodies.put(event.targetId(), history.before(event.actorId(), event.sequence()));
         var boxes=new HashMap<Long,Long>();var moved=new HashMap<Long,Set<Long>>();var born=new HashSet<Long>();
         for(var e:s.events()){
             if(e.isAbility(ClowngangerAbility.BOX)){
@@ -28,13 +40,13 @@ public final class ClownValidator {
             }
             if(e.isAbility(GinsengAbility.COPY_SPELL) && e.copiedAbility()==null)require(s.pieces().get(e.targetId()).hero()==HeroType.ILLUSION,"Empty copy from a real hero");
             if(e.legacyKind()==GameEvent.Kind.ILLUSION_HIT){
-                require(born.contains(e.targetId()) && (s.events().stream().anyMatch(t->t.turn()==e.turn() && java.util.Objects.equals(t.actorId(),e.actorId()) && ((t.legacyKind()==GameEvent.Kind.MINE_TRIGGER || t.legacyKind()==GameEvent.Kind.LIGHTNING_DISCHARGE) && java.util.Objects.equals(t.targetId(),e.targetId()) || t.legacyKind()==GameEvent.Kind.BLAST_AREA)) || s.events().stream().anyMatch(m->m.turn()==e.turn() && m.legacyKind()==GameEvent.Kind.MOVE && Objects.equals(m.actorId(),e.actorId()) && m.to().equals(e.to())) || ((s.pieces().get(e.actorId()).hero()==HeroType.BOLOTNIK || s.pieces().get(e.actorId()).hero()==HeroType.GINSENG) && s.events().stream().anyMatch(t->t.sequence()<e.sequence() && java.util.Objects.equals(t.actorId(),e.actorId()) && (t.isAbility(BolotnikAbility.MUD) || t.isAbility(BolotnikAbility.AMBUSH))))),"Illusion hit without a move or trap");
+                require(born.contains(e.targetId()) && (s.events().stream().anyMatch(t->t.turn()==e.turn() && java.util.Objects.equals(t.actorId(),e.actorId()) && ((t.legacyKind()==GameEvent.Kind.MINE_TRIGGER || t.legacyKind()==GameEvent.Kind.LIGHTNING_DISCHARGE) && java.util.Objects.equals(t.targetId(),e.targetId()) || t.legacyKind()==GameEvent.Kind.BLAST_AREA)) || s.events().stream().anyMatch(m->m.turn()==e.turn() && m.legacyKind()==GameEvent.Kind.MOVE && Objects.equals(m.actorId(),e.actorId()) && m.to().equals(e.to())) || ((s.pieces().get(e.actorId()).hero()==HeroType.BOLOTNIK || identities.hasHeld(e.actorId(), HeroType.GINSENG)) && s.events().stream().anyMatch(t->t.sequence()<e.sequence() && java.util.Objects.equals(t.actorId(),e.actorId()) && (t.isAbility(BolotnikAbility.MUD) || t.isAbility(BolotnikAbility.AMBUSH))))),"Illusion hit without a move or trap");
             }
         }
         for(var i:s.clown().illusions().values()){
             var p=s.pieces().get(i.id());var source=s.pieces().get(i.sourceId());
-            require(p!=null && source!=null && (source.hero()==HeroType.CLOWNGANGER || source.hero()==HeroType.GINSENG) && p.hero()==HeroType.ILLUSION && p.type()==bodies.get(i.id()) && p.color()==source.color(),"Invalid illusion identity");
-            require(p.status()!=PieceState.Status.CAPTURED && (p.isRemoved() || p.isPotted() || (i.expiresAfterTurn()>=s.turn().number() && !source.isRemoved())),"Overdue or captured illusion");
+            require(p!=null && source!=null && (source.hero()==HeroType.CLOWNGANGER || identities.hasHeld(source.id(), HeroType.GINSENG)) && p.hero()==HeroType.ILLUSION && p.type()==bodies.get(i.id()) && p.color()==source.color(),"Invalid illusion identity");
+            require(p.status()!=PieceState.Status.CAPTURED && (p.isRemoved() || p.isPotted() || restrictions.blocks(p, PieceRestriction.TRANSFORMATION) || (i.expiresAfterTurn()>=s.turn().number() && !source.isRemoved())),"Overdue or captured illusion");
         }
         for(var p:s.pieces().values()){
             require((p.hero()==HeroType.ILLUSION)==s.clown().illusions().containsKey(p.id()),"Illusion without origin");

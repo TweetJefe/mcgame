@@ -30,10 +30,14 @@ public record ClownState(Map<Long,Illusion> illusions,long movementTurn,Long mov
         return new ClownState(next,movementTurn,movementGroup,moved);
     }
     public Map<Long,PieceState> clean(Map<Long,PieceState> pieces,long endedTurn){
+        return clean(pieces, endedTurn, piece -> false);
+    }
+    public Map<Long,PieceState> clean(Map<Long,PieceState> pieces,long endedTurn,
+            java.util.function.Predicate<PieceState> protectedFromExpiry){
         var next=new HashMap<>(pieces);
         for(var i:illusions.values()){
             var source=pieces.get(i.sourceId());var p=pieces.get(i.id());
-            if(p!=null && !p.isRemoved() && !p.isPotted() && (source==null || source.isRemoved() || i.expiresAfterTurn()<=endedTurn))next.put(p.id(),p.hidden(PieceState.Status.DISSOLVED));
+            if(p!=null && !p.isRemoved() && !p.isPotted() && !protectedFromExpiry.test(p) && (source==null || source.isRemoved() || i.expiresAfterTurn()<=endedTurn))next.put(p.id(),p.hidden(PieceState.Status.DISSOLVED));
         }
         for(var holder:new ArrayList<>(next.values()))if(holder.storedPieceId()!=null && next.get(holder.storedPieceId()).isRemoved())next.put(holder.id(),holder.withAbilityState(holder.cooldown(),holder.ultimateCharge(),null));
         return Map.copyOf(next);

@@ -1,5 +1,7 @@
 package game.heroes.clownganger;
 
+import game.mechanics.PieceRestriction;
+
 import game.heroes.HeroActionContext;
 import game.heroes.HeroPieceFactory;
 import game.heroes.PieceCreationContext;
@@ -93,9 +95,9 @@ public final class ClownMechanic implements MechanicDefinition<ClownState> {
             var clown = s.state(CLOWN);
             for (long id : s.local(HITS).ids()) clown = clown.hit(id);
             s.state(CLOWN, clown);
-            s.pieces(clown.clean(s.pieces(), 0));
-        }), update("clown.canEnd", CAN_END, null, s -> s.pieces(s.state(CLOWN).clean(s.pieces(), s.turn()))),
-            update("clown.expire", END_TURN, null, s -> s.pieces(s.state(CLOWN).clean(s.pieces(), s.turn()))));
+            s.pieces(clown.clean(s.pieces(), 0, p -> s.context().blocks(p, PieceRestriction.TRANSFORMATION)));
+        }), update("clown.canEnd", CAN_END, null, s -> s.pieces(s.state(CLOWN).clean(s.pieces(), s.turn(), p -> s.context().blocks(p, PieceRestriction.TRANSFORMATION)))),
+            update("clown.expire", END_TURN, null, s -> s.pieces(s.state(CLOWN).clean(s.pieces(), s.turn(), p -> s.context().blocks(p, PieceRestriction.TRANSFORMATION)))));
     }
     @Override public boolean allowsExtraMove(HeroActionContext context, PieceState actor) {
         return context.clown().canMove(actor.id(), context.currentTurn(), true, context.pieces());
