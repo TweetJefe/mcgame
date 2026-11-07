@@ -15,7 +15,7 @@ public final class ChronomlinDefinition {
     public static final HeroDefinition<ChronomlinRules> INSTANCE = new HeroDefinition<>(
             HeroType.CHRONOMLIN, "Chronomlin-Пешка", Set.of(Pawn.class),
             ChronomlinRules.class, ChronomlinRules.prototype(), new ChronomlinRulesCodec(),
-            ChronomlinHero::new, List.of(HistoricalMechanics.INSTANCE))
+            ChronomlinHero::new, List.of(HistoricalMechanics.INSTANCE, ChronomlinFormMechanic.INSTANCE))
             .withStatePolicy(new ChronomlinStatePolicy())
             .withDraftProfile(DraftProfile.pickable(12));
 }
