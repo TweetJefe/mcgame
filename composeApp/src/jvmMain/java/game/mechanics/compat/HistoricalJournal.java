@@ -61,7 +61,8 @@ public final class HistoricalJournal {
         Long summoner = after.summons().records().values().stream().filter(r -> !before.summons().records().containsKey(r.id()) && r.cause() == SummonRecord.Cause.ULTIMATE).map(SummonRecord::sourceId).findFirst().orElse(null);
         for (PieceState p : after.pieces().values().stream().sorted(Comparator.comparingLong(PieceState::id)).toList()) {
             PieceState old = before.pieces().get(p.id());
-            if (p.status() == PieceState.Status.REPLACED && old != null && old.status() != PieceState.Status.REPLACED) {
+            if (p.status() == PieceState.Status.REPLACED && old != null && old.status() != PieceState.Status.REPLACED
+                    && !after.registry().dismissed(after, p)) {
                 Position square = old.position() == null ? before.pieces().get(summoner).position() : old.position();
                 addEvent(GameEvent.Kind.REPLACE, side, summoner, p.id(), square, square, "Фигура заменена призывом без взятия");
             }

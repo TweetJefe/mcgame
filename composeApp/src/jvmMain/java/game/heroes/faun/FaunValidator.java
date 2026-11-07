@@ -8,18 +8,19 @@ public final class FaunValidator {
     }
 
     public static void validate(GameSnapshot s) {
+        var identities = game.mechanics.PieceHeroHistory.replay(s);
         if (s.faun() == null || !s.faun().equals(FaunState.fromHistory(s.events(), s.heroRules().faun())))
             throw new IllegalArgumentException("Faun effects differ from history");
         if (s.mode() == GameMode.CLASSIC && (!s.faun().clouds().isEmpty() || !s.faun().invisible().isEmpty()))
             throw new IllegalArgumentException("Faun effects in Classic");
         for (Cloud c : s.faun().clouds()) {
             var p = s.pieces().get(c.sourceId());
-            if (p == null || (p.hero() != HeroType.FAUN && p.hero() != HeroType.GINSENG) || c.castTurn() > s.turn().number() || c.expiresAfterTurn() < s.turn().number())
+            if (p == null || (p.hero() != HeroType.FAUN && !identities.hasHeld(p.id(), HeroType.GINSENG)) || c.castTurn() > s.turn().number() || c.expiresAfterTurn() < s.turn().number())
                 throw new IllegalArgumentException("Invalid cloud source or lifetime");
         }
         for (var e : s.faun().invisible().entrySet()) {
             var p = s.pieces().get(e.getKey());
-            if (p == null || p.isRemoved() || (p.hero() != HeroType.FAUN && p.hero() != HeroType.GINSENG) || e.getValue().castTurn() > s.turn().number() || e.getValue().expiresAfterTurn() < s.turn().number())
+            if (p == null || p.isRemoved() || (p.hero() != HeroType.FAUN && !identities.hasHeld(p.id(), HeroType.GINSENG)) || e.getValue().castTurn() > s.turn().number() || e.getValue().expiresAfterTurn() < s.turn().number())
                 throw new IllegalArgumentException("Invalid invisible piece");
         }
     }

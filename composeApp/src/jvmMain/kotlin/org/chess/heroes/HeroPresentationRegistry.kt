@@ -12,6 +12,10 @@ class HeroPresentationRegistry(presentations: List<HeroPresentation>) {
         entries = java.util.Map.copyOf(presentations.associateBy { it.type })
     }
     operator fun get(type: HeroType): HeroPresentation = requireNotNull(entries[type]) { "Missing HeroPresentation: $type" }
+    @androidx.compose.runtime.Composable
+    fun BoardDecorations(context: BoardEffectContext) {
+        context.heroes.rules().definitions().forEach { entries[it.type()]?.BoardDecoration(context) }
+    }
     fun validate(definitions: List<HeroDefinition<*>>) {
         definitions.forEach {
             val presentation = get(it.type())

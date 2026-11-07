@@ -177,3 +177,27 @@ XML 9 хранит настройки, срок стана и события; к
 результат через явный реестр. `PieceState` проверяет общие структурные инварианты.
 `ActionEngine`, публикация в `Game` и `SnapshotValidator` проверяют специфическое
 состояние через тот же контракт. Обновление существующей фигуры не переинициализирует героя.
+
+## Sun Wukong
+
+`game.heroes.sunwukong` содержит локальную стратегию, конфигурацию, политику состояния, механику временных форм и происхождения копий с явным кодеком и проверкой истории. `org.chess.heroes.sunwukong` содержит отображение оригинала и копий. Общая метаинформация `PieceBodyChange` используется проверкой истории форм; происхождение передаётся через `MechanicDefinition.initialHero`. Регистрация ограничена `HeroDefinitions` и `HeroPresentations`. Правила: [SUN_WUKONG.md](SUN_WUKONG.md).
+
+## Общая история шахматных форм
+
+`game.mechanics.PieceBodyHistory` хранит неизменяемые переходы формы по ID и номеру события. `game.heroes.chronomlin.ChronomlinFormMechanic` объявляет метаданные существующей эволюции; временные превращения объявляет собственный модуль Wukong. Проверки Wukong, Chronomlin и иллюзий используют одну реконструкцию. Формат XML остаётся прежним.
+
+## Strix, очередь и прошлые координаты
+
+`game.heroes.strix` содержит локальный контракт героя и проверку возврата. `game.history.PositionHistoryMechanic` предоставляет общие кадры начала ходов. `game.turns.TurnFlowMechanic` предоставляет запрос пропуска, а `game.core.TurnFlowEngine` — атомарную подготовку перехода. Отображение находится в `org.chess.heroes.strix`. Общие классы не содержат имени или ID способностей нового героя. Правила и XML 19: [STRIX.md](STRIX.md).
+
+## Phoenix / Supernova и история личности
+
+Локальные пакеты `game.heroes.phoenix` и `game.heroes.supernova` содержат поведение, состояние и события. `model.figures` добавляет независимые тела Egg / Archbishop. В `game.mechanics` находятся общие `PieceHeroChange` и `PieceHeroHistory`. Представления — в одноимённых Kotlin-пакетах. Подробнее: [COMMON_BODY_EXTENSIONS.md](COMMON_BODY_EXTENSIONS.md).
+
+## Leshy
+
+`game.heroes.leshy` содержит локальный контракт и механику, `org.chess.heroes.leshy` — представление. Общие `PieceRestriction` / `PieceRestrictions` находятся в `game.mechanics`, без зависимости от героя. Описание: [LESHY.md](LESHY.md), API: [EFFECT_RESTRICTIONS.md](EFFECT_RESTRICTIONS.md).
+
+## Shiva, новые жизни и обнаружение
+
+`game.heroes.shiva` и `org.chess.heroes.shiva` содержат героя и представление. `game.creation` предоставляет происхождение новых ID, эволюцию и проверку истории; `game.visibility` — общий API обнаружения. Тело устанавливаемого объекта — `model.figures.Ward`. Описание: [SHIVA.md](SHIVA.md), [CREATION_AND_VISIBILITY.md](CREATION_AND_VISIBILITY.md).

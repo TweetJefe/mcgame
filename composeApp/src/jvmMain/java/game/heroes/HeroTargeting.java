@@ -57,7 +57,8 @@ public record HeroTargeting(Selection selection, Set<Permission> permissions) {
                 return AbilityRejection.INVALID_ABILITY_TARGET;
         }
         PieceState target = context.pieceAt(request.target());
-        if (!permissions.contains(Permission.INVISIBLE) && context.faun().hidden(target, actor.color()))
+        if (!permissions.contains(Permission.INVISIBLE) && context.faun().hidden(target, actor.color())
+                && !game.visibility.VisibilityRules.reveals(context, actor.color(), target.position(), game.visibility.Concealment.INVISIBILITY))
             return StatusRejection.TARGET_INVISIBLE;
         if (target == null) return Success.SUCCESS;
         if (target.type() == King.class && !permissions.contains(Permission.KING)) return StatusRejection.KING_IMMUNE;

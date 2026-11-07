@@ -32,7 +32,7 @@ public final class HeroPieceFactory {
                 || !Objects.equals(result.position(), base.position()))
             throw new IllegalArgumentException("Initialization changed piece identity or placement");
         heroes.validateState(result);
-        definition.validateOrigin(result, origin.square(), heroes.rules());
+        definition.validateCreation(result, origin, heroes.rules());
         return result;
     }
 }

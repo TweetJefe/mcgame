@@ -2,6 +2,12 @@ package game.heroes;
 
 /** Hero identity independent of its chess body. Descriptions belong to HeroDefinition. */
 public enum HeroType {
+    SHIVA,
+    LESHY,
+    PHOENIX,
+    SUPERNOVA,
+    STRIX,
+    SUN_WUKONG,
     KIKIMORA,
     CHRONOMLIN,
     CLOWNGANGER,

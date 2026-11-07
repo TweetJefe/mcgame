@@ -1,5 +1,9 @@
 package rules.moba;
 
+import game.heroes.HeroActionContext;
+
+import game.mechanics.PieceRestriction;
+
 import game.state.PieceState;
 import game.terrain.TerrainState;
 import model.Figure;
@@ -16,6 +20,19 @@ public final class AttackRules {
     public static Set<Position> blindSquares(Map<Long, PieceState> pieces) {
         return pieces.values().stream().filter(p -> p.status() == PieceState.Status.BOARD && (p.isPotted() || p.isBlinded() || p.isStunned() || p.isBoxed() || p.hero()==game.heroes.HeroType.ILLUSION))
                 .map(PieceState::position).collect(Collectors.toUnmodifiableSet());
+    }
+    public static Set<Position> blindSquares(HeroActionContext context) {
+        var result = new java.util.HashSet<>(blindSquares(context.pieces()));
+        for (var piece : context.pieces().values())
+            if (piece.position() != null && context.blocks(piece, PieceRestriction.ATTACK))
+                result.add(piece.position());
+        return Set.copyOf(result);
+    }
+    public static boolean isInCheck(Map<Position, Figure> board, HeroActionContext context, FigureColor side) {
+        if (context.pieces().values().stream().anyMatch(p -> p.position() != null && p.color() == side
+                && p.type() == model.figures.King.class && p.isBoxed())) return false;
+        return MoveValidator.isInCheck(board, side, blindSquares(context),
+                context.terrain().hostileSquares(context.pieces(), MoveValidator.opposite(side)), context.passageObstacles());
     }
     public static Map<Long,PieceState> expireStuns(Map<Long,PieceState> pieces,long endedTurn) {
         var next=new java.util.HashMap<>(pieces);

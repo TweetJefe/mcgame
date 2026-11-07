@@ -1,4 +1,6 @@
 package game.heroes.moleminer;
+
+import game.mechanics.PieceRestriction;
 import game.heroes.*;
 import game.history.GameEvent;
 import game.state.*;
@@ -9,9 +11,11 @@ public final class MineValidator{
     private MineValidator(){}
     private static void require(boolean v,String message){if(!v)throw new IllegalArgumentException(message);}
     public static void validate(GameSnapshot s){
+        var effects = new HeroActionContext(s.field(), s.pieces(), s.turn().number(), s.mechanics(), HeroRegistry.fromRules(s.heroRules()).mechanics());
+        var identities = game.mechanics.PieceHeroHistory.replay(s);
         require(s.mines().equals(MineState.fromHistory(s.events())),"Mines differ from history");
         if(s.mode()==GameMode.CLASSIC)require(s.mines().equals(MineState.empty()),"Mines in Classic");
-        for(var entry:s.mines().cells().entrySet()){var mine=entry.getValue();var owner=s.pieces().get(mine.ownerId());require(owner!=null && (owner.hero()==HeroType.MOLEMINER || owner.hero()==HeroType.GINSENG) && mine.plantedTurn()<=s.turn().number(),"Invalid mine source");var occupant=s.pieceAt(entry.getKey());require(occupant==null || occupant.isPotted() || occupant.color()==owner.color(),"Unresolved enemy on mine");}
+        for(var entry:s.mines().cells().entrySet()){var mine=entry.getValue();var owner=s.pieces().get(mine.ownerId());require(owner!=null && (owner.hero()==HeroType.MOLEMINER || identities.hasHeld(owner.id(), HeroType.GINSENG)) && mine.plantedTurn()<=s.turn().number(),"Invalid mine source");var occupant=s.pieceAt(entry.getKey());require(occupant==null || effects.blocks(owner, PieceRestriction.PASSIVES) || effects.blocks(occupant, PieceRestriction.CAPTURE) || occupant.isPotted() || occupant.color()==owner.color(),"Unresolved enemy on mine");}
         var dead=new HashSet<Long>();
         for(var e:s.events()){
             if(e.isAbility(MoleminerAbility.PLANT_MINE))require(e.from().equals(e.to()) && e.targetId()==null,"Mine must be planted under its owner");

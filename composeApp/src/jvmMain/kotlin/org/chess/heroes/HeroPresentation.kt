@@ -22,6 +22,9 @@ import model.Position
 data class HeroViewContext(val snapshot: GameSnapshot, val piece: PieceState,
                            val selectedAbility: Abilities?, val heroes: HeroRegistry)
 
+data class BoardEffectContext(val snapshot: GameSnapshot, val square: Position,
+                              val piece: PieceState?, val heroes: HeroRegistry)
+
 interface HeroPresentation {
     val type: HeroType
     val shortName: String
@@ -41,6 +44,7 @@ interface HeroPresentation {
     @Composable fun Extra(context: HeroViewContext, controls: HeroPanelControls) {}
     /** Необязательное локальное изображение/декорация поверх клетки. */
     @Composable fun CellDecoration(context: HeroViewContext) {}
+    @Composable fun BoardDecoration(context: BoardEffectContext) {}
     /** Необязательное изображение карточки; текстовый значок доступен независимо. */
     @Composable fun Portrait() {}
 }

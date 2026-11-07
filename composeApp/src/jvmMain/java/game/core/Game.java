@@ -1,5 +1,9 @@
 package game.core;
 
+import game.moves.StatusRejection;
+
+import game.mechanics.PieceRestriction;
+
 import game.draft.Draft;
 import game.draft.DraftSnapshot;
 import game.economy.EconomyState;
@@ -267,7 +271,7 @@ public final class Game {
     }
 
     public synchronized void startClock(int seconds) {
-        if (outcome.isFinished() || !moves.isEmpty() || !events.isEmpty())
+        if (outcome.isFinished() || !moves.isEmpty() || abilityUsed || turnNumber != 1)
             throw new IllegalStateException("Configure the clock before playing");
         clock.start(seconds, currentPlayer.color(), nanoTime.getAsLong());
         version++;
@@ -379,30 +383,19 @@ public final class Game {
         if (mode != GameMode.MOBA) return TurnRejection.UNSUPPORTED_ACTION;
         if (!moveUsed) return TurnRejection.MOVE_REQUIRED;
         if (!ActionEngine.canEnd(context(), player.color())) return MovementRejection.KING_IN_CHECK;
-        var before = context();
-        var session = new MechanicSession(before.heroContext(), pieces, heroRules,
-                heroRegistry, player.color(), null, List.of(), events);
-        MoveResult ended = session.run(MechanicPhase.END_TURN);
-        if (!ended.isSuccess()) return ended;
-        session.requireComplete();
-        var board = new HashMap<Position, Figure>();
-        for (Position square : gameField.getGameField().keySet())
-            board.put(square, gameField.createFigure(Empty.class, square, FigureColor.NONE));
-        for (PieceState piece : session.pieces().values())
-            if (piece.position() != null)
-                board.put(piece.position(), gameField.createFigure(piece.type(), piece.position(), piece.color()));
-        MoveResult historyResult = session.run(MechanicPhase.END_HISTORY);
-        if (!historyResult.isSuccess()) return historyResult;
-        for (var event : session.proposedEvents()) session.emit(event.numbered(session.history().size() + 1L));
-        Map<Long, PieceState> nextPieces = prepareNextTurnPieces(session.pieces());
-        pieces = nextPieces;
-        mechanics = session.states();
-        gameField = Field.fromMobaPosition(board);
+        var transition = TurnFlowEngine.end(context(), player.color(), heroRules, events);
+        if (!transition.result().isSuccess()) return transition.result();
+        pieces = transition.context().pieces();
+        mechanics = transition.context().mechanics();
+        gameField = transition.context().field();
         pieceStateField = gameField;
-        events.addAll(session.history().subList(events.size(), session.history().size()));
-        addEvent(GameEvent.Kind.END_TURN, player.color(), null, null, null, null, "Ход завершён");
+        enPassantTarget = transition.context().ep();
+        events.addAll(transition.history().subList(events.size(), transition.history().size()));
         if (drawOffer != null && drawOffer != player) drawOffer = null;
-        advanceTurn();
+        currentPlayer = transition.side() == FigureColor.WHITE ? whitePlayer : blackPlayer;
+        turnNumber = transition.context().turn();
+        moveUsed = abilityUsed = false;
+        clock.switchTo(currentPlayer.color());
         repetitions.merge(getPositionKey(), 1, Integer::sum);
         evaluateOutcome();
         version++;
@@ -419,6 +412,8 @@ public final class Game {
         PieceState piece = pieces.get(pieceId);
         if (piece == null || piece.status() != PieceState.Status.BOARD) return MovementRejection.EMPTY_SOURCE;
         if (piece.color() != player.color()) return MovementRejection.WRONG_FIGURE_COLOR;
+        if (context().heroContext().blocks(piece, PieceRestriction.ITEMS))
+            return StatusRejection.PROTECTED_OBSTACLE;
         if (slot < 0 || slot >= 3) return ItemRejection.INVALID_ITEM_SLOT;
         return piece.inventory().get(slot).isEmpty() ? ItemRejection.EMPTY_ITEM_SLOT : ItemRejection.ITEM_NOT_AVAILABLE;
     }
@@ -531,13 +526,13 @@ public final class Game {
         var board = gameField.getGameField();
         if (mode == GameMode.MOBA) {
             if (!ActionEngine.hasTurn(context(), color, heroRules)) {
-                boolean check = mode == GameMode.MOBA ? AttackRules.isInCheck(board, pieces, color, terrain()) : MoveValidator.isInCheck(board, color);
+                boolean check = mode == GameMode.MOBA ? AttackRules.isInCheck(board, context().heroContext(), color) : MoveValidator.isInCheck(board, color);
                 finish(check ? Termination.CHECKMATE : Termination.STALEMATE, check ? MoveValidator.opposite(color) : FigureColor.NONE);
             }
             return;
         }
         if (!hasLegalMove(color)) {
-            boolean check = mode == GameMode.MOBA ? AttackRules.isInCheck(board, pieces, color, terrain()) : MoveValidator.isInCheck(board, color);
+            boolean check = mode == GameMode.MOBA ? AttackRules.isInCheck(board, context().heroContext(), color) : MoveValidator.isInCheck(board, color);
             finish(check ? Termination.CHECKMATE : Termination.STALEMATE,
                     check ? MoveValidator.opposite(color) : FigureColor.NONE);
         } else if (MaterialRules.isInsufficient(board)) finish(Termination.INSUFFICIENT_MATERIAL, FigureColor.NONE);
@@ -689,7 +684,8 @@ public final class Game {
                 Figure figure = board.get(new Position(row, column));
                 char symbol = figure instanceof Pawn ? 'p' : figure instanceof Knight ? 'n'
                                                              : figure instanceof Bishop ? 'b' : figure instanceof Rook ? 'r'
-                                                                                                : figure instanceof Queen ? 'q' : figure instanceof King ? 'k' : '.';
+                                                                                                : figure instanceof Queen ? 'q' : figure instanceof King ? 'k'
+                    : figure instanceof model.figures.Ward ? 'w' : figure instanceof model.figures.Egg ? 'e' : figure instanceof model.figures.Archbishop ? 'a' : '.';
                 key.append(figure != null && figure.getColor() == FigureColor.WHITE ? Character.toUpperCase(symbol) : symbol);
             }
         }
@@ -730,16 +726,6 @@ public final class Game {
         clock.switchTo(currentPlayer.color());
         turnNumber++;
         moveUsed = abilityUsed = false;
-    }
-
-    private Map<Long, PieceState> prepareNextTurnPieces(Map<Long, PieceState> prepared) {
-        FigureColor incoming = currentPlayer == whitePlayer ? blackPlayer.color() : whitePlayer.color();
-        var next = new HashMap<>(prepared);
-        prepared.values().stream().filter(piece -> piece.color() == incoming && piece.cooldown() > 0
-                && !piece.isRemoved()).forEach(piece -> next.put(piece.id(),
-                piece.withAbilityState(piece.cooldown() - 1, piece.ultimateCharge(), piece.storedPieceId())));
-        heroRegistry.validateStates(next);
-        return Map.copyOf(next);
     }
 
     public static Game mobaHeroesSandbox(int seconds) {
@@ -795,6 +781,17 @@ public final class Game {
             }
         pieces = Map.copyOf(next);
         pieceStateField = gameField;
+        if (mode == GameMode.MOBA) {
+            var begin = new MechanicSession(context().heroContext(), pieces, heroRules, heroRegistry,
+                    currentPlayer.color(), null, List.of(), events);
+            MoveResult started = begin.run(MechanicPhase.BEGIN_TURN);
+            if (!started.isSuccess()) throw new IllegalArgumentException("Invalid turn beginning: " + started);
+            begin.requireComplete();
+            pieces = begin.pieces();
+            mechanics = begin.states();
+            for (var event : begin.proposedEvents()) begin.emit(event.numbered(begin.history().size() + 1L));
+            events.addAll(begin.history().subList(events.size(), begin.history().size()));
+        }
     }
 
     private void ensurePieces() {
@@ -974,7 +971,7 @@ public final class Game {
 
     public synchronized boolean isInCheck() {
         ensurePieces();
-        return mode == GameMode.MOBA ? AttackRules.isInCheck(gameField.getGameField(), pieces, currentPlayer.color(), terrain())
+        return mode == GameMode.MOBA ? AttackRules.isInCheck(gameField.getGameField(), context().heroContext(), currentPlayer.color())
                 : MoveValidator.isInCheck(gameField.getGameField(), currentPlayer.color());
     }
 

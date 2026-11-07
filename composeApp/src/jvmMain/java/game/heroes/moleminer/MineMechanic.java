@@ -1,5 +1,7 @@
 package game.heroes.moleminer;
 
+import game.mechanics.PieceRestriction;
+
 import game.heroes.clownganger.ClownMechanic;
 import game.heroes.HeroType;
 import game.mechanics.MechanicSession;
@@ -92,6 +94,7 @@ public final class MineMechanic implements MechanicDefinition<MineState> {
         var hits = new ArrayList<Long>();
         PieceState actor = states.get(actorId);
         var victims = prepared.values().stream().filter(piece -> piece.position() != null
+                && !session.context().blocks(piece, PieceRestriction.CAPTURE)
                 && blast.contains(piece.position()) && piece.type() != King.class && !piece.isBoxed() && !piece.isPotted())
                 .sorted(Comparator.comparingLong(PieceState::id)).toList();
         for (PieceState victim : victims) {

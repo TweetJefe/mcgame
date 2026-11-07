@@ -14,12 +14,13 @@ public final class AresValidator {
     }
 
     public static void validate(GameSnapshot s) {
+        var identities = game.mechanics.PieceHeroHistory.replay(s);
         var stuns = new HashMap<Long, Long>();
         var counts = new HashMap<Long, Integer>();
         for (GameEvent e : s.events()) {
             if (e.legacyKind() == GameEvent.Kind.STUN || e.legacyKind()==GameEvent.Kind.YARN_STUN) {
                 PieceState actor = s.pieces().get(e.actorId()), target = s.pieces().get(e.targetId());boolean yarn=e.legacyKind()==GameEvent.Kind.YARN_STUN;
-                if (actor == null || (actor.hero() !=(yarn?HeroType.KIKIMORA:HeroType.ARES) && actor.hero() != HeroType.GINSENG) || target == null || target.type() == King.class || e.color() != actor.color())
+                if (actor == null || (actor.hero() !=(yarn?HeroType.KIKIMORA:HeroType.ARES) && !identities.hasHeld(actor.id(), HeroType.GINSENG)) || target == null || target.type() == King.class || e.color() != actor.color())
                     throw new IllegalArgumentException("Invalid stun source or target");
                 if (counts.merge(e.turn(), 1, Integer::sum) > 2 || s.events().stream().noneMatch(c->c.sequence() < e.sequence() && c.turn() == e.turn() && java.util.Objects.equals(c.actorId(),e.actorId()) && c.isAbility(yarn?KikimoraAbility.YARN:AresAbility.SPEAR)))throw new IllegalArgumentException("Stun without matching ability");
                 int duration=yarn && s.events().stream().filter(c->c.legacyKind() == GameEvent.Kind.YARN_STUN && c.turn()==e.turn() && java.util.Objects.equals(c.actorId(),e.actorId())).count()==2?2:1;

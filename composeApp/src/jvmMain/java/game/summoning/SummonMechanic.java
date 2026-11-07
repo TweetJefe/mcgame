@@ -1,5 +1,7 @@
 package game.summoning;
 
+import game.mechanics.PieceRestriction;
+
 import game.heroes.HeroType;
 import game.heroes.clownganger.ClownMechanic;
 import game.history.GameEvent;
@@ -37,7 +39,8 @@ public final class SummonMechanic implements MechanicDefinition<SummonState> {
     @Override public MechanicKey<SummonState> key() { return SUMMONS; }
     @Override public List<MechanicHandler<?>> handlers() {
         return List.of(handler(Cast.class, "summons.cast", ABILITY_PREPARE, "terrain.place", (s, op) -> {
-            var result = SummonResolver.cast(s.pieces(), s.state(SUMMONS), op.actor(), s.turn(), s.side(), s.rules(), s.state(TERRAIN), s.heroes());
+            var result = SummonResolver.cast(s.pieces(), s.state(SUMMONS), op.actor(), s.turn(), s.side(), s.rules(), s.state(TERRAIN), s.heroes(),
+                    piece -> !s.context().blocks(piece, PieceRestriction.CAPTURE));
             if (!result.result().isSuccess()) return result.result();
             s.pieces(result.pieces());
             s.state(SUMMONS, result.summons());

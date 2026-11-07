@@ -13,13 +13,14 @@ public final class LightningValidator {
     private static void require(boolean value,String message) { if(!value)throw new IllegalArgumentException(message); }
     private static int distance(Position a,Position b) { return Math.max(Math.abs(a.getRow()-b.getRow()),Math.abs(a.getColumn()-b.getColumn())); }
     public static void validate(GameSnapshot s) {
-        require(s.pieces().values().stream().filter(p->p.hero()==HeroType.ZEUS).count()<=1,"Only one Zeus per match");
+        var identities = game.mechanics.PieceHeroHistory.replay(s);
+        require(s.pieces().values().stream().filter(p->p.hero()==HeroType.ZEUS && game.heroes.HeroRegistry.fromRules(s.heroRules()).mechanics().birth(s,p)==null).count()<=1,"Only one Zeus per match");
         require(s.pieces().values().stream().noneMatch(p->p.hero()==HeroType.ZEUS) || s.summons().enabled(),"Zeus requires saved random state");
         require(s.lightning().equals(LightningState.fromHistory(s.events(),s.heroRules().zeus()).clean(s.pieces())),"Lightning differs from history");
         if(s.mode()==GameMode.CLASSIC)require(s.lightning().equals(LightningState.empty()),"Lightning in Classic");
         for(var entry:s.lightning().charges().entrySet()) {
             var actor=s.pieces().get(entry.getKey().casterId());var target=s.pieces().get(entry.getKey().targetId());var charge=entry.getValue();
-            require(actor!=null && (actor.hero()==HeroType.ZEUS || actor.hero()==HeroType.GINSENG) && target!=null && !target.isRemoved() && target.type()!=King.class && target.color()!=actor.color(),"Invalid lightning ownership");
+            require(actor!=null && (actor.hero()==HeroType.ZEUS || identities.hasHeld(actor.id(), HeroType.GINSENG)) && target!=null && !target.isRemoved() && target.type()!=King.class && target.color()!=actor.color(),"Invalid lightning ownership");
             require(charge.count()>=1 && charge.count()<=2 && charge.expiresAfterTurn()>=s.turn().number(),"Invalid lightning count or lifetime");
         }
         LightningState state=LightningState.empty();GameEvent cast=null;Position previous=null;var hit=new HashSet<Long>();boolean reset=false;int discharges=0;

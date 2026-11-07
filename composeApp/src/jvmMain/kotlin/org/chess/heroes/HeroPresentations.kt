@@ -1,6 +1,8 @@
 package org.chess.heroes
 
 import org.chess.heroes.pudge.PudgePresentation
+import org.chess.heroes.strix.StrixPresentation
+import org.chess.heroes.sunwukong.SunWukongPresentation
 import org.chess.heroes.lumeshard.LumeshardPresentation
 import org.chess.heroes.bountycrow.BountyCrowPresentation
 import org.chess.heroes.bolotnik.BolotnikPresentation
@@ -33,6 +35,12 @@ object HeroPresentations {
         ZeusPresentation,
         ChronomlinPresentation,
         KikimoraPresentation,
+        SunWukongPresentation,
+        StrixPresentation,
+        org.chess.heroes.leshy.LeshyPresentation,
+        org.chess.heroes.shiva.ShivaPresentation,
+        org.chess.heroes.phoenix.PhoenixPresentation,
+        org.chess.heroes.supernova.SupernovaPresentation,
         NonePresentation,
         IllusionPresentation,
         BabaYagaPresentation))

@@ -1,5 +1,7 @@
 package game.terrain;
 
+import game.mechanics.PieceRestriction;
+
 import game.heroes.bolotnik.BolotnikAbility;
 
 import game.moves.AbilityRejection;
@@ -91,6 +93,8 @@ public final class TerrainResolver {
             if (trap == null) continue;
             PieceState owner = states.get(trap.ownerId());
             if (entrant.isBoxed() || entrant.isPotted())continue;
+            if (session != null && (session.context().blocks(owner, PieceRestriction.PASSIVES)
+                    || session.context().blocks(entrant, PieceRestriction.CAPTURE))) continue;
             if (owner == null || owner.isRemoved() || owner.isPotted() || owner.color() == entrant.color()) continue;
             if(entrant.hero()==HeroType.ILLUSION){illusionHits.add(entrant.id());continue;}
             if (entrant.type() == King.class)

@@ -26,6 +26,12 @@ public abstract class Figure implements ShowMoves {
         this.points = points;
     }
 
+    /** Возможности тела независимы от личности героя. */
+    public boolean canBeDisplaced() { return true; }
+    public boolean canUseAbilities() { return true; }
+    public boolean isClassicBody() { return true; }
+    public boolean canBeResurrected() { return true; }
+
     public final Position getPosition() {
         return position;
     }

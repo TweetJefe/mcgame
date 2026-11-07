@@ -31,10 +31,12 @@ public final class DraftValidator {
                 if (piece.color() == side && piece.hero() != HeroType.NONE
                         && !game.clown().illusions().containsKey(piece.id())
                         && !game.summons().records().containsKey(piece.id())) {
-                    actual.merge(piece.hero(), 1, Integer::sum);
+                    HeroType initialHero = heroes.mechanics().initialHero(game, piece);
+                    if (initialHero == HeroType.NONE) continue;
+                    actual.merge(initialHero, 1, Integer::sum);
                     HeroPick origin = draft.picksFor(side).stream()
-                            .filter(p -> p.hero() == piece.hero()).findFirst().orElse(null);
-                    if (origin != null) heroes.validateOrigin(piece, origin.square());
+                            .filter(p -> p.hero() == initialHero).findFirst().orElse(null);
+                    if (origin != null) heroes.validateOrigin(piece, origin.square(), initialHero);
                 }
             if (!expected.equals(actual))
                 throw new IllegalArgumentException("Game heroes differ from initial draft picks");

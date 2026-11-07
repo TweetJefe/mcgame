@@ -9,6 +9,17 @@ public interface HeroStatePolicy<R> {
         return base;
     }
 
+    default RevivalPlan revival(PieceState corpse, HeroActionContext context, HeroRules configuration, R rules) {
+        var body = context.registry().revivalBody(context, corpse);
+        return new RevivalPlan(body == null ? corpse.type() : body, corpse.startingColor(), 0, null);
+    }
+
+    default void validateCreation(PieceState piece, PieceCreationContext origin, R rules) {
+        if (!origin.revival()) validateOrigin(piece, origin.square(), rules);
+        else if (piece.startingColor() != origin.source().startingColor())
+            throw new IllegalArgumentException("Revival lost original square color");
+    }
+
     void validate(PieceState piece, R rules);
 
     /** Проверяется, когда исходная клетка известна: при создании и восстановлении драфта. */

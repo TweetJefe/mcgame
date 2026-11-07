@@ -1,6 +1,11 @@
 package game.mechanics;
 
+import game.creation.PieceBirth;
+import game.visibility.Concealment;
 import game.heroes.HeroActionContext;
+import game.history.GameEvent;
+import model.Figure;
+import model.FigureColor;
 import game.moves.MoveResult;
 import game.moves.Success;
 import game.state.GameSnapshot;
@@ -18,6 +23,7 @@ import java.util.function.Function;
 
 /** Проверяет конфигурацию один раз; порядок не зависит от порядка регистрации героев. */
 public final class MechanicRegistry {
+    public static final MechanicRegistry EMPTY = new MechanicRegistry(List.of());
     private final List<MechanicDefinition<?>> definitions;
     private final Map<MechanicPhase, List<MechanicStep>> phases;
     private final Set<Class<?>> operations;
@@ -140,8 +146,78 @@ public final class MechanicRegistry {
         if (type == null) throw new IllegalArgumentException("Unknown mechanic event: " + id);
         return type;
     }
+    public PieceBirth birth(GameSnapshot snapshot, PieceState piece) {
+        PieceBirth found = null;
+        for (var module : definitions) {
+            var value = module.birth(snapshot, piece);
+            if (value == null) continue;
+            if (found != null) throw new IllegalArgumentException("Conflicting births");
+            found = value;
+        }
+        return found;
+    }
+    public boolean dismissed(HeroActionContext context, PieceState piece) {
+        return definitions.stream().anyMatch(module -> module.dismissed(context, piece));
+    }
+    public boolean dismissed(GameSnapshot snapshot, PieceState piece) {
+        return definitions.stream().anyMatch(module -> module.dismissed(snapshot, piece));
+    }
+    public Class<? extends Figure> revivalBody(HeroActionContext context, PieceState corpse) {
+        Class<? extends Figure> found = null;
+        for (var module : definitions) {
+            var value = module.revivalBody(context, corpse);
+            if (value == null) continue;
+            if (found != null) throw new IllegalArgumentException("Conflicting revival forms");
+            found = value;
+        }
+        return found;
+    }
+    public boolean reveals(HeroActionContext context, FigureColor viewer, model.Position square, Concealment kind) {
+        return definitions.stream().anyMatch(module -> module.reveals(context, viewer, square, kind));
+    }
+    public PieceRestrictions restrictions(HeroActionContext context, PieceState piece) {
+        if (piece == null) return PieceRestrictions.NONE;
+        var result = PieceRestrictions.NONE;
+        for (var module : definitions) result = result.merge(module.restrictions(context, piece));
+        return result;
+    }
+    public Set<model.Position> passageObstacles(HeroActionContext context) {
+        var result = new HashSet<model.Position>();
+        for (var module : definitions) result.addAll(module.passageObstacles(context));
+        return Set.copyOf(result);
+    }
     public boolean allowsExtraMove(HeroActionContext context, PieceState actor) {
         return actor != null && definitions.stream().anyMatch(module -> module.allowsExtraMove(context, actor));
+    }
+    public game.heroes.HeroType initialHero(GameSnapshot snapshot, PieceState piece) {
+        if (birth(snapshot, piece) != null) return game.heroes.HeroType.NONE;
+        game.heroes.HeroType origin = null;
+        for (var module : definitions) {
+            var candidate = module.initialHero(snapshot, piece);
+            if (candidate == null) continue;
+            if (origin != null) throw new IllegalArgumentException("Conflicting piece origins");
+            origin = candidate;
+        }
+        return origin == null ? piece.hero() : origin;
+    }
+    public List<PieceHeroChange> heroChanges(GameEvent event) {
+        return definitions.stream().flatMap(module -> module.heroChanges(event).stream()).toList();
+    }
+    public List<PieceBodyChange> bodyChanges(GameEvent event) {
+        return definitions.stream().flatMap(module -> module.bodyChanges(event).stream()).toList();
+    }
+    public List<PieceBodyChange> bodyChanges(GameEvent event, Map<Long, Class<? extends Figure>> before) {
+        Map<Long, Class<? extends Figure>> immutable = Map.copyOf(before);
+        return definitions.stream().flatMap(module -> module.bodyChanges(event, immutable).stream()).toList();
+    }
+    public boolean skipsTurn(HeroActionContext context, FigureColor side) {
+        return definitions.stream().anyMatch(module -> module.skipsTurn(context, side));
+    }
+    public boolean isTurnSkipEvent(GameEvent event) {
+        return definitions.stream().anyMatch(module -> module.isTurnSkipEvent(event));
+    }
+    public boolean requiresPositionHistory(HeroActionContext context) {
+        return definitions.stream().anyMatch(module -> module.requiresPositionHistory(context));
     }
     public void validate(GameSnapshot snapshot) {
         for (var key : snapshot.mechanics().keys())

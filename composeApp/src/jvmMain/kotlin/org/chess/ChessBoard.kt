@@ -1,5 +1,7 @@
 package org.chess
 
+import game.visibility.VisibilityRules
+
 
 import game.moves.MovementRejection
 import game.moves.TurnRejection
@@ -167,7 +169,10 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                             val isAbilityTarget = abilityTargets.contains(square)
                             CellView(column, row, figure, square == selectedPos, isMove, isCapture,
                                 heroLabel = piece?.let { presentations[it.hero()].boardBadge(HeroViewContext(snapshot, it, null, heroes)) },
-                                heroDecoration = { piece?.let { presentations[it.hero()].CellDecoration(HeroViewContext(snapshot, it, null, heroes)) } },
+                                heroDecoration = {
+                                    piece?.let { presentations[it.hero()].CellDecoration(HeroViewContext(snapshot, it, null, heroes)) }
+                                    presentations.BoardDecorations(org.chess.heroes.BoardEffectContext(snapshot, square, if (visible) actualPiece else null, heroes))
+                                },
                                 lightningLabel = if (visible && actualPiece != null) snapshot.lightning().charges().entries
                                     .filter { it.key.targetId() == actualPiece.id() }.sortedBy { it.key.casterId() }
                                     .joinToString(" ") { (snapshot.pieces()[it.key.casterId()]?.let { caster -> presentations[caster.hero()].badge } ?: "") + it.value.count() }.ifEmpty { null } else null,
@@ -175,7 +180,7 @@ fun ChessBoard(game: Game, scenario: TrainingScenario? = null, onRestart: () -> 
                                 isBlinded = piece?.isBlinded == true,
                                 isStunned = piece?.isStunned == true,
                                 isBoxed = piece?.isBoxed == true,
-                                isMine = snapshot.mines().cells()[square]?.let { snapshot.pieces()[it.ownerId()]?.color() == snapshot.active() } == true,
+                                isMine = VisibilityRules.mineVisible(snapshot, square),
                                 isInvisible = piece?.let { snapshot.faun().invisible().containsKey(it.id()) } == true,
                                 isCloud = snapshot.faun().silenced(square),
                                 isMud = snapshot.terrain().cells().containsKey(square),

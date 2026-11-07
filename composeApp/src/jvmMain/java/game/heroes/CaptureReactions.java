@@ -1,5 +1,9 @@
 package game.heroes;
 
+import game.moves.StatusRejection;
+
+import game.mechanics.PieceRestriction;
+
 import game.mechanics.MechanicOperation;
 import game.mechanics.DeathContext;
 import java.util.function.Function;
@@ -49,16 +53,20 @@ public final class CaptureReactions {
         while (!pending.isEmpty()) {
             if (++processed > context.pieces().size() * 2L + 1) return HeroEffect.rejected(MovementRejection.INVALID_BOARD);
             Death death = pending.remove();
+            var guard = new HeroActionContext(context.field(), work, context.currentTurn(), states.get(), heroes.mechanics());
+            if (guard.blocks(death.victim(), PieceRestriction.CAPTURE))
+                return HeroEffect.rejected(StatusRejection.PROTECTED_OBSTACLE);
             var reactions = new ArrayList<Function<HeroActionContext, HeroEffect>>();
-            reactions.add(reactionContext -> heroes.get(death.victim().hero())
-                    .onCaptured(reactionContext, death.victim(), death.killer(), death.square()));
+            if (!guard.blocks(death.victim(), PieceRestriction.PASSIVES))
+                reactions.add(reactionContext -> heroes.get(death.victim().hero())
+                        .onCaptured(reactionContext, death.victim(), death.killer(), death.square()));
             for (var reaction : heroes.mechanics().captureReactions())
                 reactions.add(reactionContext -> reaction.action().apply(new DeathContext(reactionContext,
                         death.victim(), death.killer(), death.square())));
             var further = new ArrayList<Death>();
             for (var reaction : reactions) {
                 HeroActionContext reactionContext = new HeroActionContext(context.field(), work, context.currentTurn(),
-                        states.get());
+                        states.get(), heroes.mechanics());
                 HeroEffect effect = reaction.apply(reactionContext);
                 if (!effect.result().isSuccess()) return HeroEffect.rejected(effect.result());
                 effect = operations.apply(reactionContext, effect);

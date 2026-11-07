@@ -24,6 +24,7 @@ public final class EconomyValidator {
     }
 
     public static void validate(GameSnapshot s) {
+        var identities = game.mechanics.PieceHeroHistory.replay(s);
         EconomyState economy = Objects.requireNonNull(s.economy(), "Missing economy");
         if (!economy.enabled()) {
             require(s.pieces().values().stream().noneMatch(p -> p.hero() == HeroType.BOUNTY_CROW), "Crow requires economy");
@@ -43,7 +44,7 @@ public final class EconomyValidator {
             if (event.isAbility(BountyCrowAbility.STEAL)) thefts.add(new ActionKey(event.turn(), event.actorId(), null));
             if (event.isAbility(BountyCrowAbility.BOUNTY)) {
                 PieceState source = s.pieces().get(event.actorId()), target = s.pieces().get(event.targetId());
-                require((source.hero() == HeroType.BOUNTY_CROW || source.hero() == HeroType.GINSENG) && source.color() != target.color() && target.type() != King.class,
+                require((source.hero() == HeroType.BOUNTY_CROW || identities.hasHeld(source.id(), HeroType.GINSENG)) && source.color() != target.color() && target.type() != King.class,
                         "Invalid bounty event source or target");
                 bounties.computeIfAbsent(event.targetId(), ignored -> new ArrayList<>()).add(event);
             }
@@ -70,7 +71,7 @@ public final class EconomyValidator {
                 boolean marked = lastMark != null && capture.turn() - lastMark.turn() <= 2L * s.crowRules().bountyTurns();
                 require(entry.bountyHalves() == (marked ? 3 : 0), "Bounty reward differs from mark lifetime");
             } else {
-                require((actor.hero() == HeroType.BOUNTY_CROW || actor.hero() == HeroType.GINSENG) && steals.add(entry.turn()), "Invalid theft source");
+                require((actor.hero() == HeroType.BOUNTY_CROW || identities.hasHeld(actor.id(), HeroType.GINSENG)) && steals.add(entry.turn()), "Invalid theft source");
                 require(thefts.contains(new ActionKey(entry.turn(), entry.actorId(), null)), "Transfer without theft event");
                 long available = entry.side() == FigureColor.WHITE ? black : white;
                 require(entry.totalHalves() == Math.min(4, available) && available > 0, "Invalid theft amount");
@@ -86,7 +87,7 @@ public final class EconomyValidator {
         require(s.events().stream().filter(e -> e.isAbility(BountyCrowAbility.STEAL)).count() == steals.size(), "Missing theft entry");
         for (BountyMark mark : economy.marks()) {
             PieceState source = s.pieces().get(mark.sourceId()), target = s.pieces().get(mark.targetId());
-            require(source != null && (source.hero() == HeroType.BOUNTY_CROW || source.hero() == HeroType.GINSENG) && target != null
+            require(source != null && (source.hero() == HeroType.BOUNTY_CROW || identities.hasHeld(source.id(), HeroType.GINSENG)) && target != null
                             && source.color() != target.color() && target.type() != King.class && !target.isRemoved(),
                     "Invalid marked piece");
             require(mark.expiresAfterTurn() >= s.turn().number()

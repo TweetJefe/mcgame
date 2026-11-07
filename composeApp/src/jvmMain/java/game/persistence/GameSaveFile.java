@@ -123,6 +123,9 @@ public final class GameSaveFile {
             formatVersion = Math.max(formatVersion, MechanicStateXml.requiredVersion(s));
             if (s.draft() != null && s.draft().rules().catalogVersion() == DraftRules.CURRENT_CATALOG)
                 formatVersion = Math.max(formatVersion, 17);
+            if (s.pieces().values().stream().anyMatch(p -> p.type() == Egg.class || p.type() == Archbishop.class))
+                formatVersion = Math.max(formatVersion, 20);
+            if (s.pieces().values().stream().anyMatch(p -> p.type() == Ward.class)) formatVersion = Math.max(formatVersion, 22);
             economyExtension = formatVersion >= 3;
             terrainExtension = formatVersion >= 4;
             summonExtension = formatVersion >= 6;
@@ -322,6 +325,9 @@ public final class GameSaveFile {
                 require(formatVersion >= 4 || (piece.hero() != HeroType.BOLOTNIK && piece.status() != PieceState.Status.HIDDEN_BOG), "Bolotnik requires format 4");
                 require(formatVersion >= 6 || (piece.hero() != HeroType.IZBA && piece.hero() != HeroType.BABA_YAGA && piece.status() != PieceState.Status.REPLACED), "Summoning requires format 6");
                 require(formatVersion>=14 || (piece.hero()!=HeroType.KIKIMORA && !entry.hasAttribute("potted")),"Kikimora requires format 14");
+                require(formatVersion >= 22 || piece.type() != Ward.class, "Ward requires format 22");
+                require(formatVersion >= 20 || (piece.type() != Egg.class && piece.type() != Archbishop.class),
+                        "Extended bodies require format 20");
                 require(formatVersion>=13 || (piece.hero()!=HeroType.CHRONOMLIN && (piece.hero()!=HeroType.GINSENG || piece.type()==Bishop.class) && (piece.hero()!=HeroType.ILLUSION || piece.type()!=Rook.class)),"Chronomlin forms require format 13");
                 require(formatVersion>=12 || piece.hero()!=HeroType.ZEUS,"Zeus requires format 12");
                 require(formatVersion>=11 || (piece.hero()!=HeroType.MOLEMINER && piece.status()!=PieceState.Status.DESTROYED),"Moleminer requires format 11");
@@ -378,6 +384,8 @@ public final class GameSaveFile {
                     new GameOutcome(enumeration(outcome, "reason", Termination.class), enumeration(outcome, "winner", FigureColor.class)), moves, events,
                     number(white, "points"), number(black, "points"), readCaptures(white, factory), readCaptures(black, factory),
                     enumeration(root, "drawOffer", FigureColor.class), heroRules.withGold(gold), economy, terrain, draft, summons);
+            require(formatVersion >= HeroRulesXml.requiredVersion(heroRules, pieces.values()),
+                    "Hero usage requires a newer save format");
             s = MechanicStateXml.read(root, formatVersion, s, heroes);
             SnapshotValidator.validate(s);
             return s;
@@ -537,6 +545,9 @@ public final class GameSaveFile {
 
     private static Class<? extends Figure> type(String name) {
         return switch (name) {
+            case "Ward" -> Ward.class;
+            case "Egg" -> Egg.class;
+            case "Archbishop" -> Archbishop.class;
             case "Pawn" -> Pawn.class;
             case "Knight" -> Knight.class;
             case "Bishop" -> Bishop.class;

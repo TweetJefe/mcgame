@@ -1,5 +1,7 @@
 package game.core;
 
+import game.heroes.HeroActionContext;
+
 import game.draft.DraftValidator;
 import game.heroes.HeroRegistry;
 import game.heroes.HeroType;
@@ -44,13 +46,16 @@ public final class SnapshotValidator {
         require(side(s.active()) && s.version() >= 0 && s.version() < Long.MAX_VALUE && s.turn().number() > 0
                 && s.turn().number() < Long.MAX_VALUE, "Invalid turn or version");
         PositionValidator.validateBoard(s.field().getGameField(), s.mode() == GameMode.CLASSIC);
+        HeroRegistry heroes = HeroRegistry.fromRules(s.heroRules());
+        var effectContext = new HeroActionContext(s.field(), s.pieces(), s.turn().number(), s.mechanics(), heroes.mechanics());
         boolean midTurn = s.mode() == GameMode.MOBA && (s.turn().moveUsed() || s.turn().abilityUsed());
         FigureColor epTurn = s.mode() == GameMode.MOBA && s.turn().moveUsed() ? MoveValidator.opposite(s.active()) : s.active();
         PositionValidator.validateState(s.field(), epTurn, s.castlingRights(), s.enPassantTarget(), s.halfmoveClock(), s.mode() == GameMode.CLASSIC);
-        require(s.mode() != GameMode.MOBA || midTurn || !AttackRules.isInCheck(s.field().getGameField(), s.pieces(), MoveValidator.opposite(s.active()), s.terrain()), "Inactive king is in check at turn start");
-        require(!midTurn || !AttackRules.isInCheck(s.field().getGameField(), s.pieces(), s.active(), s.terrain()), "Acting king is left in check");
+        boolean followsSkip = s.events().stream().anyMatch(e -> e.turn() == s.turn().number() - 1
+                && heroes.mechanics().isTurnSkipEvent(e));
+        require(s.mode() != GameMode.MOBA || midTurn || followsSkip || !AttackRules.isInCheck(s.field().getGameField(), effectContext, MoveValidator.opposite(s.active())), "Inactive king is in check at turn start");
+        require(!midTurn || !AttackRules.isInCheck(s.field().getGameField(), effectContext, s.active()), "Acting king is left in check");
         require(s.pieces().size() <= (s.mode() == GameMode.CLASSIC ? 32 : SummonState.MAX_IDENTITIES), "Too many piece identities");
-        HeroRegistry heroes = HeroRegistry.fromRules(s.heroRules());
         heroes.validateStates(s.pieces());
         var occupied = new HashSet<Position>();
         var owners = new HashMap<Long, Long>();
@@ -58,7 +63,8 @@ public final class SnapshotValidator {
         for (var entry : s.pieces().entrySet()) {
             PieceState piece = entry.getValue();
             require(entry.getKey() == piece.id() && piece.id() < Long.MAX_VALUE, "Invalid piece identity");
-            if (!s.summons().records().containsKey(piece.id()) && !s.clown().illusions().containsKey(piece.id())) {
+            if (!s.summons().records().containsKey(piece.id()) && !s.clown().illusions().containsKey(piece.id())
+                    && heroes.mechanics().birth(s, piece) == null) {
                 if (piece.color() == FigureColor.WHITE) white++;
                 else black++;
             }
@@ -110,11 +116,11 @@ public final class SnapshotValidator {
             require(!win || s.outcome().winner() == MoveValidator.opposite(s.active()), "Timeout winner is active player");
         }
         if (s.mode() == GameMode.MOBA && (!s.outcome().isFinished() || s.outcome().reason() == Termination.CHECKMATE || s.outcome().reason() == Termination.STALEMATE)) {
-            var ctx = new ActionEngine.Context(s.field(), s.pieces(), s.castlingRights(), s.enPassantTarget(), s.economy(), s.turn().number(), s.terrain(), s.summons(), s.spells(), s.faun(),s.clown(),s.mines(),s.lightning(),HeroRegistry.fromRules(s.heroRules()));
+            var ctx = new ActionEngine.Context(s.field(), s.pieces(), s.castlingRights(), s.enPassantTarget(), s.turn().number(), s.mechanics(), heroes);
             boolean playable = s.turn().moveUsed() ? ActionEngine.canFinishAfterMove(ctx, s.active(), !s.turn().abilityUsed(), s.heroRules()) : (s.turn().abilityUsed() ? ActionEngine.hasMove(ctx, s.active(), s.mode(), s.heroRules()) : ActionEngine.hasTurn(ctx, s.active(), s.heroRules()));
             require(playable == !s.outcome().isFinished(), "Outcome differs from available turn");
             if (!playable)
-                require((s.outcome().reason() == Termination.CHECKMATE) == AttackRules.isInCheck(s.field().getGameField(), s.pieces(), s.active(), s.terrain()), "Mate/pat differs from check");
+                require((s.outcome().reason() == Termination.CHECKMATE) == AttackRules.isInCheck(s.field().getGameField(), effectContext, s.active()), "Mate/pat differs from check");
             if (!playable && s.outcome().reason() == Termination.CHECKMATE)
                 require(s.outcome().winner() == MoveValidator.opposite(s.active()), "Invalid mate winner");
         }
@@ -140,6 +146,8 @@ public final class SnapshotValidator {
         require(s.events().size() <= 100_000 && s.moves().size() <= 100_000, "History too large");
         long previousTurn = 1;
         int moveIndex = 0, currentMoves = 0, currentAbilities = 0;
+        var mechanics = HeroRegistry.fromRules(s.heroRules()).mechanics();
+        Set<Long> skipped = new HashSet<>();
         Set<Long> closed = new HashSet<>(), moved = new HashSet<>(), cast = new HashSet<>();
         for (int i = 0; i < s.events().size(); i++) {
             GameEvent event = s.events().get(i);
@@ -161,7 +169,10 @@ public final class SnapshotValidator {
                 FigureColor expected = (s.turn().number() - event.turn()) % 2 == 0 ? s.active() : MoveValidator.opposite(s.active());
                 require(event.color() == expected && !closed.contains(event.turn()), "Action outside its active turn");
             }
+            if (mechanics.isTurnSkipEvent(event))
+                require(!moved.contains(event.turn()) && !cast.contains(event.turn()) && skipped.add(event.turn()), "Invalid skipped turn");
             if (event.kind() == GameEvent.Kind.MOVE) {
+                require(!skipped.contains(event.turn()), "Move during a skipped turn");
                 moved.add(event.turn());
                 require(moveIndex < s.moves().size(), "Duplicate or missing move");
                 MadeMove move = s.moves().get(moveIndex++);
@@ -174,11 +185,12 @@ public final class SnapshotValidator {
                 if (move.getCaptureSquare() != null) require(inside(move.getCaptureSquare()), "Invalid capture square");
                 if (event.turn() == s.turn().number()) currentMoves++;
             } else if (event.kind() == GameEvent.Kind.ABILITY_USED) {
+                require(!skipped.contains(event.turn()), "Ability during a skipped turn");
                 require(s.mode() == GameMode.MOBA && cast.add(event.turn())
                         && event.ability().eventTarget().accepts(event.targetId()), "Invalid ability event");
                 if (event.turn() == s.turn().number()) currentAbilities++;
             } else if (event.kind() == GameEvent.Kind.END_TURN) {
-                require(s.mode() == GameMode.MOBA && moved.contains(event.turn()) && event.turn() < s.turn().number()
+                require(s.mode() == GameMode.MOBA && (moved.contains(event.turn()) || skipped.contains(event.turn())) && event.turn() < s.turn().number()
                         && closed.add(event.turn()) && event.actorId() == null && event.targetId() == null, "Invalid turn end");
             } else require(s.mode() == GameMode.MOBA && (event.kind() == GameEvent.Kind.MECHANIC_EFFECT
                     || event.kind() == GameEvent.Kind.CAPTURE && event.targetId() != null), "Invalid reaction event");

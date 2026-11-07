@@ -32,7 +32,7 @@ public class AbilitiesTest {
         assertEquals(Set.of("YARN", "CLAY_POT", "GRAPPLE", "EVOLVE", "CHAIN_LIGHTNING", "THUNDERSTORM",
                 "PLANT_MINE", "DETONATE", "BOX", "ILLUSION", "HOOK", "SWALLOW", "LASER", "TELEPORT",
                 "BOUNTY", "STEAL", "MUD", "AMBUSH", "SUMMON_YAGA", "DISPLACE", "COPY_SPELL",
-                "CLOUD", "INVISIBILITY", "SPEAR"), ids);
+                "CLOUD", "INVISIBILITY", "SPEAR", "sunwukong.shapeshift", "sunwukong.clone", "strix.rewind", "strix.timeSkip", "phoenix.rebirth", "supernova.pull", "supernova.shuffle", "leshy.vine", "leshy.forest", "shiva.lotus", "shiva.rebirth"), ids);
         assertSame(PudgeAbility.HOOK, heroes.abilityById("HOOK"));
         assertSame(GinsengAbility.COPY_SPELL, heroes.abilityById("COPY_SPELL"));
         assertThrows(IllegalArgumentException.class, () -> heroes.abilityById("UNKNOWN"));

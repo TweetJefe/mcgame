@@ -20,10 +20,10 @@ public final class FaunView {
     }
 
     public static boolean visible(GameSnapshot s, PieceState piece) {
-        return !s.faun().hidden(piece, s.active());
+        return game.visibility.VisibilityRules.pieceVisible(s, piece);
     }
 
-    public static boolean hasHiddenEnemy(GameSnapshot s) {if(s.mines().cells().values().stream().anyMatch(m->s.pieces().get(m.ownerId()).color()!=s.active()))return true;return s.pieces().values().stream().anyMatch(p -> p.position() != null && (!visible(s, p) || p.hero()==game.heroes.HeroType.ILLUSION && p.color()!=s.active()));
+    public static boolean hasHiddenEnemy(GameSnapshot s) {if(s.mines().cells().keySet().stream().anyMatch(square -> !game.visibility.VisibilityRules.mineVisible(s,square)))return true;return s.pieces().values().stream().anyMatch(p -> p.position() != null && (!visible(s, p) || p.hero()==game.heroes.HeroType.ILLUSION && p.color()!=s.active()));
     }
 
     public static AvailableMoves moves(GameSnapshot s, Position from) {
@@ -44,11 +44,11 @@ public final class FaunView {
     }
 
     public static String message(GameSnapshot s, GameEvent event) {
-        if(event.isAbility(MoleminerAbility.PLANT_MINE) && event.color()!=s.active())return "Противник заложил мину";
+        if(event.isAbility(MoleminerAbility.PLANT_MINE) && event.color()!=s.active() && !game.visibility.VisibilityRules.mineVisible(s,event.to()))return "Противник заложил мину";
         if(game.heroes.clownganger.ClownView.concealed(s,event))return "Действие двойника";
         for (var entry : s.faun().invisible().entrySet()) {
             PieceState p = s.pieces().get(entry.getKey());
-            if (p != null && p.color() != s.active() && event.turn() >= entry.getValue().castTurn()
+            if (p != null && p.color() != s.active() && !visible(s,p) && event.turn() >= entry.getValue().castTurn()
                     && (Objects.equals(event.actorId(), p.id()) || Objects.equals(event.targetId(), p.id())))
                 return "Действие скрытой фигуры";
         }

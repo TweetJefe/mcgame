@@ -100,6 +100,12 @@ public final class HeroDefinition<R> {
         statePolicy.validateOrigin(piece, origin, configuration.get(this));
     }
 
+    void validateCreation(PieceState piece, PieceCreationContext origin, HeroRules configuration) {
+        statePolicy.validateCreation(piece, origin, configuration.get(this));
+    }
+    RevivalPlan revival(PieceState corpse, HeroActionContext context, HeroRules configuration) {
+        return statePolicy.revival(corpse, context, configuration, configuration.get(this));
+    }
     public HeroType type() { return type; }
     public String displayName() { return displayName; }
     public Set<Class<? extends Figure>> supportedBodies() { return bodies; }

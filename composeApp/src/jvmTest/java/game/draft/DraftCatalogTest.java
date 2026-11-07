@@ -51,7 +51,7 @@ public class DraftCatalogTest {
 
     @Test public void registeredProfilesDriveRosterOrderAndStartingBodiesWithoutNewBranches() {
         var draft = new Draft(DraftRules.prototype(), extendedRules());
-        assertEquals(14, draft.getSnapshot().catalog().heroes().size());
+        assertEquals(19, draft.getSnapshot().catalog().heroes().size());
         assertEquals(HeroType.ILLUSION, draft.getSnapshot().catalog().heroes().getLast());
         assertEquals(List.of(pos("d1")), draft.getSnapshot().catalog().startingSquares(HeroType.ILLUSION, WHITE));
         assertEquals(List.of(pos("d8")), draft.getSnapshot().catalog().startingSquares(HeroType.ILLUSION, BLACK));
@@ -85,7 +85,8 @@ public class DraftCatalogTest {
         assertEquals(List.of(HeroType.PUDGE, HeroType.LUMESHARD, HeroType.BOUNTY_CROW, HeroType.BOLOTNIK,
                 HeroType.IZBA, HeroType.GINSENG, HeroType.FAUN, HeroType.ARES, HeroType.CLOWNGANGER,
                 HeroType.MOLEMINER, HeroType.ZEUS, HeroType.CHRONOMLIN, HeroType.KIKIMORA), HeroCatalog.heroes(10));
-        assertEquals(HeroCatalog.heroes(10), new Draft().getSnapshot().catalog().heroes());
+        assertEquals(18, new Draft().getSnapshot().catalog().heroes().size());
+        assertTrue(new Draft().getSnapshot().catalog().heroes().containsAll(HeroCatalog.heroes(10)));
         assertFalse(HeroCatalog.heroes(10).contains(HeroType.NONE));
         assertFalse(HeroCatalog.heroes().contains(HeroType.BABA_YAGA));
         assertFalse(HeroCatalog.heroes().contains(HeroType.ILLUSION));

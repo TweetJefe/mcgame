@@ -1,5 +1,9 @@
 package game.heroes.izba;
 
+import game.heroes.RevivalPlan;
+import game.heroes.HeroActionContext;
+import game.heroes.HeroRules;
+import game.heroes.HeroType;
 import game.heroes.HeroStateConstraints;
 import game.heroes.HeroStatePolicy;
 import game.heroes.NoHeroRules;
@@ -21,6 +25,11 @@ public final class BabaYagaStatePolicy implements HeroStatePolicy<NoHeroRules> {
         return CONSTRAINTS.initialize(base, origin);
     }
 
+    @Override public RevivalPlan revival(PieceState corpse, HeroActionContext context,
+            HeroRules configuration, NoHeroRules rules) {
+        return new RevivalPlan(corpse.type(), null, 0, new RevivalPlan.Evolution(
+                HeroType.IZBA, Rook.class, configuration.get(IzbaDefinition.INSTANCE).lifetimeTurns()));
+    }
     @Override public void validate(PieceState piece, NoHeroRules rules) {
         CONSTRAINTS.validate(piece);
         HeroStateConstraints.validateResources(piece, 0, 0);

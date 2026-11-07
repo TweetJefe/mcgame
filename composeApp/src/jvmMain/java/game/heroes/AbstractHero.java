@@ -1,5 +1,7 @@
 package game.heroes;
 
+import game.mechanics.PieceRestriction;
+
 import game.moves.AbilityRejection;
 import game.moves.MovementRejection;
 import game.moves.StatusRejection;
@@ -112,6 +114,10 @@ public abstract class AbstractHero implements Hero {
         AbilityUse use = AbilityUse.of(type, request.borrowed());
         MoveResult ready = availability(actor, request.ability(), use);
         if (!ready.isSuccess()) return HeroEffect.rejected(ready);
+        if (!context.field().createFigure(actor.type(), actor.position(), actor.color()).canUseAbilities())
+            return HeroEffect.rejected(StatusRejection.IMMOBILE);
+        if (context.blocks(actor, PieceRestriction.ABILITIES))
+            return HeroEffect.rejected(StatusRejection.PROTECTED_OBSTACLE);
         MoveResult targeting = targeting(request.ability()).validate(context, actor, request);
         if (!targeting.isSuccess()) return HeroEffect.rejected(targeting);
         return previewAvailable(context, actor, context.pieceAt(request.target()), request).applyCost(actor, use);

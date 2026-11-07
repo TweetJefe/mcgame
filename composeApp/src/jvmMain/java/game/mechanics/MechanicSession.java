@@ -73,7 +73,7 @@ public final class MechanicSession {
     public void interceptMove() { interceptedMove = true; }
     public boolean interceptedMove() { return interceptedMove; }
     public HeroActionContext before() { return before; }
-    public HeroActionContext context() { return new HeroActionContext(before.field(), pieces, turn(), states); }
+    public HeroActionContext context() { return new HeroActionContext(before.field(), pieces, turn(), states, heroes.mechanics()); }
     public HeroRules rules() { return rules; }
     public HeroRegistry heroes() { return heroes; }
     public FigureColor side() { return side; }
@@ -152,7 +152,7 @@ public final class MechanicSession {
     }
 
     public HeroEffect react(Map<Long, PieceState> prepared, PieceState victim, long killer, Position square) {
-        return CaptureReactions.resolve(new HeroActionContext(before.field(), prepared, turn(), states),
+        return CaptureReactions.resolve(new HeroActionContext(before.field(), prepared, turn(), states, heroes.mechanics()),
                 victim, killer, square, heroes, (context, effect) -> {
             if (effect.operations().isEmpty()) return effect;
             var savedPieces = pieces;

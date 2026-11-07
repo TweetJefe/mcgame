@@ -1,5 +1,10 @@
 package game.heroes;
 
+import game.mechanics.MechanicRegistry;
+
+import game.mechanics.PieceRestriction;
+import game.mechanics.PieceRestrictions;
+
 import game.economy.EconomyState;
 import game.heroes.clownganger.ClownState;
 import game.heroes.faun.FaunState;
@@ -23,12 +28,22 @@ import model.Position;
  * prepared states and field supplies the detached-piece factory; use pieceAt for occupancy.
  */
 public record HeroActionContext(Field field, Map<Long, PieceState> pieces, long currentTurn,
-                                MechanicStates mechanics) {
+                                MechanicStates mechanics, MechanicRegistry registry) {
     public HeroActionContext {
         Objects.requireNonNull(field, "field");
         pieces = Map.copyOf(pieces);
         Objects.requireNonNull(mechanics, "mechanics");
+        Objects.requireNonNull(registry, "registry");
     }
+    public HeroActionContext(Field field, Map<Long, PieceState> pieces, long currentTurn, MechanicStates mechanics) {
+        this(field, pieces, currentTurn, mechanics, MechanicRegistry.EMPTY);
+    }
+    public PieceRestrictions restrictions(PieceState piece) { return registry.restrictions(this, piece); }
+    public boolean blocks(PieceState piece, PieceRestriction restriction) {
+        return restrictions(piece).blocks(restriction);
+    }
+    public java.util.Set<Position> passageObstacles() { return registry.passageObstacles(this); }
+
     public HeroActionContext(Field field, Map<Long, PieceState> pieces, long currentTurn) {
         this(field, pieces, currentTurn, MechanicStates.empty());
     }

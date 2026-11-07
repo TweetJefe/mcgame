@@ -1,4 +1,6 @@
 package game.heroes.moleminer;
+
+import game.mechanics.PieceRestriction;
 import game.moves.MovementRejection;
 import game.moves.StatusRejection;
 import game.moves.Success;
@@ -22,7 +24,10 @@ public final class MineResolver{
             var p=states.get(entries.remove());if(p==null || p.position()==null || p.isBoxed() || p.isPotted() || !mines.hostile(p.position(),states,p.color()))continue;
             if(p.type()==King.class)return new Result(StatusRejection.KING_IMMUNE,before,mines,previous,List.of());
             if(++reactions>states.size()*2L+64)return new Result(MovementRejection.INVALID_BOARD,before,mines,previous,List.of());
-            var owner=states.get(mines.cells().get(p.position()).ownerId());mines=mines.trigger(owner.id(),p.id(),p.position(),turn);
+            var owner=states.get(mines.cells().get(p.position()).ownerId());
+            if (session != null && (session.context().blocks(owner, PieceRestriction.PASSIVES)
+                    || session.context().blocks(p, PieceRestriction.CAPTURE))) continue;
+            mines=mines.trigger(owner.id(),p.id(),p.position(),turn);
             if(p.hero()==HeroType.ILLUSION){hits.add(p.id());continue;}
             states.put(p.id(),p.hidden(PieceState.Status.CAPTURED));states.put(owner.id(),HeroRegistry.fromRules(rules).get(owner.hero()).afterCapture(owner));
             captures.add(new Capture(owner.id(),p.id(),owner.color(),factory.createFigure(p.type(),p.position(),p.color()),p.position(),true,Capture.Cause.MINE));

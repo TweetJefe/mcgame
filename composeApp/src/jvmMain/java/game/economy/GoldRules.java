@@ -19,8 +19,10 @@ public record GoldRules(int pawn, int heroPawn, int minor, int rook, int queen, 
     }
 
     public long rewardHalves(PieceState victim) {
+        if (victim.type() == Ward.class) return 2L;
         if (victim.type() == Pawn.class) return 2L * (victim.hero() == HeroType.NONE ? pawn : heroPawn);
-        if (victim.type() == Knight.class || victim.type() == Bishop.class) return 2L * minor;
+        if (victim.type() == Knight.class || victim.type() == Bishop.class
+                || victim.type() == Egg.class || victim.type() == Archbishop.class) return 2L * minor;
         if (victim.type() == Rook.class) return 2L * rook;
         if (victim.type() == Queen.class) return 2L * queen;
         throw new IllegalArgumentException("This piece cannot earn capture gold");

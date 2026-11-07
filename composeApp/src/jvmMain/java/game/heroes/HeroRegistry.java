@@ -53,6 +53,9 @@ public final class HeroRegistry {
         return hero;
     }
 
+    public RevivalPlan revival(PieceState corpse, HeroActionContext context) {
+        return get(corpse.hero()).definition().revival(corpse, context, rules);
+    }
     public void validateState(PieceState piece) {
         get(piece.hero()).definition().validateState(piece, rules);
     }
@@ -66,7 +69,12 @@ public final class HeroRegistry {
     }
 
     public void validateOrigin(PieceState piece, Position origin) {
-        get(piece.hero()).definition().validateOrigin(piece, origin, rules);
+        validateOrigin(piece, origin, piece.hero());
+    }
+
+    /** После полного превращения исходная клетка всё ещё проверяется политикой первоначального героя. */
+    public void validateOrigin(PieceState piece, Position origin, HeroType initialHero) {
+        get(initialHero).definition().validateOrigin(piece, origin, rules);
     }
 
     /** Returns a new registry; existing registries and running games stay unchanged. */

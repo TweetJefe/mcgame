@@ -12,15 +12,16 @@ public final class SpellValidator {
         if (s.spells() == null || !s.spells().equals(SpellState.fromHistory(s.events())))
             throw new IllegalArgumentException("Spell memory differs from action history");
         HeroRegistry heroes = HeroRegistry.fromRules(s.heroRules());
+        var identities = game.mechanics.PieceHeroHistory.replay(s);
         for (GameEvent event : s.events()) {
             Abilities ability = SpellState.activeAbility(event);
             if (ability == null) continue;
             heroes.ownerOf(ability);
             PieceState actor = s.pieces().get(event.actorId());
             if (event.borrowed()) {
-                if (actor.hero() != HeroType.GINSENG)
+                if (identities.before(actor.id(), event.sequence()) != HeroType.GINSENG)
                     throw new IllegalArgumentException("Borrowed cast by non-Ginseng");
-            } else if (!heroes.get(actor.hero()).abilities().contains(ability))
+            } else if (!heroes.get(identities.before(actor.id(), event.sequence())).abilities().contains(ability))
                 throw new IllegalArgumentException("Hero cannot cast this native ability");
             if (ability == GinsengAbility.COPY_SPELL) {
                 PieceState source = s.pieces().get(event.targetId());

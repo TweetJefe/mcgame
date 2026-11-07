@@ -51,6 +51,11 @@ public final class SummonResolver {
 
     public static Result cast(Map<Long, PieceState> prepared, SummonState summons, PieceState actor, long turn,
                               FigureColor actingSide, HeroRules rules, TerrainState terrain, HeroRegistry heroes) {
+        return cast(prepared, summons, actor, turn, actingSide, rules, terrain, heroes, piece -> true);
+    }
+    public static Result cast(Map<Long, PieceState> prepared, SummonState summons, PieceState actor, long turn,
+            FigureColor actingSide, HeroRules rules, TerrainState terrain, HeroRegistry heroes,
+            java.util.function.Predicate<PieceState> replaceable) {
         var cells = new ArrayList<Position>();
         int first = actor.color() == FigureColor.WHITE ? 0 : 6;
         for (int row = first; row < first + 2; row++)
@@ -61,7 +66,7 @@ public final class SummonResolver {
         if (cells.isEmpty()) for (int row = first; row < first + 2; row++)
             for (int col = 0; col < 8; col++) {
                 Position p = new Position(row, col);
-                if (at(prepared, p).type() != King.class && !at(prepared,p).isBoxed() && !at(prepared,p).isPotted()) cells.add(p);
+                if (at(prepared, p).type() != King.class && !at(prepared,p).isBoxed() && !at(prepared,p).isPotted() && replaceable.test(at(prepared,p))) cells.add(p);
             }
         return spawn(prepared, summons, actor, turn, actingSide, rules, terrain, cells, SummonRecord.Cause.ULTIMATE, heroes);
     }

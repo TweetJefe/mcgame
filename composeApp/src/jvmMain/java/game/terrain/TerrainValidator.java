@@ -1,5 +1,11 @@
 package game.terrain;
 
+import game.heroes.HeroRegistry;
+
+import game.heroes.HeroActionContext;
+
+import game.mechanics.PieceRestriction;
+
 import game.heroes.bolotnik.BolotnikAbility;
 
 import game.heroes.HeroType;
@@ -18,15 +24,19 @@ public final class TerrainValidator {
     }
 
     public static void validate(GameSnapshot s) {
+        var effects = new HeroActionContext(s.field(), s.pieces(), s.turn().number(), s.mechanics(),
+                HeroRegistry.fromRules(s.heroRules()).mechanics());
+        var identities = game.mechanics.PieceHeroHistory.replay(s);
         Objects.requireNonNull(s.terrain(), "Missing terrain");
         require(s.mode() == GameMode.MOBA || s.terrain().cells().isEmpty(), "Terrain in classic game");
         var hiddenOwners = new HashSet<Long>();
         for (var entry : s.terrain().cells().entrySet()) {
             MudCell cell = entry.getValue();
             PieceState owner = s.pieces().get(cell.ownerId());
-            require(owner != null && (owner.hero() == HeroType.BOLOTNIK || owner.hero() == HeroType.GINSENG) && !owner.isRemoved(), "Invalid terrain owner");
+            require(owner != null && (owner.hero() == HeroType.BOLOTNIK || identities.hasHeld(owner.id(), HeroType.GINSENG)) && !owner.isRemoved(), "Invalid terrain owner");
             PieceState occupant = s.pieceAt(entry.getKey());
-            require(occupant == null || occupant.isPotted() || owner.isPotted() || occupant.color() == owner.color() || occupant.hero()==HeroType.ILLUSION, "Unresolved enemy on mud");
+            require(occupant == null || effects.blocks(owner, PieceRestriction.PASSIVES)
+                    || effects.blocks(occupant, PieceRestriction.CAPTURE) || occupant.isPotted() || owner.isPotted() || occupant.color() == owner.color() || occupant.hero()==HeroType.ILLUSION, "Unresolved enemy on mud");
             if (cell.kind() == MudCell.Kind.MUD) {
                 require(cell.expiresAfterTurn() >= s.turn().number() && cell.expiresAfterTurn() - s.turn().number() <= 2L * s.bolotnikRules().mudTurns(), "Invalid mud expiry");
                 require(s.events().stream().anyMatch(e -> e.isAbility(BolotnikAbility.MUD) && Objects.equals(e.actorId(), owner.id())
@@ -54,7 +64,7 @@ public final class TerrainValidator {
         }
         for (GameEvent event : s.events())
             if (event.legacyKind() == GameEvent.Kind.BOG_CAPTURE || event.isAbility(BolotnikAbility.MUD) || event.isAbility(BolotnikAbility.AMBUSH))
-                require(s.mode() == GameMode.MOBA && event.actorId() != null && (s.pieces().get(event.actorId()).hero() == HeroType.BOLOTNIK || s.pieces().get(event.actorId()).hero() == HeroType.GINSENG)
+                require(s.mode() == GameMode.MOBA && event.actorId() != null && (s.pieces().get(event.actorId()).hero() == HeroType.BOLOTNIK || identities.hasHeld(event.actorId(), HeroType.GINSENG))
                         && s.pieces().get(event.actorId()).color() == event.color(), "Invalid Bolotnik event source");
     }
 

@@ -24,6 +24,7 @@ public final class PositionValidator {
             require(square.equals(piece.getPosition()), "Piece position differs from its square: " + square);
             FigureColor color = piece.getColor();
             require(color != null && (piece instanceof Empty) == (color == FigureColor.NONE), "Invalid piece color at " + square);
+            require(!classic || piece.isClassicBody(), "Nonclassic body in a classic position");
             if (piece instanceof Empty) continue;
             int side = color == FigureColor.WHITE ? 0 : 1;
             pieces[side]++;

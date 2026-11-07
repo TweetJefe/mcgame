@@ -12,10 +12,10 @@ import model.figures.Rook;
 
 /** Собственные формы, поля и пределы ресурсов; связи с другими фигурами проверяют механики. */
 public final class GinsengStatePolicy implements HeroStatePolicy<GinsengRules> {
-    private static final HeroStateConstraints CONSTRAINTS = HeroStateConstraints.bodies(Set.of(Bishop.class, Knight.class, Rook.class)).withStartingColor().withBog().withStorage();
+    private static final HeroStateConstraints CONSTRAINTS = HeroStateConstraints.bodies(Set.of(Bishop.class, Knight.class, Rook.class, model.figures.Egg.class)).withStartingColor().withBog().withStorage();
 
     @Override public PieceState initialize(PieceState base, PieceCreationContext origin, GinsengRules rules) {
-        return CONSTRAINTS.initialize(base, origin);
+        return origin.revival() ? base.withStartingColor(origin.source().startingColor()) : CONSTRAINTS.initialize(base, origin);
     }
 
     @Override public void validate(PieceState piece, GinsengRules rules) {

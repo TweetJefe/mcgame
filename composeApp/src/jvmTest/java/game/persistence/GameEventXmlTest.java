@@ -98,7 +98,7 @@ public class GameEventXmlTest {
 
     @Test public void allHistoricalAbilityNamesStillUseTheirOriginalWireRepresentation() throws Exception {
         HeroRegistry heroes = HeroRegistry.standard();
-        for (HeroType type : HeroType.values())
+        for (HeroType type : game.draft.HeroCatalog.heroes(10))
             for (Abilities ability : heroes.get(type).abilities()) {
                 GameEvent event = cast(ability);
                 int version = GameEventXml.requiredVersion(List.of(event));

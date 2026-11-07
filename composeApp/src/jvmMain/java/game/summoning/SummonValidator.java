@@ -18,6 +18,7 @@ public final class SummonValidator {
     }
 
     public static void validate(GameSnapshot s) {
+        var identities = game.mechanics.PieceHeroHistory.replay(s);
         SummonState state = Objects.requireNonNull(s.summons());
         boolean containsHero = s.pieces().values().stream().anyMatch(p -> p.hero() == HeroType.IZBA || p.hero() == HeroType.BABA_YAGA);
         require(!containsHero || (s.mode() == GameMode.MOBA && state.enabled()), "Izba requires summoning state");
@@ -28,7 +29,7 @@ public final class SummonValidator {
         for (GameEvent e : s.events()) {
             if (e.isAbility(IzbaAbility.SUMMON_YAGA)) {
                 PieceState source = s.pieces().get(e.actorId());
-                require((source.hero() == HeroType.IZBA || source.hero() == HeroType.GINSENG) && source.color() == e.color(), "Invalid summoning source");
+                require((source.hero() == HeroType.IZBA || identities.hasHeld(source.id(), HeroType.GINSENG)) && source.color() == e.color(), "Invalid summoning source");
                 require(state.records().values().stream().filter(r -> r.sourceId() == source.id() && r.bornTurn() == e.turn() && r.cause() == SummonRecord.Cause.ULTIMATE).count() == 1, "Ultimate without one birth");
             }
             if (e.legacyKind() == GameEvent.Kind.YAGA_BIRTH)
@@ -37,7 +38,7 @@ public final class SummonValidator {
                 require(matures.put(e.actorId(), e) == null, "Duplicate summon transformation");
             if (e.legacyKind() == GameEvent.Kind.REPLACE) {
                 PieceState source = s.pieces().get(e.actorId()), target = s.pieces().get(e.targetId());
-                require((source.hero() == HeroType.IZBA || source.hero() == HeroType.GINSENG) && source.color() == e.color() && target.status() == PieceState.Status.REPLACED && replaced.add(target.id()), "Invalid replacement event");
+                require((source.hero() == HeroType.IZBA || identities.hasHeld(source.id(), HeroType.GINSENG)) && source.color() == e.color() && target.status() == PieceState.Status.REPLACED && replaced.add(target.id()), "Invalid replacement event");
                 require(s.events().stream().anyMatch(a -> a.turn() == e.turn() && a.actorId() != null && a.actorId().equals(e.actorId()) && a.isAbility(IzbaAbility.SUMMON_YAGA)), "Replacement without ultimate");
             }
         }
@@ -45,7 +46,7 @@ public final class SummonValidator {
         for (var r : state.records().values()) {
             PieceState p = s.pieces().get(r.id()), source = s.pieces().get(r.sourceId());
             GameEvent birth = births.get(r.id());
-            require(p != null && source != null && (source.hero() == HeroType.IZBA || source.hero() == HeroType.GINSENG) && p.color() == source.color(), "Invalid summon lineage");
+            require(p != null && source != null && (source.hero() == HeroType.IZBA || identities.hasHeld(source.id(), HeroType.GINSENG)) && p.color() == source.color(), "Invalid summon lineage");
             require(p.hero() == (r.transformed() ? HeroType.IZBA : HeroType.BABA_YAGA), "Summon form differs from lifetime");
             require(birth != null && birth.actorId() == r.sourceId() && birth.color() == p.color() && birth.turn() == r.bornTurn() && birth.to().equals(r.bornAt()), "Birth differs from origin");
             FigureColor activeAtBirth = (s.turn().number() - r.bornTurn()) % 2 == 0 ? s.active() : (s.active() == FigureColor.WHITE ? FigureColor.BLACK : FigureColor.WHITE);
@@ -66,8 +67,9 @@ public final class SummonValidator {
             else require(p.isRemoved() || p.isPotted() || r.transformsAfterTurn() >= s.turn().number(), "Overdue living Baba Yaga");
         }
         for (PieceState p : s.pieces().values()) {
-            require(p.hero() != HeroType.BABA_YAGA || state.records().containsKey(p.id()), "Baba Yaga was not summoned");
-            require((p.status() == PieceState.Status.REPLACED) == replaced.contains(p.id()), "Removal without replacement history");
+            require(p.hero() != HeroType.BABA_YAGA || state.records().containsKey(p.id())
+                    || game.heroes.HeroRegistry.fromRules(s.heroRules()).mechanics().birth(s,p) != null, "Baba Yaga was not summoned");
+            require((p.status() == PieceState.Status.REPLACED) == (replaced.contains(p.id()) || game.heroes.HeroRegistry.fromRules(s.heroRules()).mechanics().dismissed(s,p)), "Removal without replacement history");
         }
         require(matures.size() == state.records().values().stream().filter(SummonRecord::transformed).count(), "Orphan transformation");
     }

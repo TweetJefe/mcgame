@@ -16,7 +16,8 @@ public final class Field implements FieldMethods {
     private final Map<Position, Figure> field;
     private static final Map<Class<? extends Figure>, TriFunction<Position, FigureColor, Field, Figure>> CONSTRUCTORS = Map.of(
             Pawn.class, Pawn::new, Knight.class, Knight::new, Bishop.class, Bishop::new,
-            King.class, King::new, Queen.class, Queen::new, Rook.class, Rook::new, Empty.class, Empty::new);
+            King.class, King::new, Queen.class, Queen::new, Rook.class, Rook::new, Empty.class, Empty::new,
+            Egg.class, Egg::new, Archbishop.class, Archbishop::new, Ward.class, Ward::new);
 
     public Field(int size) {
         if (size != 8)

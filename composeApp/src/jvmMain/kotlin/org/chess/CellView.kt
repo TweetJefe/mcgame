@@ -90,6 +90,8 @@ fun CellView(
         } else if (figure != null && figure !is Empty) {
             // Твоя логика отрисовки фигур
             val symbol = when (figure) {
+                is model.figures.Egg -> "◉"
+                is model.figures.Archbishop -> if (figure.color == FigureColor.WHITE) "♗♘" else "♝♞"
                 is Pawn -> if (figure.color == FigureColor.WHITE) "♙" else "♟"
                 is Knight -> if (figure.color == FigureColor.WHITE) "♘" else "♞"
                 is Queen -> if (figure.color == FigureColor.WHITE) "♕" else "♛"
@@ -98,7 +100,7 @@ fun CellView(
                 is King -> if (figure.color == FigureColor.WHITE) "♔" else "♚"
                 else -> ""
             }
-            Text(text = symbol, fontSize = 40.sp, color = if (isInvisible) Color.Black.copy(alpha=0.4f) else Color.Black)
+            Text(text = symbol, fontSize = if (figure is model.figures.Archbishop) 26.sp else 40.sp, maxLines = 1, color = if (isInvisible) Color.Black.copy(alpha=0.4f) else Color.Black)
             if (isInvisible) Text("Невид",fontSize=10.sp,color=Color.White,modifier=Modifier.align(Alignment.TopStart).background(Color(0xFF44577A)))
             lightningLabel?.let { label -> Text(label,color=Color.Black,fontSize=10.sp,modifier=Modifier.align(Alignment.BottomStart).background(Color(0xFF80DEEA)).padding(horizontal=2.dp)) }
             heroLabel?.let { label ->
@@ -112,12 +114,13 @@ fun CellView(
             if (isStunned) Text("Стан",color=Color.Black,fontSize=11.sp,modifier=Modifier.align(Alignment.BottomStart).background(Color(0xFFFFBD59)).padding(horizontal=2.dp))
             if (isBlinded) Text("Осл", color = Color.White, fontSize = 11.sp,
                 modifier = Modifier.align(Alignment.TopStart).background(Color(0xFFC65D00)).padding(horizontal = 2.dp))
-            heroDecoration()
         } else if (isMoveTarget) {
             // Если клетка пустая, но туда можно сходить — рисуем маленькую точку
             Box(
                 Modifier.size(16.dp).background(Color.Black.copy(alpha = 0.1f), shape = CircleShape)
             )
         }
+        // Наложенное воздействие может занимать пустую клетку.
+        heroDecoration()
     }
 }

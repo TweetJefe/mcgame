@@ -1,5 +1,7 @@
 package game.core;
 
+import game.mechanics.PieceRestriction;
+
 import game.economy.EconomyState;
 import game.heroes.Abilities;
 import game.heroes.AbilityRequest;
@@ -69,7 +71,7 @@ final class ActionEngine {
             this(field, pieces, rights, ep, turn, BuiltInStates.states(economy, terrain, summons, spells,
                     faun, clown, mines, lightning), heroes);
         }
-        HeroActionContext heroContext() { return new HeroActionContext(field, pieces, turn, mechanics); }
+        HeroActionContext heroContext() { return new HeroActionContext(field, pieces, turn, mechanics, heroes.mechanics()); }
         EconomyState economy() { return heroContext().economy(); }
         TerrainState terrain() { return heroContext().terrain(); }
         SummonState summons() { return heroContext().summons(); }
@@ -112,8 +114,11 @@ final class ActionEngine {
             return Preview.rejected(StatusRejection.BOXED);
         if (source != null && source.color() == side && source.isStunned())
             return Preview.rejected(StatusRejection.STUNNED);
-        MoveResult validation = MoveValidator.validate(context.field(), side, from, to, context.rights(), context.ep(), promotion, mode == GameMode.MOBA ? AttackRules.blindSquares(context.pieces()) : Set.of(),
-                context.terrain().hostileSquares(context.pieces(), side), context.terrain().hostileSquares(context.pieces(), MoveValidator.opposite(side)), mode != GameMode.MOBA);
+        if (source != null && source.color() == side && context.heroContext().blocks(source, PieceRestriction.ORDINARY_MOVE))
+            return Preview.rejected(context.heroContext().blocks(source, PieceRestriction.CAPTURE)
+                    ? StatusRejection.PROTECTED_OBSTACLE : StatusRejection.ROOTED);
+        MoveResult validation = MoveValidator.validate(context.field(), side, from, to, context.rights(), context.ep(), promotion, mode == GameMode.MOBA ? AttackRules.blindSquares(context.heroContext()) : Set.of(),
+                context.terrain().hostileSquares(context.pieces(), side), context.terrain().hostileSquares(context.pieces(), MoveValidator.opposite(side)), mode != GameMode.MOBA, context.heroContext().passageObstacles());
         if (!validation.isSuccess()) return Preview.rejected(validation);
         Field field = context.field();
         var oldBoard = field.getGameField();
@@ -125,10 +130,14 @@ final class ActionEngine {
         reactions.movement(new MoveIntent(moving, from, to, castle));
         MoveResult path = reactions.run(MechanicPhase.MOVE_PATH);
         if (!path.isSuccess()) return Preview.rejected(path);
+        if (castle && context.heroContext().blocks(context.at(MoveValidator.rookSource(from, to)), PieceRestriction.ORDINARY_MOVE))
+            return Preview.rejected(StatusRejection.ROOTED);
         boolean ep = MoveValidator.isEnPassant(oldBoard, side, from, to, context.ep());
         Position captureSquare = ep ? new Position(from.getRow(), to.getColumn()) : to;
         Figure victim = oldBoard.get(captureSquare);
         PieceState victimState = context.at(captureSquare);
+        if (context.heroContext().blocks(victimState, PieceRestriction.CAPTURE))
+            return Preview.rejected(StatusRejection.PROTECTED_OBSTACLE);
         if (victimState != null && victimState.isPotted()) return Preview.rejected(StatusRejection.POTTED);
         if (castle && context.at(MoveValidator.rookSource(from, to)).isPotted())
             return Preview.rejected(StatusRejection.POTTED);
@@ -141,7 +150,7 @@ final class ActionEngine {
         if (!contact.isSuccess()) return Preview.rejected(contact);
         if (reactions.interceptedMove()) {
             Context hit = new Context(context.field(), reactions.pieces(), context.rights(), null, context.turn(), reactions.states(), context.heroes());
-            if (AttackRules.isInCheck(hit.field().getGameField(), hit.pieces(), side, hit.terrain()))
+            if (AttackRules.isInCheck(hit.field().getGameField(), hit.heroContext(), side))
                 return Preview.rejected(MovementRejection.KING_IN_CHECK);
             return recordMove(new Preview(Success.SUCCESS, hit, List.of(), reactions.proposedEvents()), moving.id());
         }
@@ -215,9 +224,13 @@ final class ActionEngine {
         PieceState actor = context.at(actorSquare);
         if (actor == null) return MovementRejection.EMPTY_SOURCE;
         if (actor.color() != side) return MovementRejection.WRONG_FIGURE_COLOR;
+        if (!context.field().createFigure(actor.type(), actor.position(), actor.color()).canUseAbilities())
+            return StatusRejection.IMMOBILE;
         if (actor.isPotted()) return StatusRejection.POTTED;
         if (actor.isBoxed()) return StatusRejection.BOXED;
         if (actor.isStunned()) return StatusRejection.STUNNED;
+        if (context.heroContext().blocks(actor, PieceRestriction.ABILITIES))
+            return StatusRejection.PROTECTED_OBSTACLE;
         if (context.faun().silenced(actorSquare)) return StatusRejection.SILENCED;
         MoveResult ready;
         if (borrowed) {
@@ -262,6 +275,22 @@ final class ActionEngine {
 
     private static Preview finish(Context before, MechanicSession session,
                                   CastlingRights rights, Position ep, FigureColor side, GameMode mode) {
+        for (PieceState old : before.pieces().values()) {
+            PieceState next = session.pieces().get(old.id());
+            if (before.heroContext().blocks(old, PieceRestriction.TRANSFORMATION)
+                    && (old.type() != next.type() || old.hero() != next.hero() || old.isPotted() != next.isPotted()))
+                return Preview.rejected(StatusRejection.PROTECTED_OBSTACLE);
+            if (before.heroContext().blocks(old, PieceRestriction.CAPTURE) && next.isRemoved())
+                return Preview.rejected(StatusRejection.PROTECTED_OBSTACLE);
+            if (old.position() != null && !next.isRemoved()
+                    && before.heroContext().blocks(old, PieceRestriction.DISPLACEMENT)
+                    && !old.position().equals(next.position()))
+                return Preview.rejected(StatusRejection.PROTECTED_OBSTACLE);
+            if (old.position() != null && !next.isRemoved()
+                    && !before.field().createFigure(old.type(), old.position(), old.color()).canBeDisplaced()
+                    && !old.position().equals(next.position()))
+                return Preview.rejected(StatusRejection.IMMOBILE);
+        }
         MoveResult resolved = session.settle();
         if (!resolved.isSuccess()) return Preview.rejected(resolved);
         MoveResult settled = session.run(MechanicPhase.SETTLED);
@@ -269,18 +298,21 @@ final class ActionEngine {
         var board = new HashMap<Position, Figure>();
         for (Position square : before.field().getGameField().keySet())
             board.put(square, before.field().createFigure(Empty.class, square, FigureColor.NONE));
+        var occupied = new java.util.HashSet<Position>();
         for (PieceState piece : session.pieces().values())
-            if (piece.status() == PieceState.Status.BOARD)
+            if (piece.status() == PieceState.Status.BOARD) {
+                if (!occupied.add(piece.position())) return Preview.rejected(MovementRejection.INVALID_BOARD);
                 board.put(piece.position(), before.field().createFigure(piece.type(), piece.position(), piece.color()));
+            }
         for (PieceState old : before.pieces().values()) {
             PieceState next = session.pieces().get(old.id());
             if (old.position() != null && (next.position() == null || !old.position().equals(next.position()) || next.isPotted()))
-                rights = removedRookRights(rights, old, old.position());
+                rights = removedPieceRights(rights, old, old.position());
         }
         var kings = session.pieces().values().stream().filter(p -> p.position() != null && p.type() == King.class).toList();
         if (kings.size() == 2 && Math.max(Math.abs(kings.get(0).position().getRow() - kings.get(1).position().getRow()), Math.abs(kings.get(0).position().getColumn() - kings.get(1).position().getColumn())) <= 1)
             return Preview.rejected(MovementRejection.KING_IN_CHECK);
-        if (AttackRules.isInCheck(board, session.pieces(), side, session.context().terrain()))
+        if (AttackRules.isInCheck(board, session.context(), side))
             return Preview.rejected(MovementRejection.KING_IN_CHECK);
         Field next = mode == GameMode.MOBA ? Field.fromMobaPosition(board) : Field.fromPosition(board);
         MoveResult rewarded = session.run(MechanicPhase.AFTER_SAFETY);
@@ -296,13 +328,15 @@ final class ActionEngine {
     static boolean canEnd(Context context, FigureColor side) {
         var session = new MechanicSession(context.heroContext(), context.pieces(),
                 context.heroes().rules(), context.heroes(), side, null, List.of());
-        if (!session.run(MechanicPhase.CAN_END).isSuccess()) return false;
+        if (!session.run(MechanicPhase.CAN_END).isSuccess() || !session.run(MechanicPhase.CAN_END_SETTLED).isSuccess()) return false;
         var pieces = session.pieces();
-        var board = new HashMap<>(context.field().getGameField());
-        for (var old : context.pieces().values())
-            if (old.position() != null && pieces.get(old.id()).position() == null)
-                board.put(old.position(), context.field().createFigure(Empty.class, old.position(), FigureColor.NONE));
-        return !AttackRules.isInCheck(board, pieces, side, session.context().terrain());
+        var board = new HashMap<Position, Figure>();
+        for (var square : context.field().getGameField().keySet())
+            board.put(square, context.field().createFigure(Empty.class, square, FigureColor.NONE));
+        for (var piece : pieces.values())
+            if (piece.position() != null)
+                board.put(piece.position(), context.field().createFigure(piece.type(), piece.position(), piece.color()));
+        return !AttackRules.isInCheck(board, session.context(), side);
     }
 
     static boolean canFinishAfterMove(Context context, FigureColor side, boolean abilityRemaining, HeroRules rules) {
@@ -384,7 +418,7 @@ final class ActionEngine {
             if (old.position() != null) {
                 board.put(old.position(), factory.createFigure(Empty.class, old.position(), FigureColor.NONE));
                 if (!old.position().equals(next.position()) || next.isPotted())
-                    rights = removedRookRights(rights, old, old.position());
+                    rights = removedPieceRights(rights, old, old.position());
             }
         }
         states.putAll(effect.updates());
@@ -401,7 +435,8 @@ final class ActionEngine {
         return rights;
     }
 
-    private static CastlingRights removedRookRights(CastlingRights rights, PieceState piece, Position square) {
+    private static CastlingRights removedPieceRights(CastlingRights rights, PieceState piece, Position square) {
+        if (piece.type() == King.class) return rights.withoutKing(piece.color());
         return piece.type() == Rook.class ? withoutHomeRook(rights, piece.color(), square) : rights;
     }
 

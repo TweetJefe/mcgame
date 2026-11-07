@@ -13,7 +13,7 @@ public final class LumeshardStatePolicy implements HeroStatePolicy<LumeshardRule
     private static final HeroStateConstraints CONSTRAINTS = HeroStateConstraints.bodies(Set.of(Bishop.class)).withStartingColor();
 
     @Override public PieceState initialize(PieceState base, PieceCreationContext origin, LumeshardRules rules) {
-        return CONSTRAINTS.initialize(base, origin);
+        return origin.revival() ? base.withStartingColor(origin.source().startingColor()) : CONSTRAINTS.initialize(base, origin);
     }
 
     @Override public void validate(PieceState piece, LumeshardRules rules) {

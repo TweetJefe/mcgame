@@ -20,7 +20,7 @@ public class DraftGameTest {
         for(String square:List.of("c1","f1","c8","f8")) {
             boolean white=square.endsWith("1");var side=white?WHITE:BLACK;
             Draft d=new Draft();assertEquals(DraftRules.CURRENT_CATALOG,d.getSnapshot().rules().catalogVersion());
-            assertEquals(13,HeroCatalog.heroes().size());
+            assertEquals(18,HeroCatalog.heroes().size());
             assertEquals(DraftActionResult.SUCCESS,d.ban(WHITE,PUDGE));
             assertEquals(DraftActionResult.SUCCESS,d.ban(BLACK,IZBA));
             if(!white)assertEquals(DraftActionResult.SUCCESS,d.finishPicks(WHITE));

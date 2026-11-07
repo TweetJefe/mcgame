@@ -1,6 +1,11 @@
 package game.heroes;
 
 import game.heroes.pudge.PudgeDefinition;
+import game.heroes.leshy.LeshyDefinition;
+import game.heroes.phoenix.PhoenixDefinition;
+import game.heroes.supernova.SupernovaDefinition;
+import game.heroes.strix.StrixDefinition;
+import game.heroes.sunwukong.SunWukongDefinition;
 import game.heroes.lumeshard.LumeshardDefinition;
 import game.heroes.bountycrow.BountyCrowDefinition;
 import game.heroes.bolotnik.BolotnikDefinition;
@@ -42,6 +47,12 @@ public final class HeroDefinitions {
                 FaunDefinition.INSTANCE,
                 GinsengDefinition.INSTANCE,
                 IzbaDefinition.INSTANCE,
+                SunWukongDefinition.INSTANCE,
+                StrixDefinition.INSTANCE,
+                PhoenixDefinition.INSTANCE,
+                LeshyDefinition.INSTANCE,
+                game.heroes.shiva.ShivaDefinition.INSTANCE,
+                SupernovaDefinition.INSTANCE,
                 NoneDefinition.INSTANCE,
                 IllusionDefinition.INSTANCE,
                 BabaYagaDefinition.INSTANCE);
