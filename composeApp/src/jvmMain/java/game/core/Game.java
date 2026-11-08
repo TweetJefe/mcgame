@@ -150,6 +150,11 @@ public final class Game {
         return mobaFromDraft(draft, rules, seconds, System::nanoTime);
     }
 
+    /** Новый драфт разрешает старт только после завершения подготовки и автодорасстановки. */
+    public static Game mobaFromDraft(game.draft.MatchDraft draft, int seconds, LongSupplier time) {
+        return mobaFromDraft(draft.completedDraft(), draft.rules(), seconds, time);
+    }
+
     public static Game mobaFromDraft(DraftSnapshot draft, HeroRules rules, int seconds, LongSupplier time) {
         DraftSnapshot verified = Draft.fromSnapshot(draft, rules).getSnapshot();
         if (!verified.isComplete()) throw new IllegalArgumentException("Complete the draft before starting the game");
