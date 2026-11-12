@@ -18,6 +18,7 @@ import model.Position
 import org.mobachess.assets.GameAssets
 import org.mobachess.presentation.MatchController
 import org.mobachess.presentation.PieceDragState
+import org.mobachess.presentation.CastFlashTimeline
 
 /** Отрисовка читает модель; игровые позиции не зависят от экранных координат спрайтов. */
 class MatchRenderer(private val assets: GameAssets, val geometry: BoardGeometry) {
@@ -26,9 +27,10 @@ class MatchRenderer(private val assets: GameAssets, val geometry: BoardGeometry)
     private val shadows = PieceShadowRenderer()
     private val glows = PieceGlowRenderer()
     private val outlines = PieceOutlineRenderer()
+    private val castFlashes = CastFlashRenderer()
     private val cream = Color.valueOf("F4D9A0")
 
-    fun draw(batch: SpriteBatch, matrix: Matrix4, controller: MatchController, drag: PieceDragState) {
+    fun draw(batch: SpriteBatch, matrix: Matrix4, controller: MatchController, drag: PieceDragState, flashes: CastFlashTimeline) {
         val state = controller.session.snapshot()
         batch.projectionMatrix = matrix; shapes.projectionMatrix = matrix
         batch.begin()
@@ -59,6 +61,7 @@ class MatchRenderer(private val assets: GameAssets, val geometry: BoardGeometry)
             assets.small.draw(batch, ('a' + if (geometry.flipped) 7-file else file).toString(), p.x, p.y)
         }
         val trees = state.mechanics().get(LeshyMechanic.KEY).trees()
+        castFlashes.draw(batch, flashes.active, state, geometry)
         state.pieces().values.filter { it.position() != null && FaunView.visible(state, it) }
             .sortedWith(compareBy<game.state.PieceState> { if (drag.isFloating(it.id())) 1 else 0 }
                 .thenByDescending { geometry.display(it.position()).row }.thenBy { it.position().column })
@@ -130,5 +133,5 @@ class MatchRenderer(private val assets: GameAssets, val geometry: BoardGeometry)
         shapes.triangle(v[0].x,v[0].y,v[1].x,v[1].y,v[2].x,v[2].y)
         shapes.triangle(v[0].x,v[0].y,v[2].x,v[2].y,v[3].x,v[3].y)
     }
-    fun dispose() { glows.dispose(); shadows.dispose(); shapes.dispose() }
+    fun dispose() { castFlashes.dispose(); glows.dispose(); shadows.dispose(); shapes.dispose() }
 }

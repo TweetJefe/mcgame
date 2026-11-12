@@ -29,6 +29,7 @@ import model.Position
 import org.mobachess.assets.GameAssets
 import org.mobachess.presentation.MatchController
 import org.mobachess.presentation.PieceDragState
+import org.mobachess.presentation.CastFlashTimeline
 import org.mobachess.render.Point
 import org.mobachess.render.BoardGeometry
 import org.mobachess.render.MatchRenderer
@@ -44,6 +45,7 @@ class MatchScreen(private val initialSession: GameSession = LocalGameSession.pre
     private val geometry=BoardGeometry()
     private val renderer=MatchRenderer(assets,geometry)
     private val drag=PieceDragState()
+    private val flashes=CastFlashTimeline()
     private val viewport=FitViewport(1600f,900f)
     private val stage=Stage(viewport)
     private val skin=Skin()
@@ -182,7 +184,8 @@ class MatchScreen(private val initialSession: GameSession = LocalGameSession.pre
         skillHud.refresh(controller)
         val draggedPiece=drag.pieceId?.let { controller.session.snapshot().pieces()[it] }
         drag.update(delta,draggedPiece?.position()?.let(geometry::anchor))
-        renderer.draw(batch,viewport.camera.combined,controller,drag)
+        flashes.update(controller.session,controller.session.snapshot(),delta)
+        renderer.draw(batch,viewport.camera.combined,controller,drag,flashes)
         stage.act(delta.coerceAtMost(.1f)); stage.draw()
         frames++
         if(frames==7 && System.getProperty("mobachess.smoke")=="true") smoke()
@@ -263,6 +266,41 @@ class MatchScreen(private val initialSession: GameSession = LocalGameSession.pre
             "HUD skill click failed: ${controller.message}"
         }
         Gdx.app.log("MobaChess","SKILL_HUD_OK 26 icons, passive slots, active HUD click")
+        val beforeCast=controller.session.snapshot()
+        flashes.update(controller.session,beforeCast,0f)
+        check(flashes.active.isEmpty()) { "Choosing an ability must not flash" }
+        val invalid=(0..7).flatMap { row -> (0..7).map { col -> Position(row,col) } }
+            .first { it !in controller.highlights }
+        controller.click(invalid)
+        flashes.update(controller.session,controller.session.snapshot(),0f)
+        check(flashes.active.isEmpty()) { "Rejected ability target must not flash" }
+        click(controller.highlights.first())
+        click(controller.highlights.first())
+        val afterCast=controller.session.snapshot()
+        check(afterCast.turn().abilityUsed()) { "Cast did not complete: ${controller.message}" }
+        flashes.update(controller.session,afterCast,0f)
+        check(flashes.active.size==1 && flashes.active.single().hero==game.heroes.HeroType.GINSENG)
+        flashes.update(controller.session,afterCast,0f)
+        check(flashes.active.size==1) { "One cast generated repeated flashes" }
+        val expiry=CastFlashTimeline()
+        expiry.update(controller.session,beforeCast,0f)
+        expiry.update(controller.session,afterCast,0f)
+        expiry.advance(org.mobachess.presentation.HeroVisuals.CAST_FLASH_SECONDS * .65f)
+        check(expiry.active.isNotEmpty()) { "Flash faded too early" }
+        expiry.advance(org.mobachess.presentation.HeroVisuals.CAST_FLASH_SECONDS * .4f)
+        check(expiry.active.isEmpty()) { "Flash did not expire" }
+        val loaded=CastFlashTimeline()
+        loaded.update(controller.session,afterCast,0f)
+        check(loaded.active.isEmpty()) { "Historical casts must not replay" }
+        System.getProperty("mobachess.capture")?.let { path ->
+            refresh(); skillHud.refresh(controller)
+            renderer.draw(batch,viewport.camera.combined,controller,drag,flashes)
+            stage.act(0f); stage.draw()
+            val image=Pixmap.createFromFrameBuffer(0,0,Gdx.graphics.backBufferWidth,Gdx.graphics.backBufferHeight)
+            PixmapIO.writePNG(Gdx.files.absolute(path).parent().child("flash-live.png"),image,6,true)
+            image.dispose()
+        }
+        Gdx.app.log("MobaChess","CAST_FLASH_OK successful cast, no preview/rejection flash, no duplicates, expiry, load baseline")
     }
 
     override fun resize(width: Int, height: Int) { drag.cancel(); viewport.update(width,height,true) }
