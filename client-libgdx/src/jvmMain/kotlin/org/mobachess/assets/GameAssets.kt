@@ -55,7 +55,7 @@ class GameAssets : Disposable {
     }
 
     init {
-        val paths = HeroArtCatalog.files.values + regular.values + SkillIconCatalog.paths + listOf(backgroundPath, boardPath, hudPath, "art/animations/ares/ares_skill1.png", "art/animations/ginseng/ginseng_ult1.png")
+        val paths = HeroArtCatalog.files.values + HeroFormArtCatalog.files.values + regular.values + SkillIconCatalog.paths + listOf(backgroundPath, boardPath, hudPath, "art/animations/ares/ares_skill1.png", "art/animations/ginseng/ginseng_ult1.png", org.mobachess.presentation.animation.WukongCloudEffectFactory.PATH)
         paths.distinct().filter { Gdx.files.internal(it).exists() }.forEach { manager.load(it, Texture::class.java) }
         manager.finishLoading()
         paths.distinct().filter { manager.isLoaded(it) }.forEach { manager.get<Texture>(it).setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear) }
@@ -79,7 +79,7 @@ class GameAssets : Disposable {
     }
     fun spriteAnchorX(region: TextureRegion): Float = anchors[region] ?: .5f
     fun sprite(piece: PieceState): TextureRegion? {
-        val heroPath = HeroArtCatalog.files[piece.hero()]
+        val heroPath = HeroFormArtCatalog.pathFor(piece) ?: HeroArtCatalog.files[piece.hero()]
         val body = piece.type().simpleName.lowercase()
         val side = if (piece.color() == FigureColor.WHITE) "white" else "black"
         val path = heroPath?.takeIf { manager.isLoaded(it) } ?: regular["$side/$body"] ?: return null
@@ -96,7 +96,7 @@ class GameAssets : Disposable {
     }
 
     private fun croppedSprite(path: String): TextureRegion = cropped.getOrPut(path) {
-            HeroArtCatalog.framing[path]?.let { frame ->
+            (HeroFormArtCatalog.framing[path] ?: HeroArtCatalog.framing[path])?.let { frame ->
                 val region = TextureRegion(texture(path), frame.left, frame.top, frame.width, frame.height)
                 anchors[region] = frame.anchorX
                 return@getOrPut region

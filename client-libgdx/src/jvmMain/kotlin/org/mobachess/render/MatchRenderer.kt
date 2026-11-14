@@ -32,6 +32,9 @@ class MatchRenderer(private val assets: GameAssets, val geometry: BoardGeometry)
     private val spear = SpriteProjectileRenderer(assets,"art/animations/ares/ares_skill1.png",
         org.mobachess.presentation.animation.AresSpearFlightFactory())
     private val theft = GinsengTheftRenderer(assets)
+    private val transformation = StationarySpriteEffectRenderer(assets,
+        org.mobachess.presentation.animation.WukongCloudEffectFactory.PATH,
+        org.mobachess.presentation.animation.WukongCloudEffectFactory())
     private val animations = PieceAnimationTimeline()
     private val cream = Color.valueOf("F4D9A0")
 
@@ -40,6 +43,7 @@ class MatchRenderer(private val assets: GameAssets, val geometry: BoardGeometry)
         animations.update(controller.session,state,Gdx.graphics.deltaTime)
         theft.update(controller.session,state,Gdx.graphics.deltaTime)
         spear.update(controller.session,state,Gdx.graphics.deltaTime)
+        transformation.update(controller.session, state, Gdx.graphics.deltaTime)
         batch.projectionMatrix = matrix; shapes.projectionMatrix = matrix
         batch.begin()
         batch.color = Color.WHITE
@@ -83,8 +87,9 @@ class MatchRenderer(private val assets: GameAssets, val geometry: BoardGeometry)
                 val rotation = if (drag.isFloating(actual.id())) drag.rotation(actual.id()) else pose?.rotation ?: 0f
                 val scale = pose?.depth ?: (1f - geometry.display(square).row * .027f)
                 val width = 85f * scale
-                val region = assets.sprite(piece)
-                shadows.draw(batch, piece, ground, width, scale)
+                val model = transformation.modelFor(piece)
+                val region = assets.sprite(model)
+                shadows.draw(batch, model, ground, width, scale)
                 val previousTransform = if (drag.isFloating(actual.id()) || pose != null) Matrix4(batch.transformMatrix) else null
                 if (previousTransform != null) {
                     batch.transformMatrix = Matrix4(previousTransform).translate(anchor.x, anchor.y, 0f)
@@ -96,12 +101,12 @@ class MatchRenderer(private val assets: GameAssets, val geometry: BoardGeometry)
                     piece.isPotted -> label(batch, "ГОРШОК", anchor, scale)
                     state.mechanics().get(ShivaMechanic.KEY).lotuses().containsKey(piece.id()) -> label(batch, "ЛОТУС", anchor, scale)
                     region != null -> {
-                        val h = 104f * scale * assets.boardHeightRatio(piece)
+                        val h = 104f * scale * assets.boardHeightRatio(model)
                         val fit = minOf(width / region.regionWidth, h / region.regionHeight)
                         val spriteX = anchor.x - region.regionWidth * fit * assets.spriteAnchorX(region)
-                        if (piece.hero() != game.heroes.HeroType.NONE) glows.draw(batch, region, piece.color(), spriteX,
+                        if (model.hero() != game.heroes.HeroType.NONE) glows.draw(batch, region, model.color(), spriteX,
                             anchor.y, region.regionWidth*fit, region.regionHeight*fit)
-                        if (piece.hero() == game.heroes.HeroType.NONE) {
+                        if (model.hero() == game.heroes.HeroType.NONE) {
                             outlines.draw(batch, region, spriteX, anchor.y,
                                 region.regionWidth * fit, region.regionHeight * fit, 1.25f * scale)
                         }
@@ -114,6 +119,7 @@ class MatchRenderer(private val assets: GameAssets, val geometry: BoardGeometry)
                 if(status.isNotEmpty()) label(batch,status,anchor,scale)
                 if (previousTransform != null) batch.transformMatrix = previousTransform
             }
+        transformation.draw(batch, geometry)
         spear.draw(batch,geometry)
         theft.draw(batch,geometry)
         state.mines().cells().keys.filter { VisibilityRules.mineVisible(state,it) }.forEach {
@@ -123,7 +129,7 @@ class MatchRenderer(private val assets: GameAssets, val geometry: BoardGeometry)
         val hud = hudLayout.bounds
         batch.draw(assets.texture(assets.hudPath), hud.x, hud.y, hud.width, hud.height)
         val selected = controller.selected?.let(state::pieceAt)
-        selected?.let { piece -> assets.sprite(piece)?.let { region ->
+        selected?.let { piece -> assets.sprite(transformation.modelFor(piece))?.let { region ->
             val scale = minOf(120f/region.regionWidth, 142f/region.regionHeight)
             batch.draw(region, 690f-region.regionWidth*scale/2, 55f, region.regionWidth*scale, region.regionHeight*scale)
         } }
