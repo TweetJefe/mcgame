@@ -84,6 +84,7 @@ public final class Game {
     private Field gameField;
     private final GameMode mode;
     private final HeroRules heroRules;
+    private final GamePolicy policy;
     private final HeroRegistry heroRegistry;
     private MechanicStates mechanics = MechanicStates.empty();
     private DraftSnapshot draft;
@@ -116,9 +117,15 @@ public final class Game {
     }
 
     private Game(int n, GameMode mode, LongSupplier nanoTime, HeroRules rules) {
-        gameField = new Field(n);
+        this(n, mode, nanoTime, rules, GamePolicy.MATCH);
+    }
+
+    private Game(int n, GameMode mode, LongSupplier nanoTime, HeroRules rules, GamePolicy policy) {
+        this.policy = Objects.requireNonNull(policy);
+        gameField = policy.initialField(n);
+        castlingRights = policy.initialRights();
         this.mode = Objects.requireNonNull(mode);
-        if (mode == GameMode.MOBA) mechanics = mechanics.with(BuiltInStates.ECONOMY, EconomyState.initial());
+        mechanics = policy.initialMechanics(mode);
         this.heroRules = Objects.requireNonNull(rules);
         this.heroRegistry = HeroRegistry.fromRules(rules);
         this.nanoTime = Objects.requireNonNull(nanoTime);
@@ -292,7 +299,7 @@ public final class Game {
     public synchronized MoveResult moveFigure(Player player, Position from, Position to, Promotion promotion) {
         MoveResult guard = commandGuard(player);
         if (!guard.isSuccess()) return guard;
-        if (mode == GameMode.MOBA && moveUsed && (getPieceState(from)==null || !heroRegistry.mechanics().allowsExtraMove(context().heroContext(), getPieceState(from)))) return TurnRejection.MOVE_ALREADY_USED;
+        if (policy.limitsMoves() && mode == GameMode.MOBA && moveUsed && (getPieceState(from)==null || !heroRegistry.mechanics().allowsExtraMove(context().heroContext(), getPieceState(from)))) return TurnRejection.MOVE_ALREADY_USED;
         ensurePieces();
         ActionEngine.Context before = context();
         from = copy(from);
@@ -301,7 +308,7 @@ public final class Game {
         if (!preview.result().isSuccess()) return preview.result();
         if (mode == GameMode.CLASSIC) preview = ActionEngine.recordMove(preview, before.at(from).id());
         if (!preview.result().isSuccess()) return preview.result();
-        if (mode == GameMode.MOBA && !ActionEngine.canFinishAfterMove(preview.next(), player.color(), !abilityUsed, heroRules))
+        if (policy.requiresContinuation() && mode == GameMode.MOBA && !ActionEngine.canFinishAfterMove(preview.next(), player.color(), !abilityUsed, heroRules))
             return TurnRejection.NO_TURN_CONTINUATION;
         updateTime();
         if (outcome.isFinished()) return TurnRejection.GAME_OVER;
@@ -332,7 +339,7 @@ public final class Game {
             advanceTurn();
             repetitions.merge(getPositionKey(), 1, Integer::sum);
             evaluateOutcome();
-        } else moveUsed = true;
+        } else moveUsed = policy.limitsMoves();
         if (mode == GameMode.CLASSIC)
             made = new MadeMove(name, player.color(), from, to, kind, promotion,
                     firstCapture == null ? null : firstCapture.victim().getName(), firstCapture == null ? null : firstCapture.square(),
@@ -359,9 +366,9 @@ public final class Game {
         ActionEngine.Context before = context();
         ActionEngine.Preview preview = ActionEngine.ability(before, player.color(), request, heroRules);
         if (!preview.result().isSuccess()) return preview.result();
-        if (!moveUsed && !ActionEngine.hasMove(preview.next(), player.color(), mode, heroRules))
+        if (policy.requiresContinuation() && !moveUsed && !ActionEngine.hasMove(preview.next(), player.color(), mode, heroRules))
             return TurnRejection.NO_MOVE_AFTER_ABILITY;
-        if (moveUsed && !ActionEngine.canEnd(preview.next(), player.color())) return TurnRejection.NO_TURN_CONTINUATION;
+        if (policy.requiresContinuation() && moveUsed && !ActionEngine.canEnd(preview.next(), player.color())) return TurnRejection.NO_TURN_CONTINUATION;
         updateTime();
         if (outcome.isFinished()) return TurnRejection.GAME_OVER;
         PieceState actor = before.at(actorSquare), victim = before.at(target);
@@ -374,7 +381,7 @@ public final class Game {
         var journal = prepareActionEvents(before, preview, primary);
         if (!journal.result().isSuccess()) return journal.result();
         publish(preview);
-        abilityUsed = true;
+        abilityUsed = policy.limitsAbilities();
         if (!preview.captures().isEmpty()) halfmoveClock = 0;
         if (drawOffer != null && drawOffer != player) drawOffer = null;
         events.addAll(journal.events());
@@ -386,9 +393,9 @@ public final class Game {
         MoveResult guard = commandGuard(player);
         if (!guard.isSuccess()) return guard;
         if (mode != GameMode.MOBA) return TurnRejection.UNSUPPORTED_ACTION;
-        if (!moveUsed) return TurnRejection.MOVE_REQUIRED;
+        if (policy.requiresMoveToEnd() && !moveUsed) return TurnRejection.MOVE_REQUIRED;
         if (!ActionEngine.canEnd(context(), player.color())) return MovementRejection.KING_IN_CHECK;
-        var transition = TurnFlowEngine.end(context(), player.color(), heroRules, events);
+        var transition = TurnFlowEngine.end(context(), player.color(), heroRules, events, policy.evaluatesOutcome());
         if (!transition.result().isSuccess()) return transition.result();
         pieces = transition.context().pieces();
         mechanics = transition.context().mechanics();
@@ -461,6 +468,7 @@ public final class Game {
     }
 
     private boolean canCompleteAbility(ActionEngine.Preview preview) {
+        if (!policy.requiresContinuation()) return preview.result().isSuccess();
         return preview.result().isSuccess() && (moveUsed ? ActionEngine.canEnd(preview.next(), currentPlayer.color()) : ActionEngine.hasMove(preview.next(), currentPlayer.color(), mode, heroRules));
     }
 
@@ -508,7 +516,7 @@ public final class Game {
     private MoveResult validate(FigureColor color, Position from, Position to, Promotion promotion) {
         if (mode == GameMode.MOBA) {
             var preview = ActionEngine.move(context(), color, from, to, promotion, mode, heroRules);
-            return preview.result().isSuccess() && !ActionEngine.canFinishAfterMove(preview.next(), color, !abilityUsed, heroRules)
+            return policy.requiresContinuation() && preview.result().isSuccess() && !ActionEngine.canFinishAfterMove(preview.next(), color, !abilityUsed, heroRules)
                     ? TurnRejection.NO_TURN_CONTINUATION : preview.result();
         }
         return MoveValidator.validate(gameField, color, from, to, castlingRights, enPassantTarget, promotion);
@@ -527,6 +535,7 @@ public final class Game {
     }
 
     private void evaluateOutcome() {
+        if (!policy.evaluatesOutcome()) return;
         FigureColor color = currentPlayer.color();
         var board = gameField.getGameField();
         if (mode == GameMode.MOBA) {
@@ -708,7 +717,7 @@ public final class Game {
 
     private ActionEngine.Context context() {
         ensurePieces();
-        return new ActionEngine.Context(gameField, pieces, castlingRights, enPassantTarget, turnNumber, mechanics, heroRegistry);
+        return new ActionEngine.Context(gameField, pieces, castlingRights, enPassantTarget, turnNumber, policy.prepareContextMechanics(mechanics), heroRegistry);
     }
 
     private void publish(ActionEngine.Preview preview) {
@@ -731,6 +740,28 @@ public final class Game {
         clock.switchTo(currentPlayer.color());
         turnNumber++;
         moveUsed = abilityUsed = false;
+    }
+
+    /** Пустая тренировочная сессия использует тот же движок действий и механик. */
+    public static Game sandbox() {
+        return new Game(8, GameMode.MOBA, () -> 0L, game.sandbox.SandboxRules.create(), GamePolicy.PRACTICE);
+    }
+
+    public synchronized MoveResult placeEditorPiece(Class<? extends Figure> body, HeroType hero,
+                                                    FigureColor color, Position square) {
+        if (!policy.allowsEditing()) return TurnRejection.UNSUPPORTED_ACTION;
+        var before = context();
+        var placement = BoardEditor.prepare(before, body, hero, color, square, currentPlayer.color());
+        var preview = placement.preview();
+        if (!preview.result().isSuccess()) return preview.result();
+        var primary = new GameEvent(events.size() + 1L, turnNumber, GameEvent.Kind.EDITOR_PLACE, color,
+                placement.actor(), null, null, square, "Размещена фигура");
+        var journal = prepareActionEvents(before, preview, primary);
+        if (!journal.result().isSuccess()) return journal.result();
+        publish(preview);
+        events.addAll(journal.events());
+        version++;
+        return Success.SUCCESS;
     }
 
     public static Game mobaHeroesSandbox(int seconds) {

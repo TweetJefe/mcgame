@@ -14,12 +14,14 @@ import java.util.Objects;
  */
 public final class Field implements FieldMethods {
     private final Map<Position, Figure> field;
+    private final boolean requireKings;
     private static final Map<Class<? extends Figure>, TriFunction<Position, FigureColor, Field, Figure>> CONSTRUCTORS = Map.of(
             Pawn.class, Pawn::new, Knight.class, Knight::new, Bishop.class, Bishop::new,
             King.class, King::new, Queen.class, Queen::new, Rook.class, Rook::new, Empty.class, Empty::new,
             Egg.class, Egg::new, Archbishop.class, Archbishop::new, Ward.class, Ward::new);
 
     public Field(int size) {
+        requireKings = true;
         if (size != 8)
             throw new IllegalArgumentException("Only the standard 8x8 board is supported; requested " + size);
         var board = new HashMap<Position, Figure>();
@@ -38,9 +40,14 @@ public final class Field implements FieldMethods {
     }
 
     private Field(Map<Position, Figure> source, boolean classic) {
+        this(source, classic, true);
+    }
+
+    private Field(Map<Position, Figure> source, boolean classic, boolean requireKings) {
+        this.requireKings = requireKings;
         if (source == null) throw new IllegalArgumentException("Board is required");
         var input = new HashMap<>(source);
-        PositionValidator.validateBoard(input, classic);
+        PositionValidator.validateBoard(input, classic, requireKings);
         var board = new HashMap<Position, Figure>();
         input.forEach((position, piece) -> board.put(position, createFigure(piece.getClass(), position, piece.getColor())));
         field = Map.copyOf(board);
@@ -58,6 +65,19 @@ public final class Field implements FieldMethods {
      */
     public static Field fromMobaPosition(Map<Position, Figure> source) {
         return new Field(source, false);
+    }
+
+    /** Редактор допускает отсутствие королей; фабрики обычных позиций остаются строгими. */
+    public static Field emptySandbox() {
+        var factory = new Field(8);
+        var empty = new HashMap<Position, Figure>();
+        for (Position square : factory.getGameField().keySet())
+            empty.put(square, factory.createFigure(Empty.class, square, FigureColor.NONE));
+        return new Field(empty, false, false);
+    }
+
+    public Field rebuildMobaPosition(Map<Position, Figure> source) {
+        return new Field(source, false, requireKings);
     }
 
     public static boolean supports(Class<? extends Figure> type) {

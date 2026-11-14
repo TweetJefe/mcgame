@@ -10,6 +10,7 @@ import org.mobachess.presentation.HeroCatalog
 import org.mobachess.screen.*
 import org.mobachess.session.GameSession
 import org.mobachess.session.LocalDraftSession
+import org.mobachess.session.LocalSandboxSession
 
 /** Навигация владеет общими ассетами; завершённые экраны освобождают свои ресурсы. */
 class MobaChessApp : Game(), ScreenNavigation {
@@ -22,6 +23,7 @@ class MobaChessApp : Game(), ScreenNavigation {
     override fun create() {
         assets = GameAssets()
         if (System.getProperty("mobachess.smoke") == "true") setScreen(MatchScreen())
+        else if (System.getProperty("mobachess.sandboxSmoke")=="true") setScreen(MatchScreen(LocalSandboxSession(),assets,false,this))
         else setScreen(MainMenuScreen(assets, this, catalog))
     }
 
@@ -34,6 +36,7 @@ class MobaChessApp : Game(), ScreenNavigation {
     }
     override fun menu() = navigate { MainMenuScreen(assets, this, catalog) }
     override fun heroes() = navigate { HeroesScreen(assets, this, catalog) }
+    override fun sandbox() = navigate { MatchScreen(LocalSandboxSession(), assets, false, this) }
     override fun localMatch() = navigate {
         val session = flow?.let { LocalDraftSession(it.clock) } ?: LocalDraftSession()
         DraftScreen(assets, this, catalog, session)

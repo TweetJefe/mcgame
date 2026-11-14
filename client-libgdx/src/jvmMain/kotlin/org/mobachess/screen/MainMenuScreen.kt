@@ -15,7 +15,8 @@ class MainMenuScreen(assets: GameAssets, navigation: ScreenNavigation, catalog: 
         menu.add(button("Играть — скоро", "play") {}).width(360f).height(64f).left().padBottom(14f).row()
         menu.findActor<com.badlogic.gdx.scenes.scene2d.ui.TextButton>("play").isDisabled = true
         menu.add(button("Герои", "heroes", navigation::heroes)).width(360f).height(64f).left().padBottom(14f).row()
-        menu.add(button("Локальный матч", "local", navigation::localMatch)).width(360f).height(64f).left().padBottom(26f).row()
+        menu.add(button("Локальный матч", "local", navigation::localMatch)).width(360f).height(64f).left().padBottom(14f).row()
+        menu.add(button("Песочница", "sandbox", navigation::sandbox)).width(360f).height(64f).left().padBottom(26f).row()
         menu.add(label("Драфт → расстановка → игра за обе стороны", true).apply { color = muted }).left().row()
         val art = Table()
         catalog.groups.take(3).forEach { role -> catalog.heroes(role).firstOrNull()?.let { hero ->

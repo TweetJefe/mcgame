@@ -19,6 +19,7 @@ import org.mobachess.assets.GameAssets
 import org.mobachess.presentation.MatchController
 import org.mobachess.presentation.PieceDragState
 import org.mobachess.presentation.CastFlashTimeline
+import org.mobachess.presentation.animation.PieceAnimationTimeline
 
 /** Отрисовка читает модель; игровые позиции не зависят от экранных координат спрайтов. */
 class MatchRenderer(private val assets: GameAssets, val geometry: BoardGeometry) {
@@ -28,10 +29,17 @@ class MatchRenderer(private val assets: GameAssets, val geometry: BoardGeometry)
     private val glows = PieceGlowRenderer()
     private val outlines = PieceOutlineRenderer()
     private val castFlashes = CastFlashRenderer()
+    private val spear = SpriteProjectileRenderer(assets,"art/animations/ares/ares_skill1.png",
+        org.mobachess.presentation.animation.AresSpearFlightFactory())
+    private val theft = GinsengTheftRenderer(assets)
+    private val animations = PieceAnimationTimeline()
     private val cream = Color.valueOf("F4D9A0")
 
     fun draw(batch: SpriteBatch, matrix: Matrix4, controller: MatchController, drag: PieceDragState, flashes: CastFlashTimeline) {
         val state = controller.session.snapshot()
+        animations.update(controller.session,state,Gdx.graphics.deltaTime)
+        theft.update(controller.session,state,Gdx.graphics.deltaTime)
+        spear.update(controller.session,state,Gdx.graphics.deltaTime)
         batch.projectionMatrix = matrix; shapes.projectionMatrix = matrix
         batch.begin()
         batch.color = Color.WHITE
@@ -63,21 +71,24 @@ class MatchRenderer(private val assets: GameAssets, val geometry: BoardGeometry)
         val trees = state.mechanics().get(LeshyMechanic.KEY).trees()
         castFlashes.draw(batch, flashes.active, state, geometry)
         state.pieces().values.filter { it.position() != null && FaunView.visible(state, it) }
-            .sortedWith(compareBy<game.state.PieceState> { if (drag.isFloating(it.id())) 1 else 0 }
+            .sortedWith(compareBy<game.state.PieceState> { if (drag.isFloating(it.id()) || animations.isPlaying(it.id())) 1 else 0 }
                 .thenByDescending { geometry.display(it.position()).row }.thenBy { it.position().column })
             .forEach { actual ->
                 val piece = ClownView.displayed(state, actual)
                 val square = piece.position()
                 val home = geometry.anchor(square)
-                val anchor = drag.anchor(actual.id(), home)
-                val scale = 1f - geometry.display(square).row * .027f
+                val pose = animations.pose(actual.id(),geometry)
+                val anchor = drag.anchor(actual.id(), pose?.anchor ?: home)
+                val ground = pose?.ground ?: home
+                val rotation = if (drag.isFloating(actual.id())) drag.rotation(actual.id()) else pose?.rotation ?: 0f
+                val scale = pose?.depth ?: (1f - geometry.display(square).row * .027f)
                 val width = 85f * scale
                 val region = assets.sprite(piece)
-                shadows.draw(batch, piece, home, width, scale)
-                val previousTransform = if (drag.isFloating(actual.id())) Matrix4(batch.transformMatrix) else null
+                shadows.draw(batch, piece, ground, width, scale)
+                val previousTransform = if (drag.isFloating(actual.id()) || pose != null) Matrix4(batch.transformMatrix) else null
                 if (previousTransform != null) {
                     batch.transformMatrix = Matrix4(previousTransform).translate(anchor.x, anchor.y, 0f)
-                        .rotate(0f, 0f, 1f, drag.rotation(actual.id())).translate(-anchor.x, -anchor.y, 0f)
+                        .rotate(0f, 0f, 1f, rotation).translate(-anchor.x, -anchor.y, 0f)
                 }
                 batch.color = Color.WHITE
                 when {
@@ -103,6 +114,8 @@ class MatchRenderer(private val assets: GameAssets, val geometry: BoardGeometry)
                 if(status.isNotEmpty()) label(batch,status,anchor,scale)
                 if (previousTransform != null) batch.transformMatrix = previousTransform
             }
+        spear.draw(batch,geometry)
+        theft.draw(batch,geometry)
         state.mines().cells().keys.filter { VisibilityRules.mineVisible(state,it) }.forEach {
             val p=geometry.anchor(it); assets.small.color=Color.ORANGE; assets.small.draw(batch,"МИНА",p.x-20,p.y)
         }

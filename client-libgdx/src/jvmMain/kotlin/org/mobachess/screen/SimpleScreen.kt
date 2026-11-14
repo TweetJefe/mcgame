@@ -22,6 +22,7 @@ interface ScreenNavigation {
     fun menu()
     fun heroes()
     fun localMatch()
+    fun sandbox()
     fun match(session: GameSession)
 }
 

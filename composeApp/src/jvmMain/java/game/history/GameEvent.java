@@ -74,6 +74,7 @@ public record GameEvent(long sequence, long turn, Kind kind, FigureColor color, 
 
     /** Общие категории; исторические имена реакций служат только входными псевдонимами конструктора. */
     public enum Kind {
+        EDITOR_PLACE,
         ABILITY_USED,
         MECHANIC_EFFECT,
         CAPTURE,

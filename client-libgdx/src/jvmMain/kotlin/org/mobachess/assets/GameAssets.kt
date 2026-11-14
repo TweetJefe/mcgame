@@ -55,7 +55,7 @@ class GameAssets : Disposable {
     }
 
     init {
-        val paths = HeroArtCatalog.files.values + regular.values + SkillIconCatalog.paths + listOf(backgroundPath, boardPath, hudPath)
+        val paths = HeroArtCatalog.files.values + regular.values + SkillIconCatalog.paths + listOf(backgroundPath, boardPath, hudPath, "art/animations/ares/ares_skill1.png", "art/animations/ginseng/ginseng_ult1.png")
         paths.distinct().filter { Gdx.files.internal(it).exists() }.forEach { manager.load(it, Texture::class.java) }
         manager.finishLoading()
         paths.distinct().filter { manager.isLoaded(it) }.forEach { manager.get<Texture>(it).setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear) }

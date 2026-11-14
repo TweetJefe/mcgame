@@ -275,6 +275,18 @@ final class ActionEngine {
 
     private static Preview finish(Context before, MechanicSession session,
                                   CastlingRights rights, Position ep, FigureColor side, GameMode mode) {
+        return finish(before, session, rights, ep, side, mode, true);
+    }
+
+    static Preview place(Context before, Map<Long, PieceState> pieces, MechanicStates mechanics, FigureColor side) {
+        var session = new MechanicSession(before.heroContext(), pieces, before.heroes().rules(),
+                before.heroes(), side, null, List.of());
+        session.states(mechanics);
+        return finish(before, session, before.rights(), null, side, GameMode.MOBA, false);
+    }
+
+    private static Preview finish(Context before, MechanicSession session,
+                                  CastlingRights rights, Position ep, FigureColor side, GameMode mode, boolean kingSafety) {
         for (PieceState old : before.pieces().values()) {
             PieceState next = session.pieces().get(old.id());
             if (before.heroContext().blocks(old, PieceRestriction.TRANSFORMATION)
@@ -312,9 +324,9 @@ final class ActionEngine {
         var kings = session.pieces().values().stream().filter(p -> p.position() != null && p.type() == King.class).toList();
         if (kings.size() == 2 && Math.max(Math.abs(kings.get(0).position().getRow() - kings.get(1).position().getRow()), Math.abs(kings.get(0).position().getColumn() - kings.get(1).position().getColumn())) <= 1)
             return Preview.rejected(MovementRejection.KING_IN_CHECK);
-        if (AttackRules.isInCheck(board, session.context(), side))
+        if (kingSafety && AttackRules.isInCheck(board, session.context(), side))
             return Preview.rejected(MovementRejection.KING_IN_CHECK);
-        Field next = mode == GameMode.MOBA ? Field.fromMobaPosition(board) : Field.fromPosition(board);
+        Field next = mode == GameMode.MOBA ? before.field().rebuildMobaPosition(board) : Field.fromPosition(board);
         MoveResult rewarded = session.run(MechanicPhase.AFTER_SAFETY);
         if (!rewarded.isSuccess()) return Preview.rejected(rewarded);
         MoveResult action = session.run(MechanicPhase.AFTER_ACTION);

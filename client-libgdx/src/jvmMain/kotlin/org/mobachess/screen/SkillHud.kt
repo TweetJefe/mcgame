@@ -31,10 +31,12 @@ class SkillHud(private val assets: GameAssets, private val skin: Skin, private v
         if (piece == null) return
         SkillIconCatalog.slots(piece.hero()).forEachIndexed { index, slot ->
             val rect = layout.skillSlot(index)
-            val choice = slot.ability?.let { AbilityChoice(it) }
+            val borrowed = if (index == 1) state.spells().borrowed()[piece.id()] else null
+            val displayed = borrowed?.let { org.mobachess.assets.HudSkill(it.ability(), SkillIconCatalog.iconFor(it.ability()), it.ability().displayName) } ?: slot
+            val choice = displayed.ability?.let { AbilityChoice(it, borrowed != null) }
             val ready = choice != null && controller.promotion == null && !state.turn().abilityUsed() &&
-                !state.outcome().isFinished && controller.session.availability(piece.position(), choice.ability, false).isSuccess
-            val region = slot.iconPath?.let(assets::skillIcon)
+                !state.outcome().isFinished && controller.session.availability(piece.position(), choice.ability, choice.borrowed).isSuccess
+            val region = displayed.iconPath?.let(assets::skillIcon)
             val button: Button = if (region != null) {
                 val image = TextureRegionDrawable(region)
                 val border = TextureRegionDrawable(TextureRegion(assets.pixel))
@@ -42,7 +44,7 @@ class SkillHud(private val assets: GameAssets, private val skin: Skin, private v
                     up = border.tint(Color(.04f, .04f, .04f, 1f))
                     over = border.tint(Color.valueOf("D3B672")); checked = over
                     imageUp = image
-                    imageDisabled = if (slot.passive) image else image.tint(Color(.35f, .35f, .35f, 1f))
+                    imageDisabled = if (displayed.passive) image else image.tint(Color(.35f, .35f, .35f, 1f))
                 }).apply { imageCell.size(rect.width - 3f, rect.height - 3f) }
             } else TextButton(if (index == 0) "СКИЛЛ" else "УЛЬТА", skin).apply { label.setFontScale(.52f) }
             button.name = "hud-skill-$index"
@@ -53,7 +55,7 @@ class SkillHud(private val assets: GameAssets, private val skin: Skin, private v
             button.addListener(object : ChangeListener() {
                 override fun changed(event: ChangeEvent?, actor: Actor?) { if (ready) choose(checkNotNull(choice)) }
             })
-            val text = Label(slot.title + if (slot.passive) "" else if (ready) "" else "\nСейчас недоступно", skin).apply {
+            val text = Label(displayed.title + if (displayed.passive) "" else if (ready) "" else "\nСейчас недоступно", skin).apply {
                 setFontScale(.72f); setWrap(true)
             }
             button.addListener(Tooltip(text).apply {

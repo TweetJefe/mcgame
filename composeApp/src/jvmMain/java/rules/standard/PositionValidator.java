@@ -13,6 +13,10 @@ public final class PositionValidator {
     public static void validateBoard(Map<Position, Figure> board) { validateBoard(board, true); }
 
     public static void validateBoard(Map<Position, Figure> board, boolean classic) {
+        validateBoard(board, classic, true);
+    }
+
+    public static void validateBoard(Map<Position, Figure> board, boolean classic, boolean requireKings) {
         require(board != null && board.size() == 64, "Board must contain exactly 64 squares");
         int[] kings = new int[2], pawns = new int[2], pieces = new int[2];
         Position[] kingSquares = new Position[2];
@@ -39,13 +43,14 @@ public final class PositionValidator {
             if (piece instanceof Bishop) counts[side][3 + ((square.getRow() + square.getColumn()) % 2)]++;
         }
         for (int side = 0; side < 2; side++) {
-            require(kings[side] == 1, "Each side must have exactly one king");
+            if (requireKings) require(kings[side] == 1, "Each side must have exactly one king");
+            else require(kings[side] <= 1, "Only one king of each color may be placed");
             require(!classic || (pawns[side] <= 8 && pieces[side] <= 16), "Too many pieces or pawns for one side");
             int promotions = Math.max(0, counts[side][0] - 1) + Math.max(0, counts[side][1] - 2)
                     + Math.max(0, counts[side][2] - 2) + Math.max(0, counts[side][3] - 1) + Math.max(0, counts[side][4] - 1);
             require(!classic || promotions <= 8 - pawns[side], "Extra pieces require missing pawns for promotion");
         }
-        require(Math.max(Math.abs(kingSquares[0].getRow() - kingSquares[1].getRow()),
+        require(kingSquares[0] == null || kingSquares[1] == null || Math.max(Math.abs(kingSquares[0].getRow() - kingSquares[1].getRow()),
                 Math.abs(kingSquares[0].getColumn() - kingSquares[1].getColumn())) > 1, "Kings cannot be adjacent");
     }
 

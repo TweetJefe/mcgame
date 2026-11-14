@@ -25,7 +25,7 @@ class MatchController(val session: GameSession) {
         val piece = selected?.let(s::pieceAt) ?: return emptyList()
         val own = HeroRegistry.fromRules(s.heroRules()).get(piece.hero()).abilities().map { AbilityChoice(it) }
         val copy = s.spells().borrowed()[piece.id()]?.let { listOf(AbilityChoice(it.ability(), true)) } ?: emptyList()
-        return own + copy
+        return if (copy.isEmpty()) own else own.filterNot { it.ability == game.heroes.ginseng.GinsengAbility.COPY_SPELL } + copy
     }
 
     fun clear() { selected = null; spell = null; target = null; promotion = null; highlights = emptySet() }

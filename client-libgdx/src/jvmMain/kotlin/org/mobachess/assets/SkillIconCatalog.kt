@@ -48,7 +48,7 @@ object SkillIconCatalog {
         HeroType.STRIX to slots("strix", "strix", StrixAbility.REWIND, StrixAbility.TIME_SKIP),
         HeroType.SUN_WUKONG to slots("wukong", "wukong", SunWukongAbility.SHAPESHIFT, SunWukongAbility.CLONE),
         HeroType.ZEUS to slots("zeus", "zeus", ZeusAbility.CHAIN_LIGHTNING, ZeusAbility.THUNDERSTORM),
-        HeroType.PUDGE to slots("pudge", "pudge", PudgeAbility.HOOK, PudgeAbility.SWALLOW),
+        HeroType.PUDGE to slots("ebisu", "ebisu", PudgeAbility.HOOK, PudgeAbility.SWALLOW),
         HeroType.LUMESHARD to slots("lumeshard", "lumeshard", LumeshardAbility.LASER, LumeshardAbility.TELEPORT),
         HeroType.LESHY to slots("leshy", "leshy", LeshyAbility.VINE, LeshyAbility.FOREST),
         HeroType.SHIVA to slots("shiva", "shiva", ShivaAbility.LOTUS, ShivaAbility.REBIRTH),
@@ -58,4 +58,5 @@ object SkillIconCatalog {
 
     val paths: List<String> = heroes.values.flatten().mapNotNull { it.iconPath }.distinct()
     fun slots(hero: HeroType): List<HudSkill> = heroes[hero].orEmpty()
+    fun iconFor(ability: Abilities): String? = heroes.values.flatten().firstOrNull { it.ability == ability }?.iconPath
 }

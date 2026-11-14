@@ -24,6 +24,11 @@ final class TurnFlowEngine {
     private TurnFlowEngine() {}
 
     static Transition end(ActionEngine.Context before, FigureColor side, HeroRules rules, List<GameEvent> history) {
+        return end(before, side, rules, history, true);
+    }
+
+    static Transition end(ActionEngine.Context before, FigureColor side, HeroRules rules, List<GameEvent> history,
+                          boolean requirePlayableTurn) {
         var finished = finish(before, side, rules, history, false);
         if (!finished.result().isSuccess()) return finished;
         for (int count = 0; count < 32; count++) {
@@ -37,7 +42,7 @@ final class TurnFlowEngine {
             context = context(context, beginning, context.turn(), context.ep());
             var ready = new Transition(Success.SUCCESS, context, finished.side(), beginning.history());
             if (!context.heroes().mechanics().skipsTurn(context.heroContext(), ready.side())
-                    || !ActionEngine.hasTurn(context, ready.side(), rules)) return ready;
+                    || requirePlayableTurn && !ActionEngine.hasTurn(context, ready.side(), rules)) return ready;
             finished = finish(context, ready.side(), rules, ready.history(), true);
             if (!finished.result().isSuccess()) return finished;
         }
@@ -83,7 +88,7 @@ final class TurnFlowEngine {
             board.put(square, before.field().createFigure(Empty.class, square, FigureColor.NONE));
         for (PieceState piece : session.pieces().values()) if (piece.position() != null)
             board.put(piece.position(), before.field().createFigure(piece.type(), piece.position(), piece.color()));
-        return new ActionEngine.Context(Field.fromMobaPosition(board), session.pieces(), before.rights(), ep,
+        return new ActionEngine.Context(before.field().rebuildMobaPosition(board), session.pieces(), before.rights(), ep,
                 turn, session.states(), before.heroes());
     }
     private static Transition rejected(MoveResult result, ActionEngine.Context context, FigureColor side, List<GameEvent> history) {

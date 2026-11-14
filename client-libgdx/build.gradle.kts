@@ -30,5 +30,6 @@ tasks.register<JavaExec>("run") {
     workingDir(rootProject.projectDir)
     providers.gradleProperty("capture").orNull?.let { systemProperty("mobachess.capture", it) }
     if (providers.gradleProperty("smoke").orNull == "true") systemProperty("mobachess.smoke", "true")
+    if (providers.gradleProperty("sandboxSmoke").orNull == "true") systemProperty("mobachess.sandboxSmoke", "true")
     if (providers.gradleProperty("flowSmoke").orNull == "true") systemProperty("mobachess.flowSmoke", "true")
 }

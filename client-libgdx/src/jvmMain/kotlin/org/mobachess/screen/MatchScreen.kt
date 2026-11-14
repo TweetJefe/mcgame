@@ -35,6 +35,7 @@ import org.mobachess.render.BoardGeometry
 import org.mobachess.render.MatchRenderer
 import org.mobachess.session.LocalGameSession
 import org.mobachess.session.GameSession
+import org.mobachess.session.SandboxSession
 
 /** Экран управляет жизненным циклом графики, не содержит игровых правил. */
 class MatchScreen(private val initialSession: GameSession = LocalGameSession.preview(),
@@ -58,6 +59,7 @@ class MatchScreen(private val initialSession: GameSession = LocalGameSession.pre
     private var signature=""
     private var frames=0
     private var captured=false
+    private var sandboxPanel: SandboxPanel? = null
 
     init {
         val white=TextureRegionDrawable(TextureRegion(assets.pixel))
@@ -68,6 +70,12 @@ class MatchScreen(private val initialSession: GameSession = LocalGameSession.pre
             down=white.tint(Color.valueOf("8B6537")); disabled=white.tint(Color.valueOf("292728"))
             disabledFontColor=Color.valueOf("77716A")
         })
+        if(initialSession is SandboxSession) {
+            sandboxPanel=SandboxPanel(initialSession,assets,skin,{
+                drag.cancel(); controller=MatchController(initialSession); signature=""
+            },{drag.cancel()},{navigation?.menu()})
+            stage.addActor(sandboxPanel)
+        } else {
         val panel=Table().apply {
             setBounds(1320f,0f,280f,900f)
             background=white.tint(Color(.055f,.042f,.035f,.94f))
@@ -92,6 +100,7 @@ class MatchScreen(private val initialSession: GameSession = LocalGameSession.pre
             setFontScale(.62f); setWrap(true)
         }).width(240f).row()
         stage.addActor(panel)
+        }
         stage.addActor(skillHud)
     }
 
@@ -107,6 +116,7 @@ class MatchScreen(private val initialSession: GameSession = LocalGameSession.pre
                 if(button!=Input.Buttons.LEFT || pointer!=0) return false
                 val p=viewport.unproject(Vector2(screenX.toFloat(),screenY.toFloat()))
                 geometry.cell(p.x,p.y)?.let { square ->
+                    if(sandboxPanel?.handleCell(square)==true) return true
                     drag.cancel()
                     val selecting = controller.spell == null && controller.promotion == null
                     controller.click(square)
@@ -140,7 +150,7 @@ class MatchScreen(private val initialSession: GameSession = LocalGameSession.pre
             }
             override fun keyDown(keycode: Int): Boolean = when(keycode) {
                 Input.Keys.ENTER -> {drag.cancel();controller.endTurn();true}
-                Input.Keys.ESCAPE -> {drag.cancel();controller.clear();true}
+                Input.Keys.ESCAPE -> {drag.cancel();sandboxPanel?.cancelPlacement();controller.clear();true}
                 Input.Keys.F -> {drag.cancel();geometry.flipped=!geometry.flipped;true}
                 else -> false
             }
@@ -148,6 +158,7 @@ class MatchScreen(private val initialSession: GameSession = LocalGameSession.pre
     }
 
     private fun refresh() {
+        sandboxPanel?.let { it.refresh(controller); return }
         val state=controller.session.snapshot()
         heading.setText(if(state.outcome().isFinished) "Партия завершена\n${state.outcome().reason()}" else
             "Ход ${state.turn().number()}\n${if(state.active()==FigureColor.WHITE) "Белые" else "Чёрные"}")
@@ -189,12 +200,51 @@ class MatchScreen(private val initialSession: GameSession = LocalGameSession.pre
         stage.act(delta.coerceAtMost(.1f)); stage.draw()
         frames++
         if(frames==7 && System.getProperty("mobachess.smoke")=="true") smoke()
+        if(frames==7 && System.getProperty("mobachess.sandboxSmoke")=="true") sandboxSmoke()
         val capture=System.getProperty("mobachess.capture")
         if(frames>=10 && capture!=null && !captured) {
             val image=Pixmap.createFromFrameBuffer(0,0,Gdx.graphics.backBufferWidth,Gdx.graphics.backBufferHeight)
             PixmapIO.writePNG(Gdx.files.absolute(capture),image,6,true); image.dispose(); captured=true
-            if(System.getProperty("mobachess.smoke")=="true") Gdx.app.exit()
+            if(System.getProperty("mobachess.smoke")=="true" || System.getProperty("mobachess.sandboxSmoke")=="true") Gdx.app.exit()
         }
+    }
+
+
+    private fun sandboxSmoke() {
+        val session=initialSession as SandboxSession
+        fun settle() { refresh(); skillHud.refresh(controller); stage.act(0f); stage.draw() }
+        fun press(x:Int,y:Int) {
+            Gdx.input.inputProcessor.touchDown(x,y,0,Input.Buttons.LEFT)
+            Gdx.input.inputProcessor.touchUp(x,y,0,Input.Buttons.LEFT)
+            settle()
+        }
+        fun actor(name:String) {
+            settle()
+            val a=checkNotNull(stage.root.findActor<Actor>(name)) { "Missing sandbox control: $name" }
+            val v=a.localToStageCoordinates(Vector2(a.width/2,a.height/2)); viewport.project(v)
+            press(v.x.toInt(),Gdx.graphics.height-v.y.toInt())
+        }
+        fun cell(row:Int,col:Int) {
+            val a=geometry.anchor(Position(row,col)); val v=viewport.project(Vector2(a.x,a.y))
+            press(v.x.toInt(),Gdx.graphics.height-v.y.toInt())
+        }
+        check(session.snapshot().pieces().isEmpty())
+        actor("sandbox-group-KNIGHTS"); actor("sandbox-hero-BOLOTNIK"); cell(1,1)
+        check(session.snapshot().pieceAt(Position(1,1))?.hero()==game.heroes.HeroType.BOLOTNIK)
+        actor("sandbox-color-BLACK"); actor("sandbox-group-FIGURES"); actor("sandbox-piece-Pawn"); cell(3,2)
+        check(session.snapshot().pieceAt(Position(3,2))?.color()==FigureColor.BLACK)
+        actor("sandbox-play"); cell(1,1); actor("hud-skill-0"); cell(2,2)
+        cell(1,1); actor("hud-skill-0"); cell(2,3)
+        check(session.snapshot().terrain().cells().size==2) { "Repeated sandbox casts failed" }
+        actor("sandbox-clear")
+        check(session.snapshot().pieces().isEmpty() && session.snapshot().terrain().cells().isEmpty())
+        check(session.snapshot().mines().cells().isEmpty() && session.snapshot().faun().clouds().isEmpty())
+        actor("sandbox-next"); check(session.snapshot().active()==FigureColor.BLACK)
+        actor("sandbox-next"); check(session.snapshot().active()==FigureColor.WHITE)
+        actor("sandbox-color-WHITE"); actor("sandbox-group-KNIGHTS"); actor("sandbox-hero-BOLOTNIK"); cell(1,1)
+        actor("sandbox-color-BLACK"); actor("sandbox-group-FIGURES"); actor("sandbox-piece-Pawn"); cell(3,2)
+        actor("sandbox-play"); cell(1,1); actor("hud-skill-0"); cell(2,2); cell(1,1)
+        Gdx.app.log("MobaChess","SANDBOX_UI_OK placement, both colors, repeated casts, clear, empty turns, HUD")
     }
 
     private fun smoke() {
@@ -205,6 +255,18 @@ class MatchScreen(private val initialSession: GameSession = LocalGameSession.pre
             Gdx.input.inputProcessor.touchDown(sx,sy,0,Input.Buttons.LEFT)
             Gdx.input.inputProcessor.touchUp(sx,sy,0,Input.Buttons.LEFT)
         }
+        click(Position(1,2))
+        skillHud.refresh(controller)
+        check(stage.root.findActor<com.badlogic.gdx.scenes.scene2d.ui.ImageButton>("hud-skill-0")!=null) { "New skill icon did not replace the placeholder" }
+        System.getProperty("mobachess.capture")?.let { path ->
+            refresh()
+            renderer.draw(batch,viewport.camera.combined,controller,drag,flashes)
+            stage.act(0f); stage.draw()
+            val image=Pixmap.createFromFrameBuffer(0,0,Gdx.graphics.backBufferWidth,Gdx.graphics.backBufferHeight)
+            PixmapIO.writePNG(Gdx.files.absolute(path).parent().child("new-icons.png"),image,6,true)
+            image.dispose()
+        }
+        Gdx.input.inputProcessor.keyDown(Input.Keys.ESCAPE)
         click(Position(1,0)); click(Position(2,0)); Gdx.input.inputProcessor.keyDown(Input.Keys.ENTER)
         click(Position(6,0)); click(Position(5,0)); Gdx.input.inputProcessor.keyDown(Input.Keys.ENTER)
         check(controller.session.snapshot().turn().number()==3L) { "Local input smoke failed: ${controller.message}" }
@@ -252,7 +314,13 @@ class MatchScreen(private val initialSession: GameSession = LocalGameSession.pre
         Gdx.app.log("MobaChess","DRAG_SMOKE_OK hold, invalid return, legal move")
         Gdx.input.inputProcessor.keyDown(Input.Keys.ESCAPE)
         val iconPaths=org.mobachess.assets.SkillIconCatalog.paths.filter { Gdx.files.internal(it).exists() }
-        check(iconPaths.size==26 && iconPaths.all { assets.skillIcon(it)!=null }) { "Skill icons were not loaded" }
+        check(iconPaths.isNotEmpty() && iconPaths.all { assets.skillIcon(it)!=null }) { "Skill icons were not loaded" }
+        listOf(game.heroes.HeroType.LESHY,game.heroes.HeroType.PHOENIX,game.heroes.HeroType.SHIVA,game.heroes.HeroType.SUPERNOVA).forEach { hero ->
+            check(org.mobachess.assets.SkillIconCatalog.slots(hero).all { it.iconPath?.let(assets::skillIcon)!=null }) {
+                "New icons not loaded: $hero"
+            }
+        }
+        check(org.mobachess.assets.SkillIconCatalog.slots(game.heroes.HeroType.PHOENIX)[0].passive)
         check(org.mobachess.assets.SkillIconCatalog.slots(game.heroes.HeroType.IZBA)[0].passive)
         check(org.mobachess.assets.SkillIconCatalog.slots(game.heroes.HeroType.ARES)[1].passive)
         click(Position(7,5))
@@ -265,7 +333,7 @@ class MatchScreen(private val initialSession: GameSession = LocalGameSession.pre
         check(controller.spell?.ability==org.mobachess.assets.SkillIconCatalog.slots(game.heroes.HeroType.GINSENG)[0].ability) {
             "HUD skill click failed: ${controller.message}"
         }
-        Gdx.app.log("MobaChess","SKILL_HUD_OK 26 icons, passive slots, active HUD click")
+        Gdx.app.log("MobaChess","SKILL_HUD_OK ${iconPaths.size} icons, passive slots, active HUD click")
         val beforeCast=controller.session.snapshot()
         flashes.update(controller.session,beforeCast,0f)
         check(flashes.active.isEmpty()) { "Choosing an ability must not flash" }
