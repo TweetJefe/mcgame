@@ -177,20 +177,20 @@ public class StrixHeroTest {
         assertEquals(6,game.getEconomy().blackHalves());restored(game);
     }
     @Test public void ginsengCopiesTheUltimateWithoutAdditionalCharge()throws Exception{
-        var board=board();GinsengFixtures.put(board,Bishop.class,WHITE,"e2");
+        var board=board();GinsengFixtures.put(board,Bishop.class,BLACK,"e2");
         Game game=charge(charge(create(board,Map.of(pos("e2"),HeroType.GINSENG)),"c2",2),"e2",2);
-        skip(game,"c2");play(game,"b1","a3");
-        ok(game.useAbility(game.getCurrentPlayer(),pos("e2"),pos("c2"),GinsengAbility.COPY_SPELL));play(game,"a3","b1");play(game,"g8","f6");
+        skip(game,"c2");play(game,"b1","a3");play(game,"a3","b1");
+        ok(game.useAbility(game.getCurrentPlayer(),pos("e2"),pos("c2"),GinsengAbility.COPY_SPELL));play(game,"g8","f6");play(game,"b1","a3");
         ok(game.useAbility(game.getCurrentPlayer(),new AbilityRequest(pos("e2"),StrixAbility.TIME_SKIP,null,null,true)));
-        play(game,"b1","a3");assertEquals(WHITE,game.getCurrentPlayer().color());
+        play(game,"f6","g8");assertEquals(BLACK,game.getCurrentPlayer().color());
         assertEquals(HeroType.GINSENG,game.getPieceState(pos("e2")).hero());assertEquals(0,game.getPieceState(pos("e2")).ultimateCharge());restored(game);
     }
     @Test public void ginsengCopiesRewindAndPreservesBothHeroesResources()throws Exception{
-        var board=board();GinsengFixtures.put(board,Bishop.class,WHITE,"e2");
+        var board=board();GinsengFixtures.put(board,Bishop.class,BLACK,"e2");
         Game game=charge(create(board,Map.of(pos("e2"),HeroType.GINSENG)),"e2",2);
         play(game,"c2","c3");play(game,"g8","f6");play(game,"c3","c4");play(game,"f6","g8");
-        rewind(game,"c4","c4");play(game,"b1","a3");play(game,"g8","f6");
-        ok(game.useAbility(game.getCurrentPlayer(),pos("e2"),pos("c2"),GinsengAbility.COPY_SPELL));play(game,"a3","b1");play(game,"f6","g8");
+        rewind(game,"c4","c4");play(game,"b1","a3");
+        ok(game.useAbility(game.getCurrentPlayer(),pos("e2"),pos("c2"),GinsengAbility.COPY_SPELL));play(game,"g8","f6");play(game,"a3","b1");
         int cooldown=game.getPieceState(pos("c2")).cooldown();
         ok(game.useAbility(game.getCurrentPlayer(),new AbilityRequest(pos("e2"),StrixAbility.REWIND,pos("c2"),null,true)));
         assertEquals(HeroType.STRIX,game.getPieceState(pos("c4")).hero());assertEquals(cooldown,game.getPieceState(pos("c4")).cooldown());

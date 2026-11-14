@@ -167,11 +167,20 @@ public class SupernovaHeroTest {
                 nova.getSnapshot().mechanics().with(PhoenixMechanic.KEY, PhoenixMechanic.KEY.initial())), () -> 0L));
     }
 
+    private static Game enemyNova() {
+        var b = board();
+        GinsengFixtures.put(b, Knight.class, BLACK, "b1");
+        Game game = charge(create(b, Map.of(pos("c2"), HeroType.GINSENG)), "b1", 2);
+        play(game, "h2", "h3"); rebirth(game, "b1"); play(game, "g8", "f6");
+        play(game, "h3", "h4"); play(game, "f6", "g8");
+        play(game, "h4", "h5"); play(game, "g8", "f6");
+        return game;
+    }
     @Test public void ginsengCopiesPullWithItsOwnIdentityAndWithoutCooldownCost() throws Exception {
-        Game game = charge(hatch(create(board(), Map.of(pos("c2"), HeroType.GINSENG))), "c2", 2);
+        Game game = charge(enemyNova(), "c2", 2);
         long ginseng = game.getPieceState(pos("c2")).id(), nova = game.getPieceState(pos("b1")).id();
-        cast(game, "b1", "c3", SupernovaAbility.PULL);
-        play(game, "h5", "h6"); play(game, "h8", "g8");
+        play(game, "h5", "h6");
+        cast(game, "b1", "c3", SupernovaAbility.PULL); play(game, "h8", "g8");
         ok(game.useAbility(game.getCurrentPlayer(), game.getPieceState(ginseng).position(),
                 game.getPieceState(nova).position(), GinsengAbility.COPY_SPELL));
         play(game, "h6", "h7"); play(game, "g8", "h8");
@@ -185,11 +194,11 @@ public class SupernovaHeroTest {
         assertFalse(game.getSpells().borrowed().containsKey(ginseng)); restored(game);
     }
     @Test public void ginsengCopiesShuffleWithoutAnotherCaptureCharge() throws Exception {
-        Game game = seeded(charge(charge(hatch(create(board(), Map.of(pos("c2"), HeroType.GINSENG))),
+        Game game = seeded(charge(charge(enemyNova(),
                 "c2", 2), "b1", 1), 123L);
         long ginseng = game.getPieceState(pos("c2")).id(), nova = game.getPieceState(pos("b1")).id();
-        cast(game, "b1", "b1", SupernovaAbility.SHUFFLE);
-        play(game, "h5", "h6"); play(game, "f6", "g8");
+        play(game, "h5", "h6");
+        cast(game, "b1", "b1", SupernovaAbility.SHUFFLE); play(game, "f6", "g8");
         ok(game.useAbility(game.getCurrentPlayer(), game.getPieceState(ginseng).position(),
                 game.getPieceState(nova).position(), GinsengAbility.COPY_SPELL));
         play(game, "h6", "h7"); play(game, "g8", "f6");

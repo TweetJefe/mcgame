@@ -98,15 +98,15 @@ public class FaunTest {
         assertFalse(HeroCatalog.heroes().contains(HeroType.BABA_YAGA));assertEquals(6,HeroCatalog.heroes(3).size());
     }
     @Test public void ginsengCanCopyCloudAndSilenceAlsoBlocksItsCopiedChannel()throws Exception {
-        var b=board();put(b,Knight.class,WHITE,"e2");Game g=GinsengFixtures.charged(GinsengFixtures.create(b,Map.of(pos("e2"),HeroType.FAUN)),"c2");
-        cast(g,"e2","h4",FaunAbility.CLOUD);cycle(g);cast(g,"c2","e2",GinsengAbility.COPY_SPELL);cycle(g);
+        var b=board();put(b,Knight.class,BLACK,"e2");Game g=GinsengFixtures.charged(GinsengFixtures.create(b,Map.of(pos("e2"),HeroType.FAUN)),"c2");
+        move(g,"b1","a3");end(g);cast(g,"e2","h4",FaunAbility.CLOUD);move(g,"g8","f6");end(g);cast(g,"c2","e2",GinsengAbility.COPY_SPELL);cycle(g);
         assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),new AbilityRequest(pos("c2"),FaunAbility.CLOUD,pos("c2"),null,true)));
         assertFalse(g.getFaun().clouds().isEmpty());assertTrue(g.getSpells().borrowed().isEmpty());assertEquals(0,g.getPieceState(pos("c2")).cooldown());cycle(g);
         assertEquals(StatusRejection.SILENCED,g.getAbilityAvailability(pos("c2"),GinsengAbility.DISPLACE));assertEquals(StatusRejection.SILENCED,g.getAbilityAvailability(pos("c2"),FaunAbility.CLOUD,true));roundtrip(g);
     }
     @Test public void ginsengInvisibilityRetainsBishopAndRevealsOnNativeDisplacement()throws Exception {
-        var b=board();put(b,Knight.class,WHITE,"e2");Game g=GinsengFixtures.charged(GinsengFixtures.create(b,Map.of(pos("e2"),HeroType.FAUN)),"c2","e2");
-        cast(g,"e2",null,FaunAbility.INVISIBILITY);cycle(g);cast(g,"c2","e2",GinsengAbility.COPY_SPELL);cycle(g);
+        var b=board();put(b,Pawn.class,WHITE,"f4");put(b,Knight.class,BLACK,"e2");Game g=GinsengFixtures.charged(GinsengFixtures.create(b,Map.of(pos("e2"),HeroType.FAUN)),"c2","e2");
+        move(g,"b1","a3");end(g);cast(g,"e2",null,FaunAbility.INVISIBILITY);move(g,"e2","f4");end(g);cast(g,"c2","f4",GinsengAbility.COPY_SPELL);cycle(g);
         assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),new AbilityRequest(pos("c2"),FaunAbility.INVISIBILITY,null,null,true)));long id=g.getPieceState(pos("c2")).id();assertTrue(g.getFaun().invisible().containsKey(id));assertEquals(Bishop.class,g.getPieceState(pos("c2")).type());roundtrip(g);
         cycle(g);assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),new AbilityRequest(pos("c2"),GinsengAbility.DISPLACE,pos("a3"),pos("b3"),false)));assertFalse(g.getFaun().invisible().containsKey(id));roundtrip(g);
     }

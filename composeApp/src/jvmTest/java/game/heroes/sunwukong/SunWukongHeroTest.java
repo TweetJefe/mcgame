@@ -253,11 +253,13 @@ public class SunWukongHeroTest {
     @Test public void bothCopiedAbilitiesKeepGinsengIdentityAndOwnResources() throws Exception {
         for (boolean ultimate : List.of(false, true)) {
             var board = board();
+            GinsengFixtures.put(board, Pawn.class, BLACK, "c2");
+            GinsengFixtures.put(board, Pawn.class, BLACK, "g2");
+            GinsengFixtures.empty(board, "a1"); GinsengFixtures.put(board, King.class, WHITE, "a8");
             GinsengFixtures.put(board, Bishop.class, WHITE, "e2");
             Game game = create(board, Map.of(pos("c2"), HeroType.SUN_WUKONG, pos("e2"), HeroType.GINSENG), RULES);
             game = charge(charge(game, "c2", 1), "e2", 2);
-            if (ultimate) clone(game, "c2", "g2"); else shift(game, "c2");
-            nextWhite(game);
+            enemyCast(game,"c2",ultimate ? SunWukongAbility.CLONE : SunWukongAbility.SHAPESHIFT,ultimate ? "g2" : null);
             ok(game.useAbility(game.getCurrentPlayer(), pos("e2"), pos("c2"), GinsengAbility.COPY_SPELL));
             play(game, "a3", "b1"); play(game, "f6", "g8");
             var actor = game.getPieceState(pos("e2"));
@@ -420,10 +422,19 @@ public class SunWukongHeroTest {
         restored(game);
     }
 
+    private static void enemyCast(Game game, String source, game.heroes.Abilities ability, String target) {
+        boolean white = game.getPieceState(pos("b1")) != null;
+        play(game, white ? "b1" : "a3", white ? "a3" : "b1");
+        ok(game.useAbility(game.getCurrentPlayer(), pos(source), target == null ? null : pos(target), ability));
+        boolean black = game.getPieceState(pos("g8")) != null;
+        play(game, black ? "g8" : "f6", black ? "f6" : "g8");
+    }
     private static Game withCopySource(HeroType sourceHero, Class<? extends Figure> sourceBody, HeroRules rules) {
         var board = board();
         GinsengFixtures.put(board, Bishop.class, WHITE, "e2");
-        GinsengFixtures.put(board, sourceBody, WHITE, "f2");
+        GinsengFixtures.put(board, sourceBody, BLACK, "f2");
+        GinsengFixtures.put(board, Pawn.class, BLACK, "c2");
+        GinsengFixtures.empty(board, "a1"); GinsengFixtures.put(board, King.class, WHITE, "a8");
         Game game = create(board, Map.of(pos("c2"), HeroType.SUN_WUKONG,
                 pos("e2"), HeroType.GINSENG, pos("f2"), sourceHero), rules);
         return charge(game, "e2", 2);
@@ -436,15 +447,13 @@ public class SunWukongHeroTest {
 
     @Test public void evolvedGinsengReturnsToKnightAfterBorrowedTemporaryFormAndLoading() throws Exception {
         Game game = charge(withCopySource(HeroType.CHRONOMLIN, Pawn.class, RULES), "f2", 1);
-        ok(game.useAbility(game.getCurrentPlayer(), pos("f2"), null, ChronomlinAbility.EVOLVE));
-        nextWhite(game);
+        enemyCast(game,"f2",ChronomlinAbility.EVOLVE,null);
         ok(game.useAbility(game.getCurrentPlayer(), pos("e2"), pos("f2"), GinsengAbility.COPY_SPELL));
         play(game, "a3", "b1"); play(game, "f6", "g8");
         borrowed(game, ChronomlinAbility.EVOLVE, null);
         assertEquals(Knight.class, game.getPieceState(pos("e2")).type());
         nextWhite(game);
-        shift(game, "c2");
-        play(game, "a3", "b1"); play(game, "f6", "g8");
+        enemyCast(game,"c2",SunWukongAbility.SHAPESHIFT,null);
         game = charge(game, "e2", 2);
         ok(game.useAbility(game.getCurrentPlayer(), pos("e2"), pos("c2"), GinsengAbility.COPY_SPELL));
         nextWhite(game);
@@ -478,10 +487,8 @@ public class SunWukongHeroTest {
         var rules = RULES.with(SunWukongDefinition.INSTANCE, new SunWukongRules(4, 2, 1));
         Game game = charge(withCopySource(HeroType.CHRONOMLIN, Pawn.class, rules), "f2", 1);
         game = seed(game, seedForSecond(WukongState.Body.KNIGHT));
-        ok(game.useAbility(game.getCurrentPlayer(), pos("f2"), null, ChronomlinAbility.EVOLVE));
-        nextWhite(game);
-        shift(game, "c2");
-        play(game, "a3", "b1"); play(game, "f6", "g8");
+        enemyCast(game,"f2",ChronomlinAbility.EVOLVE,null);
+        enemyCast(game,"c2",SunWukongAbility.SHAPESHIFT,null);
         ok(game.useAbility(game.getCurrentPlayer(), pos("e2"), pos("c2"), GinsengAbility.COPY_SPELL));
         nextWhite(game);
         borrowed(game, SunWukongAbility.SHAPESHIFT, null);
@@ -502,15 +509,14 @@ public class SunWukongHeroTest {
         var rules = RULES.with(SunWukongDefinition.INSTANCE, new SunWukongRules(4, 3, 1));
         Game game = charge(withCopySource(HeroType.CLOWNGANGER, Knight.class, rules), "f2", 1);
         game = seed(game, seedForSecond(WukongState.Body.ROOK));
-        shift(game, "c2"); nextWhite(game);
+        enemyCast(game,"c2",SunWukongAbility.SHAPESHIFT,null);
         ok(game.useAbility(game.getCurrentPlayer(), pos("e2"), pos("c2"), GinsengAbility.COPY_SPELL));
         play(game, "a3", "b1"); play(game, "f6", "g8");
         borrowed(game, SunWukongAbility.SHAPESHIFT, null);
         assertEquals(Rook.class, game.getPieceState(pos("e2")).type());
         long source = game.getPieceState(pos("e2")).id();
         nextWhite(game);
-        ok(game.useAbility(game.getCurrentPlayer(), pos("f2"), pos("f3"), ClowngangerAbility.ILLUSION));
-        play(game, "a3", "b1"); play(game, "f6", "g8");
+        enemyCast(game,"f2",ClowngangerAbility.ILLUSION,"f3");
         game = charge(game, "e2", 2);
         Position original = game.getSnapshot().pieces().values().stream()
                 .filter(p -> p.hero() == HeroType.CLOWNGANGER).findFirst().orElseThrow().position();

@@ -140,7 +140,7 @@ public class CopyContractTest {
     }
     private static Game game() {
         var board = GinsengFixtures.board();
-        GinsengFixtures.put(board, Rook.class, WHITE, "e2");
+        GinsengFixtures.put(board, Rook.class, model.FigureColor.BLACK, "e2");
         GinsengFixtures.put(board, Rook.class, model.FigureColor.BLACK, "c8");
         return Game.fromMobaPosition(new GamePosition(board, WHITE, CastlingRights.none(), null, 0),
                 Map.of(pos("c2"), HeroType.GINSENG, pos("e2"), HeroType.PUDGE), configuration(), () -> 0L);
@@ -173,8 +173,9 @@ public class CopyContractTest {
 
     @Test public void copiedMechanicSurvivesConsumptionAndLoadAndReactsWithoutTheSourceHero() throws Exception {
         Game game = resources(game(), "c2", 0, 2);
+        play(game, "b1", "a3");
         assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("e2"), null, Spell.CAST));
-        cycle(game);
+        play(game, "g8", "f6");
         assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("c2"), pos("e2"), GinsengAbility.COPY_SPELL));
         cycle(game);
         game = resources(game, "c2", 2, 0);
@@ -194,10 +195,11 @@ public class CopyContractTest {
     @Test public void newAbilitiesUseGameRulesAndRealCasterForCopiesIncludingAfterLoad() throws Exception {
         for (Spell spell : Spell.values()) {
             Game game = resources(resources(game(), "c2", 0, 2), "e2", 0, 3);
+            play(game, "b1", "a3");
             assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("e2"), null, spell));
             assertEquals(spell == Spell.CAST ? 5 : 0, game.getPieceState(pos("e2")).cooldown());
             assertEquals(spell == Spell.CAST ? 3 : 0, game.getPieceState(pos("e2")).ultimateCharge());
-            cycle(game);
+            play(game, "g8", "f6");
             assertEquals(Success.SUCCESS, game.useAbility(game.getCurrentPlayer(), pos("c2"), pos("e2"), GinsengAbility.COPY_SPELL));
             cycle(game);
             game = roundtrip(resources(game, "c2", 2, 0));

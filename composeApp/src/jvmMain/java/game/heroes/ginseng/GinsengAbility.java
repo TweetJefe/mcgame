@@ -8,7 +8,7 @@ import java.util.List;
 /** Stable IDs, labels and targeting for this hero's abilities. */
 public enum GinsengAbility implements Abilities {
     DISPLACE("DISPLACE", "Переместить фигуру", HeroTargeting.targetAndDestination(HeroTargeting.Permission.ILLUSION, HeroTargeting.Permission.SELF, HeroTargeting.Permission.POTTED)),
-    COPY_SPELL("COPY_SPELL", "Копировать последнее", HeroTargeting.square(HeroTargeting.Permission.ILLUSION, HeroTargeting.Permission.SELF));
+    COPY_SPELL("COPY_SPELL", "Копировать последнее", HeroTargeting.square(HeroTargeting.Permission.ILLUSION));
 
     private static final List<Abilities> ABILITIES = Abilities.getAbilities(values());
 

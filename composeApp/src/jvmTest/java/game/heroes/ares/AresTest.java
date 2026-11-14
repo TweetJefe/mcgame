@@ -108,8 +108,8 @@ public class AresTest {
         var b=board();put(b,Knight.class,WHITE,"e2");put(b,Bishop.class,BLACK,"g5");Game g=charge(create(b,Map.of(pos("e2"),HeroType.BOLOTNIK,pos("g5"),HeroType.ARES)),"g5",1);cast(g,"e2","f4",BolotnikAbility.MUD);move(g,"b1","a3");end(g);move(g,"g5","f4");assertNull(g.getPieceState(pos("f4")));assertTrue(g.getTerrain().cells().isEmpty());assertEquals(6,g.getEconomy().whiteHalves());assertEquals(6,g.getEconomy().blackHalves());roundtrip(g);
     }
     @Test public void ginsengCopiesOnlyTheSpearWithoutObtainingRevenge()throws Exception {
-        var b=board();put(b,Bishop.class,WHITE,"e2");put(b,Pawn.class,BLACK,"c3");put(b,Knight.class,BLACK,"c5");Game g=charge(GinsengFixtures.create(b,Map.of(pos("e2"),HeroType.ARES)),"c2",2);
-        cast(g,"e2","h2",AresAbility.SPEAR);cycle(g);cast(g,"c2","e2",GinsengAbility.COPY_SPELL);cycle(g);assertEquals(AresAbility.SPEAR,g.getSpells().borrowed().get(g.getPieceState(pos("c2")).id()).ability());
+        var b=board();put(b,Bishop.class,BLACK,"e2");put(b,Pawn.class,BLACK,"c3");put(b,Knight.class,BLACK,"c5");Game g=charge(GinsengFixtures.create(b,Map.of(pos("e2"),HeroType.ARES)),"c2",2);
+        move(g,"b1","a3");end(g);cast(g,"e2","h2",AresAbility.SPEAR);move(g,"g8","f6");end(g);cast(g,"c2","e2",GinsengAbility.COPY_SPELL);cycle(g);assertEquals(AresAbility.SPEAR,g.getSpells().borrowed().get(g.getPieceState(pos("c2")).id()).ability());
         assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),new AbilityRequest(pos("c2"),AresAbility.SPEAR,pos("c5"),null,true)));assertTrue(g.getPieceState(pos("c4")).isStunned());assertTrue(g.getPieceState(pos("c5")).isStunned());assertEquals(0,g.getPieceState(pos("c2")).cooldown());assertTrue(g.getSpells().borrowed().isEmpty());assertEquals(List.of(AresAbility.SPEAR),HeroRegistry.standard().get(HeroType.ARES).abilities());roundtrip(g);
     }
     @Test public void nativeSpearAndTheCopiedVersionAreBlockedByFaunsCloud()throws Exception {

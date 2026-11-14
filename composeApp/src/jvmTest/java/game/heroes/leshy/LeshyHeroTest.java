@@ -221,10 +221,10 @@ public class LeshyHeroTest {
         restored(game);
     }
     @Test public void ginsengCopiesVineWithoutCooldownAndKeepsTheLongEffectAfterConsumption() throws Exception {
-        var board = board(); GinsengFixtures.put(board, Bishop.class, WHITE,"f2");
+        var board = board(); GinsengFixtures.put(board, Pawn.class, BLACK, "c2"); GinsengFixtures.put(board, Bishop.class, WHITE,"f2");
         Game game = charge(create(board, Map.of(pos("f2"), HeroType.GINSENG)),"f2", 2);
-        vine(game,"c2");
         play(game,"h2","h3");
+        vine(game,"c2");
         play(game,"g8","f6");
         ok(game.useAbility(game.getCurrentPlayer(), pos("f2"), pos("c2"), GinsengAbility.COPY_SPELL));
         play(game,"h3","h4");
@@ -239,12 +239,12 @@ public class LeshyHeroTest {
         restored(game);
     }
     @Test public void ginsengCopiesForestWithoutAdditionalCaptureCharge() throws Exception {
-        var board = board(); GinsengFixtures.put(board, Bishop.class, WHITE,"f2");
+        var board = board(); GinsengFixtures.put(board, Pawn.class, BLACK, "c2"); GinsengFixtures.put(board, Bishop.class, WHITE,"f2");
         for (String cell:new String[]{"b2","g2"}) GinsengFixtures.put(board, Pawn.class, WHITE, cell);
         for (String cell:new String[]{"d2","e2"}) GinsengFixtures.put(board, Pawn.class, BLACK, cell);
         Game game = charge(charge(create(board, Map.of(pos("f2"), HeroType.GINSENG)),"f2", 2),"c2", 1);
-        forest(game,"c2");
         play(game,"h2","h3");
+        forest(game,"c2");
         play(game,"g8","f6");
         ok(game.useAbility(game.getCurrentPlayer(), pos("f2"), pos("c2"), GinsengAbility.COPY_SPELL));
         play(game,"h3","h4");

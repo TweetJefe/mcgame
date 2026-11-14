@@ -157,9 +157,9 @@ public class ShivaHeroTest {
         assertTrue(FaunView.hasHiddenEnemy(game.getSnapshot())); restored(game);
     }
     @Test public void ginsengCreatesLotusFromItselfWithoutNativeCooldownOrAnotherCharge() throws Exception {
-        var b=board(); GinsengFixtures.put(b,Bishop.class,WHITE,"d2");
+        var b=board(); GinsengFixtures.put(b,Rook.class,BLACK,"c2"); GinsengFixtures.put(b,Bishop.class,WHITE,"d2");
         Game game=charge(create(b,Map.of(pos("d2"),HeroType.GINSENG)),"d2",2);
-        lotus(game,"c2","c3"); play(game,"h2","h3"); play(game,"g8","f6");
+        play(game,"h2","h3"); lotus(game,"c2","c3"); play(game,"g8","f6");
         ok(game.useAbility(game.getCurrentPlayer(),pos("d2"),pos("c2"),GinsengAbility.COPY_SPELL));
         play(game,"h3","h4"); play(game,"f6","g8");
         ok(game.useAbility(game.getCurrentPlayer(),new AbilityRequest(pos("d2"),ShivaAbility.LOTUS,pos("e3"),null,true)));
@@ -325,7 +325,7 @@ public class ShivaHeroTest {
         assertEquals(HeroType.IZBA,game.getPieceState(id).hero()); assertEquals(0,game.getPieceState(id).ultimateCharge()); restored(game);
     }
     @Test public void ginsengCanCopyAndCastResurrectionFromItsOwnPosition() throws Exception {
-        var b=board(); GinsengFixtures.put(b,Bishop.class,WHITE,"d2");
+        var b=board(); GinsengFixtures.put(b,Bishop.class,BLACK,"d2");
         GinsengFixtures.put(b,Pawn.class,BLACK,"c3"); GinsengFixtures.put(b,Pawn.class,BLACK,"e3");
         GinsengFixtures.put(b,Pawn.class,WHITE,"d4"); GinsengFixtures.put(b,Rook.class,BLACK,"d5");
         Game game=charge(create(b,Map.of(pos("d2"),HeroType.GINSENG,pos("d4"),HeroType.BOUNTY_CROW)),"d2",2);
@@ -334,9 +334,9 @@ public class ShivaHeroTest {
         game=Game.fromSnapshot(s.withMechanics(s.mechanics().with(ShivaMechanic.KEY,new ShivaMechanic.State(seed,seed,Map.of()))),()->0L);
         play(game,"c2","c3"); play(game,"d5","d4"); play(game,"c3","e3"); play(game,"d4","d5");
         game=charge(game,"e3",2); revive(game,"e3");
-        play(game,"h2","h3"); play(game,"g8","f6");
+        play(game,"h2","h3");
         ok(game.useAbility(game.getCurrentPlayer(),pos("d2"),pos("e3"),GinsengAbility.COPY_SPELL));
-        play(game,"h3","h4"); play(game,"f6","g8");
+        play(game,"g8","f6"); play(game,"h3","h4");
         ok(game.useAbility(game.getCurrentPlayer(),new AbilityRequest(pos("d2"),ShivaAbility.REBIRTH,null,null,true)));
         assertEquals(3,newLives(game).size()); assertEquals(HeroType.GINSENG,game.getPieceState(pos("d2")).hero()); restored(game);
     }
@@ -379,11 +379,11 @@ public class ShivaHeroTest {
         var live=newLives(game).getFirst(); assertEquals(HeroType.CHRONOMLIN,live.hero()); assertEquals(Bishop.class,live.type()); restored(game);
     }
     @Test public void ginsengEggReturnsAsGinsengAndANewEggCanStillHatchIntoSupernova() throws Exception {
-        var b=board(); GinsengFixtures.put(b,Bishop.class,WHITE,"d3"); GinsengFixtures.put(b,Rook.class,BLACK,"d4");
+        var b=board(); GinsengFixtures.put(b,Knight.class,BLACK,"b1"); GinsengFixtures.put(b,Knight.class,WHITE,"g1"); GinsengFixtures.put(b,Bishop.class,WHITE,"d3"); GinsengFixtures.put(b,Rook.class,BLACK,"d4");
         GinsengFixtures.put(b,Pawn.class,BLACK,"g7");
         Game game=charge(charge(create(b,Map.of(pos("d3"),HeroType.GINSENG,pos("b1"),HeroType.PHOENIX)),"b1",2),"d3",2);
-        ok(game.useAbility(game.getCurrentPlayer(),pos("b1"),null,PhoenixAbility.REBIRTH));
-        play(game,"h2","h3"); play(game,"g8","f6");
+        play(game,"h2","h3");
+        ok(game.useAbility(game.getCurrentPlayer(),pos("b1"),null,PhoenixAbility.REBIRTH)); play(game,"g8","f6");
         ok(game.useAbility(game.getCurrentPlayer(),pos("d3"),pos("b1"),GinsengAbility.COPY_SPELL));
         play(game,"h3","h4"); play(game,"f6","g8");
         ok(game.useAbility(game.getCurrentPlayer(),new AbilityRequest(pos("d3"),PhoenixAbility.REBIRTH,null,null,true)));
@@ -396,8 +396,8 @@ public class ShivaHeroTest {
         ok(game.useAbility(game.getCurrentPlayer(),pos(square),pos("b1"),GinsengAbility.COPY_SPELL));
         play(game,"h6","h7"); play(game,"f6","g8");
         ok(game.useAbility(game.getCurrentPlayer(),new AbilityRequest(pos(square),PhoenixAbility.REBIRTH,null,null,true)));
-        play(game,"b1","a3"); play(game,"g8","f6"); restored(game);
-        play(game,"a3","b1"); play(game,"f6","g8"); play(game,"b1","a3");
+        play(game,"g1","h3"); play(game,"g8","f6"); restored(game);
+        play(game,"h3","g1"); play(game,"f6","g8"); play(game,"g1","h3");
         assertEquals(HeroType.SUPERNOVA,game.getPieceState(id).hero()); restored(game);
     }
 }

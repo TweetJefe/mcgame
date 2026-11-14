@@ -177,9 +177,10 @@ public class PhoenixHeroTest {
         assertEquals(6, game.getEconomy().blackHalves()); restored(game);
     }
     @Test public void ginsengUsingCopiedRebirthBecomesTheRealSupernova() throws Exception {
-        Game game = charge(charge(create(board(), Map.of(pos("c2"), HeroType.GINSENG)), "b1", 2), "c2", 2);
+        var b = board(); GinsengFixtures.put(b, Knight.class, BLACK, "b1");
+        Game game = charge(charge(create(b, Map.of(pos("c2"), HeroType.GINSENG)), "b1", 2), "c2", 2);
         long id = game.getPieceState(pos("c2")).id();
-        rebirth(game, "b1"); play(game, "h2", "h3"); play(game, "g8", "f6");
+        play(game, "h2", "h3"); rebirth(game, "b1"); play(game, "g8", "f6");
         ok(game.useAbility(game.getCurrentPlayer(), pos("c2"), pos("b1"), GinsengAbility.COPY_SPELL));
         play(game, "h3", "h4"); play(game, "f6", "g8");
         ok(game.useAbility(game.getCurrentPlayer(), new AbilityRequest(pos("c2"), PhoenixAbility.REBIRTH, null, null, true)));
@@ -240,14 +241,13 @@ public class PhoenixHeroTest {
 
     @Test public void ginsengHatchingKeepsTheOriginalDraftAndStartingColorValidation() throws Exception {
         var draft = new Draft(new DraftRules(0, 2));
-        assertEquals(DraftActionResult.SUCCESS, draft.pick(WHITE, HeroType.PHOENIX, pos("b1")));
-        draft.finishPicks(BLACK);
         assertEquals(DraftActionResult.SUCCESS, draft.pick(WHITE, HeroType.GINSENG, pos("f1")));
-        draft.finishPicks(WHITE);
+        assertEquals(DraftActionResult.SUCCESS, draft.pick(BLACK, HeroType.PHOENIX, pos("b8")));
+        draft.finishPicks(WHITE); draft.finishPicks(BLACK);
         Game game = charge(charge(Game.mobaFromDraft(draft.getSnapshot(), HeroRules.defaults(), 600, () -> 0L),
-                "b1", 2), "f1", 2);
-        rebirth(game, "b1"); play(game, "h2", "h3"); play(game, "g8", "f6");
-        ok(game.useAbility(game.getCurrentPlayer(), pos("f1"), pos("b1"), GinsengAbility.COPY_SPELL));
+                "b8", 2), "f1", 2);
+        play(game, "h2", "h3"); rebirth(game, "b8"); play(game, "g8", "f6");
+        ok(game.useAbility(game.getCurrentPlayer(), pos("f1"), pos("b8"), GinsengAbility.COPY_SPELL));
         play(game, "h3", "h4"); play(game, "f6", "g8");
         ok(game.useAbility(game.getCurrentPlayer(), new AbilityRequest(pos("f1"), PhoenixAbility.REBIRTH, null, null, true)));
         play(game, "h4", "h5"); play(game, "g8", "f6");
@@ -276,20 +276,21 @@ public class PhoenixHeroTest {
     }
     @Test public void olderTemporaryFormCannotOverwriteEggOrHatchedSupernova() throws Exception {
         var board = board();
-        GinsengFixtures.put(board, Pawn.class, WHITE, "f2");
+        GinsengFixtures.put(board, Knight.class, BLACK, "b1");
+        GinsengFixtures.put(board, Pawn.class, BLACK, "f2");
         GinsengFixtures.put(board, Pawn.class, WHITE, "a2");
         var rules = HeroRules.defaults().with(SunWukongDefinition.INSTANCE, new SunWukongRules(4, 6, 1));
         Game game = Game.fromMobaPosition(new GamePosition(board, WHITE, CastlingRights.none(), null, 0),
                 Map.of(pos("b1"), HeroType.PHOENIX, pos("c2"), HeroType.GINSENG, pos("f2"), HeroType.SUN_WUKONG), rules, () -> 0L);
         game = charge(charge(game, "b1", 2), "c2", 2);
         long ginseng = game.getPieceState(pos("c2")).id();
-        ok(game.useAbility(game.getCurrentPlayer(), pos("f2"), null, SunWukongAbility.SHAPESHIFT));
-        play(game, "h2", "h3"); play(game, "g8", "f6");
+        play(game, "h2", "h3");
+        ok(game.useAbility(game.getCurrentPlayer(), pos("f2"), null, SunWukongAbility.SHAPESHIFT)); play(game, "g8", "f6");
         ok(game.useAbility(game.getCurrentPlayer(), pos("c2"), pos("f2"), GinsengAbility.COPY_SPELL));
         play(game, "h3", "h4"); play(game, "f6", "g8");
         ok(game.useAbility(game.getCurrentPlayer(), new AbilityRequest(pos("c2"), SunWukongAbility.SHAPESHIFT, null, null, true)));
         play(game, "h4", "h5"); play(game, "g8", "f6");
-        rebirth(game, "b1"); play(game, "h5", "h6"); play(game, "f6", "g8");
+        play(game, "h5", "h6"); rebirth(game, "b1"); play(game, "f6", "g8");
         game = charge(game, "c2", 2);
         ok(game.useAbility(game.getCurrentPlayer(), pos("c2"), pos("b1"), GinsengAbility.COPY_SPELL));
         play(game, "h6", "h7"); play(game, "g8", "f6");

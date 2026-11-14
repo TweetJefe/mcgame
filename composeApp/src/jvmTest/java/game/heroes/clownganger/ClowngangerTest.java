@@ -78,7 +78,7 @@ public class ClowngangerTest {
         var b=board();put(b,Knight.class,WHITE,"c2");put(b,Bishop.class,BLACK,"f7");Game g=AresTest.charge(AresTest.charge(createClown(b,Map.of(pos("f7"),HeroType.GINSENG)),"c2",1),"f7",2);cast(g,"c2","d2",ClowngangerAbility.ILLUSION);move(g,"b1","a3");end(g);cast(g,"f7","d2",GinsengAbility.COPY_SPELL);assertEquals(0,g.getPieceState(pos("f7")).ultimateCharge());assertTrue(g.getTurnState().abilityUsed());assertTrue(g.getSpells().borrowed().isEmpty());AresTest.roundtrip(g);
     }
     @Test public void ginsengCopiesAndCastsBoxWithNoExtraCooldown()throws Exception{
-        var b=board();put(b,Knight.class,WHITE,"e2");Game g=AresTest.charge(game.heroes.ginseng.GinsengFixtures.create(b,Map.of(pos("e2"),HeroType.CLOWNGANGER)),"c2",2);cast(g,"e2","b1",ClowngangerAbility.BOX);move(g,"c2","d3");end(g);move(g,"g8","f6");end(g);cast(g,"d3","e2",GinsengAbility.COPY_SPELL);move(g,"d3","c2");end(g);move(g,"f6","g8");end(g);
+        var b=board();put(b,Pawn.class,BLACK,"f2");put(b,Knight.class,BLACK,"e2");Game g=AresTest.charge(game.heroes.ginseng.GinsengFixtures.create(b,Map.of(pos("e2"),HeroType.CLOWNGANGER)),"c2",2);move(g,"c2","d3");end(g);cast(g,"e2","f2",ClowngangerAbility.BOX);move(g,"g8","f6");end(g);cast(g,"d3","e2",GinsengAbility.COPY_SPELL);move(g,"d3","c2");end(g);move(g,"f6","g8");end(g);
         assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),new AbilityRequest(pos("c2"),ClowngangerAbility.BOX,pos("a1"),null,true)));assertTrue(g.getPieceState(pos("a1")).isBoxed());assertEquals(0,g.getPieceState(pos("c2")).cooldown());AresTest.roundtrip(g);
     }
     @Test public void ninthDraftHeroUsesEitherKnightHomeAndSandboxHasIt()throws Exception{
@@ -87,8 +87,8 @@ public class ClowngangerTest {
     }
 
     @Test public void copiedIllusionBelongsToGinsengAndMovesAsItsBishop()throws Exception{
-        var b=board();put(b,Knight.class,WHITE,"e2");Game g=AresTest.charge(AresTest.charge(game.heroes.ginseng.GinsengFixtures.create(b,Map.of(pos("e2"),HeroType.CLOWNGANGER)),"e2",1),"c2",2);
-        cast(g,"e2","f2",ClowngangerAbility.ILLUSION);move(g,"b1","a3");end(g);move(g,"g8","f6");end(g);
+        var b=board();put(b,Knight.class,BLACK,"e2");Game g=AresTest.charge(AresTest.charge(game.heroes.ginseng.GinsengFixtures.create(b,Map.of(pos("e2"),HeroType.CLOWNGANGER)),"e2",1),"c2",2);
+        move(g,"b1","a3");end(g);cast(g,"e2","f2",ClowngangerAbility.ILLUSION);move(g,"g8","f6");end(g);
         var original=g.getSnapshot().pieces().values().stream().filter(p->p.hero()==HeroType.CLOWNGANGER).findFirst().orElseThrow();
         assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos("c2"),original.position(),GinsengAbility.COPY_SPELL));move(g,"a3","b1");end(g);move(g,"f6","g8");end(g);
         assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),new AbilityRequest(pos("c2"),ClowngangerAbility.ILLUSION,pos("d2"),null,true)));

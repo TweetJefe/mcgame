@@ -58,7 +58,8 @@ public final class GinsengHero extends AbstractHero {
     }
 
     HeroEffect copyAvailable(PieceState actor, PieceState source, Abilities last) {
-        if (source == null || source.hero() == HeroType.NONE || source.type() == King.class)
+        if (source == null || source.color() == actor.color()
+                || source.hero() == HeroType.NONE || source.type() == King.class)
             return HeroEffect.rejected(AbilityRejection.INVALID_ABILITY_TARGET);
         if (last == null && source.hero() != HeroType.ILLUSION)
             return HeroEffect.rejected(AbilityRejection.NO_USED_ABILITY);

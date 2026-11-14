@@ -33,22 +33,23 @@ public final class GinsengFixtures {
         return Game.fromSnapshot(new GameSnapshot(s.version(),s.mode(),s.field(),states,s.turn(),s.active(),s.castlingRights(),s.enPassantTarget(),s.halfmoveClock(),s.repetitions(),s.clock(),s.outcome(),s.moves(),s.events(),s.whitePoints(),s.blackPoints(),s.whiteCaptures(),s.blackCaptures(),s.drawOffer(),s.heroRules(),s.economy(),s.terrain(),s.draft(),s.summons()),()->0L);
     }
     public static Game hook() {
-        var b=board();put(b,Rook.class,WHITE,"e2");put(b,Pawn.class,BLACK,"e5");put(b,Pawn.class,BLACK,"a4");put(b,Knight.class,WHITE,"f2");
+        var b=board();put(b,Rook.class,BLACK,"e2");put(b,Pawn.class,WHITE,"e5");put(b,Pawn.class,BLACK,"a4");put(b,Knight.class,BLACK,"f2");
         return charged(create(b,Map.of(pos("e2"),HeroType.PUDGE)),"c2","e2");
     }
     public static Game readyHook() {
-        Game g=hook();ok(g.useAbility(g.getCurrentPlayer(),pos("e2"),pos("e5"),PudgeAbility.HOOK));
-        play(g,"b1","a3");play(g,"g8","f6");ok(g.useAbility(g.getCurrentPlayer(),pos("c2"),pos("e2"),GinsengAbility.COPY_SPELL));
+        Game g=hook(); play(g,"b1","a3");
+        ok(g.useAbility(g.getCurrentPlayer(),pos("e2"),pos("e5"),PudgeAbility.HOOK));
+        play(g,"g8","f6");ok(g.useAbility(g.getCurrentPlayer(),pos("c2"),pos("e2"),GinsengAbility.COPY_SPELL));
         play(g,"a3","b1");play(g,"f6","g8");return g;
     }
     public static Game readyDisplacement() {
         var b = board();
-        put(b, Bishop.class, WHITE, "f2");
+        put(b, Bishop.class, BLACK, "f2");
         put(b, Pawn.class, BLACK, "f4");
         Game g = charged(create(b, Map.of(pos("f2"), HeroType.GINSENG)), "c2");
+        play(g, "b1", "a3");
         ok(g.useAbility(g.getCurrentPlayer(), new AbilityRequest(pos("f2"), GinsengAbility.DISPLACE,
                 pos("f4"), pos("f5"), false)));
-        play(g, "b1", "a3");
         play(g, "g8", "f6");
         ok(g.useAbility(g.getCurrentPlayer(), pos("c2"), pos("f2"), GinsengAbility.COPY_SPELL));
         play(g, "a3", "b1");

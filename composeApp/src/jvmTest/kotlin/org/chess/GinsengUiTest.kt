@@ -70,9 +70,9 @@ class GinsengUiTest {
                 assertFalse(game.snapshot.turn().moveUsed())
             }
             val copying=GinsengFixtures.hook()
-            assertTrue(copying.useAbility(copying.currentPlayer,pos("e2"),pos("e5"),PudgeAbility.HOOK).isSuccess)
             assertTrue(copying.moveFigure(copying.currentPlayer,pos("b1"),pos("a3")).isSuccess)
             assertTrue(copying.endTurn(copying.currentPlayer).isSuccess)
+            assertTrue(copying.useAbility(copying.currentPlayer,pos("e2"),pos("e5"),PudgeAbility.HOOK).isSuccess)
             assertTrue(copying.moveFigure(copying.currentPlayer,pos("g8"),pos("f6")).isSuccess)
             assertTrue(copying.endTurn(copying.currentPlayer).isSuccess)
             ImageComposeScene(1200,800) { MaterialTheme { Surface(Modifier.fillMaxSize()) { ChessBoard(copying) } } }.use {
