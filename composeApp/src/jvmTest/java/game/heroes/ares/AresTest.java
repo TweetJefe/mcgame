@@ -27,7 +27,7 @@ public class AresTest {
         var s=g.getSnapshot();var states=new HashMap<>(s.pieces());var p=s.pieceAt(pos(square));states.put(p.id(),p.withAbilityState(p.cooldown(),amount,p.storedPieceId()));
         return Game.fromSnapshot(new GameSnapshot(s.version(),s.mode(),s.field(),states,s.turn(),s.active(),s.castlingRights(),s.enPassantTarget(),s.halfmoveClock(),s.repetitions(),s.clock(),s.outcome(),s.moves(),s.events(),s.whitePoints(),s.blackPoints(),s.whiteCaptures(),s.blackCaptures(),s.drawOffer(),s.heroRules(),s.economy(),s.terrain(),s.draft(),s.summons()),()->0L);
     }
-    public static Game collision(){var b=board();put(b,Knight.class,WHITE,"d2");put(b,Rook.class,BLACK,"f2");return create(b,Map.of(pos("c2"),HeroType.ARES,pos("f2"),HeroType.PUDGE));}
+    public static Game collision(){var b=board();put(b,Knight.class,BLACK,"d2");put(b,Rook.class,BLACK,"f2");return create(b,Map.of(pos("c2"),HeroType.ARES,pos("f2"),HeroType.PUDGE));}
     private void move(Game g,String a,String b){assertEquals(Success.SUCCESS,g.moveFigure(g.getCurrentPlayer(),pos(a),pos(b)));}
     private void end(Game g){assertEquals(Success.SUCCESS,g.endTurn(g.getCurrentPlayer()));}
     private void cast(Game g,String a,String t,Abilities spell){assertEquals(Success.SUCCESS,g.useAbility(g.getCurrentPlayer(),pos(a),t==null?null:pos(t),spell));}
@@ -35,12 +35,12 @@ public class AresTest {
     private void cycle(Game g){boolean w=g.getPieceState(pos("b1"))!=null;move(g,w?"b1":"a3",w?"a3":"b1");end(g);boolean b=g.getPieceState(pos("g8"))!=null;move(g,b?"g8":"f6",b?"f6":"g8");end(g);}
     public static void roundtrip(Game g)throws Exception{byte[] bytes=GameSaveFile.encode(g.getSnapshot());Game copy=Game.fromSnapshot(GameSaveFile.decode(bytes),()->0L);assertArrayEquals(bytes,GameSaveFile.encode(copy.getSnapshot()));}
 
-    @Test public void allEightDirectionsCarryFriendlyOrEnemyPiecesToTheirFullRange()throws Exception {
+    @Test public void allEightDirectionsCarryEnemiesAndStopAtFriendlyPieces()throws Exception {
         for(FigureColor color:List.of(WHITE,BLACK))for(int dr=-1;dr<=1;dr++)for(int dc=-1;dc<=1;dc++)if(dr!=0 || dc!=0){
             var b=board();empty(b,"c2");empty(b,"h8");put(b,King.class,BLACK,"h7");put(b,Bishop.class,WHITE,"d4");
             Position first=new Position(3+dr,3+dc);b.put(first,new Field(8).createFigure(Knight.class,first,color));
             Game g=create(b,Map.of(pos("d4"),HeroType.ARES));long id=g.getPieceState(first).id();int range=dr==0 || dc==0?3:2;Position to=new Position(3+dr*range,3+dc*range);
-            cast(g,"d4",String.valueOf((char)('a'+to.getColumn()))+(to.getRow()+1),AresAbility.SPEAR);assertEquals(id,g.getPieceState(to).id());assertFalse(g.getPieceState(to).isStunned());roundtrip(g);
+            cast(g,"d4",String.valueOf((char)('a'+to.getColumn()))+(to.getRow()+1),AresAbility.SPEAR);assertEquals(id,g.getPieceState(color==WHITE?first:to).id());assertFalse(g.getPieceState(color==WHITE?first:to).isStunned());roundtrip(g);
         }
     }
     @Test public void firstPieceStopsBeforeSecondAndBothAreStunnedButThirdIsUntouched()throws Exception {
@@ -48,10 +48,10 @@ public class AresTest {
         long first=g.getPieceState(pos("d2")).id();spear(g,"f2");assertEquals(first,g.getPieceState(pos("e2")).id());assertTrue(g.getPieceState(pos("e2")).isStunned());assertTrue(g.getPieceState(pos("f2")).isStunned());assertFalse(g.getPieceState(pos("g2")).isStunned());assertEquals(2,g.getPieceState(pos("e2")).stunnedThroughTurn());roundtrip(g);
     }
     @Test public void adjacentFiguresStayOnTheirSquaresAndStillGetStunned()throws Exception {
-        var b=board();put(b,Pawn.class,WHITE,"d2");put(b,Pawn.class,BLACK,"e2");Game g=create(b,Map.of(pos("c2"),HeroType.ARES));long id=g.getPieceState(pos("d2")).id();spear(g,"f2");assertEquals(id,g.getPieceState(pos("d2")).id());assertTrue(g.getPieceState(pos("d2")).isStunned());assertTrue(g.getPieceState(pos("e2")).isStunned());roundtrip(g);
+        var b=board();put(b,Pawn.class,BLACK,"d2");put(b,Pawn.class,BLACK,"e2");Game g=create(b,Map.of(pos("c2"),HeroType.ARES));long id=g.getPieceState(pos("d2")).id();spear(g,"f2");assertEquals(id,g.getPieceState(pos("d2")).id());assertTrue(g.getPieceState(pos("d2")).isStunned());assertTrue(g.getPieceState(pos("e2")).isStunned());roundtrip(g);
     }
     @Test public void kingStopsTheSpearWithoutMovingOrStunningItOrTheCarriedPiece()throws Exception {
-        var b=board();empty(b,"h8");put(b,King.class,BLACK,"f2");put(b,Pawn.class,WHITE,"d2");Game g=create(b,Map.of(pos("c2"),HeroType.ARES));
+        var b=board();empty(b,"h8");put(b,King.class,BLACK,"f2");put(b,Pawn.class,BLACK,"d2");Game g=create(b,Map.of(pos("c2"),HeroType.ARES));
         long id=g.getPieceState(pos("d2")).id();spear(g,"f2");assertEquals(id,g.getPieceState(pos("e2")).id());assertEquals(King.class,g.getPieceState(pos("f2")).type());assertFalse(g.getPieceState(pos("f2")).isStunned());assertFalse(g.getPieceState(pos("e2")).isStunned());roundtrip(g);
     }
     @Test public void emptyShotIsAllowedButDoesNotReplaceTheOrdinaryMoveAndCooldownIsThreeOwnStarts()throws Exception {
@@ -59,19 +59,19 @@ public class AresTest {
     }
     @Test public void outOfRangeOffRayAndSelfCheckRejectionsAreAtomic() {
         Game g=basic();var before=g.getSnapshot();assertEquals(AbilityRejection.ABILITY_OUT_OF_RANGE,g.useAbility(g.getCurrentPlayer(),pos("c2"),pos("g2"),AresAbility.SPEAR));assertEquals(AbilityRejection.ABILITY_OUT_OF_RANGE,g.useAbility(g.getCurrentPlayer(),pos("c2"),pos("f4"),AresAbility.SPEAR));assertEquals(before,g.getSnapshot());
-        var b=board();empty(b,"a1");put(b,King.class,WHITE,"d1");put(b,Rook.class,BLACK,"d8");put(b,Pawn.class,WHITE,"d2");g=create(b,Map.of(pos("c2"),HeroType.ARES));before=g.getSnapshot();assertEquals(MovementRejection.KING_IN_CHECK,g.useAbility(g.getCurrentPlayer(),pos("c2"),pos("f2"),AresAbility.SPEAR));assertEquals(before,g.getSnapshot());
+        var b=board();empty(b,"a1");put(b,King.class,WHITE,"d1");put(b,Rook.class,BLACK,"d8");put(b,Pawn.class,BLACK,"d2");g=create(b,Map.of(pos("c2"),HeroType.ARES));before=g.getSnapshot();assertEquals(MovementRejection.KING_IN_CHECK,g.useAbility(g.getCurrentPlayer(),pos("c2"),pos("f2"),AresAbility.SPEAR));assertEquals(before,g.getSnapshot());
     }
-    @Test public void stunBlocksAlliedMovementEnemyMovementAndActiveSpellsUntilEnemyEnd()throws Exception {
-        Game g=collision();spear(g,"f2");assertEquals(StatusRejection.STUNNED,g.moveFigure(g.getCurrentPlayer(),pos("e2"),pos("f4")));move(g,"b1","a3");end(g);
+    @Test public void stunBlocksEnemyMovementAndActiveSpellsUntilEnemyEnd()throws Exception {
+        Game g=collision();spear(g,"f2");assertTrue(g.getPieceState(pos("e2")).isStunned());move(g,"b1","a3");end(g);assertEquals(StatusRejection.STUNNED,g.moveFigure(g.getCurrentPlayer(),pos("e2"),pos("f4")));
         assertEquals(StatusRejection.STUNNED,g.moveFigure(g.getCurrentPlayer(),pos("f2"),pos("f3")));assertEquals(StatusRejection.STUNNED,g.getAbilityAvailability(pos("f2"),PudgeAbility.HOOK));roundtrip(g);
-        move(g,"g8","f6");end(g);assertFalse(g.getPieceState(pos("e2")).isStunned());assertFalse(g.getPieceState(pos("f2")).isStunned());move(g,"e2","f4");roundtrip(g);
+        move(g,"g8","f6");end(g);assertFalse(g.getPieceState(pos("e2")).isStunned());assertFalse(g.getPieceState(pos("f2")).isStunned());move(g,"a3","b1");end(g);move(g,"e2","f4");roundtrip(g);
     }
     @Test public void stunnedAttackersStopGivingCheckAndRecoverWhenTheEnemyTurnEnds()throws Exception {
         var b=board();empty(b,"a1");put(b,King.class,WHITE,"f1");put(b,Knight.class,BLACK,"d2");put(b,Rook.class,BLACK,"f2");Game g=create(b,Map.of(pos("c2"),HeroType.ARES));assertTrue(g.isInCheck());
         spear(g,"f2");assertFalse(g.isInCheck());move(g,"b1","a3");end(g);move(g,"g8","f6");end(g);assertTrue(g.isInCheck());roundtrip(g);
     }
     @Test public void aStunnedPieceKeepsItsStunWhenPudgeMovesItById()throws Exception {
-        var b=board();put(b,Knight.class,WHITE,"d2");put(b,Pawn.class,WHITE,"f2");put(b,Rook.class,BLACK,"e5");Game g=create(b,Map.of(pos("c2"),HeroType.ARES,pos("e5"),HeroType.PUDGE));
+        var b=board();put(b,Knight.class,BLACK,"d2");put(b,Pawn.class,WHITE,"f2");put(b,Rook.class,BLACK,"e5");Game g=create(b,Map.of(pos("c2"),HeroType.ARES,pos("e5"),HeroType.PUDGE));
         spear(g,"f2");long id=g.getPieceState(pos("e2")).id();move(g,"b1","a3");end(g);cast(g,"e5","e2",PudgeAbility.HOOK);assertEquals(id,g.getPieceState(pos("e4")).id());assertTrue(g.getPieceState(pos("e4")).isStunned());roundtrip(g);
     }
     @Test public void spearEntersHostileMudInsteadOfCarryingTheVictimThroughIt()throws Exception {

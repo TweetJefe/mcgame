@@ -30,7 +30,7 @@ data class SpearPlan(val origin: Position, val end: Position, val carriedId: Lon
                 end = cell
                 val hit=before.pieceAt(cell)
                 if(hit!=null) {
-                    if(caught!=null || hit.type()==King::class.java || hit.isBoxed) break
+                    if(caught!=null || hit.color()==event.color() || hit.type()==King::class.java || hit.isBoxed) break
                     caught=hit
                 }
                 // Реальное перемещение уже завершено движком; не продлеваем полёт за сработавшую ловушку.

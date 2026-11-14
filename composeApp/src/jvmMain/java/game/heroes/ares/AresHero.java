@@ -57,7 +57,7 @@ public final class AresHero extends AbstractHero {
             if (!inside(cell)) break;
             PieceState hit = at(pieces, cell);
             if (carried == null) {
-                if (hit != null && (hit.type() == King.class || hit.isBoxed())) break;
+                if (hit != null && (hit.color() == actor.color() || hit.type() == King.class || hit.isBoxed())) break;
                 if (hit != null) {
                     carried = hit;
                     landing = cell;
@@ -65,7 +65,7 @@ public final class AresHero extends AbstractHero {
             } else if (hit != null) {
                 if (hit.type() != King.class && !hit.isBoxed() && !hit.isPotted()) {
                     long until = Math.addExact(turn, 1L);
-                    updates.put(hit.id(), hit.withStun(Math.max(hit.stunnedThroughTurn(), until)));
+                    if (hit.color() != actor.color()) updates.put(hit.id(), hit.withStun(Math.max(hit.stunnedThroughTurn(), until)));
                     if (!carried.isPotted()) carried = carried.withStun(Math.max(carried.stunnedThroughTurn(), until));
                 }
                 break;
